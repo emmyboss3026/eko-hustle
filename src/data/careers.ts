@@ -2,7 +2,7 @@ import type { Needs } from "../engine/needs";
 import type { DistrictId } from "./places";
 import type { Skills } from "./skills";
 
-export type CareerId = "pos" | "okada" | "waiter" | "fashion" | "tech" | "aviation";
+export type CareerId = "pos" | "okada" | "waiter" | "fastfood" | "fashion" | "tech" | "aviation";
 
 export type CareerLevel = {
   title: string;
@@ -54,6 +54,17 @@ export const careers: Record<CareerId, Career> = {
       { title: "Head waiter", pay: 11_000, req: { charisma: 3 } },
       { title: "Lounge manager", pay: 18_000, req: { charisma: 5, hustle: 3 } },
       { title: "Restaurant owner", pay: 32_000, req: { charisma: 7, hustle: 5 } },
+    ],
+  },
+  fastfood: {
+    id: "fastfood", name: "Fast food (Jollof Junction)", emoji: "🍗", where: "yaba", hours: 6, shiftsToPromote: 4,
+    effect: { energy: -28, hunger: 35, social: 10, bladder: 40 },   // a free staff meal every shift
+    skill: { cooking: 0.25, hustle: 0.15 },
+    levels: [
+      { title: "Crew member", pay: 5_000 },
+      { title: "Shift supervisor", pay: 8_500, req: { cooking: 1.5 } },
+      { title: "Restaurant manager", pay: 15_000, req: { cooking: 3, charisma: 2 } },
+      { title: "Franchise owner", pay: 28_000, req: { hustle: 5, charisma: 4 } },
     ],
   },
   fashion: {

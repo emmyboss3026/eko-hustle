@@ -15,12 +15,12 @@ export const paymentsEnabled = Boolean(supabase) && import.meta.env.VITE_PAYMENT
 
 // Sends the player to Bachs's checkout page. Only returns if something went wrong.
 export async function buySupporterPack(): Promise<{ ok: false; message: string }> {
-  if (!paymentsEnabled || !supabase) return { ok: false, message: "Payments are not set up yet." };
+  if (!paymentsEnabled || !supabase) return { ok: false, message: "pay.notSetUp" };
   const { data, error } = await supabase.functions.invoke("bachs-checkout", {
     body: { returnTo: window.location.origin + "/" },
   });
   if (error || !data?.ok || typeof data.url !== "string" || !data.url.startsWith("https://")) {
-    return { ok: false, message: data?.error ?? "Couldn't start the payment. Check your connection and try again." };
+    return { ok: false, message: data?.error ?? "pay.startFailed" };
   }
   window.location.assign(data.url);
   return new Promise(() => {}); // the page is leaving

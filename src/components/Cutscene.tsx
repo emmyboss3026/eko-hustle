@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { placeArt, roadsideStrip, skyFor, skylineStrip, vehicleArt } from "../art/art.js";
+import { useLang } from "../i18n/react";
 
 export type Ride = { mode: string; to: string; art?: string; minutes: number; km: number; label: string; time: number };
 
@@ -9,6 +10,7 @@ const PACE: Record<string, number> = { walk: 1.8, keke: 1, danfo: 1, okada: 0.7 
 
 /** The travel scene: your ride passing through Lagos, with where you're going. Tap to skip. */
 export default function Cutscene({ ride, onDone }: { ride: Ride; onDone: () => void }) {
+  const { t } = useLang();
   const [p, setP] = useState(0);
   const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const seconds = reduced ? 1.5 : Math.min(5, Math.max(2.5, 2 + ride.minutes / 40));
@@ -48,16 +50,16 @@ export default function Cutscene({ ride, onDone }: { ride: Ride; onDone: () => v
     <g transform="translate(200 206) scale(1.35)"><g class="cs-ride mode-${mode}">${vehicleArt(mode)}</g></g>`;
 
   return (
-    <div className="cutscene" role="dialog" aria-label={`Travelling to ${ride.to}`} style={{ ["--pace" as string]: String(PACE[mode] ?? 1) }} onClick={onDone}>
+    <div className="cutscene" role="dialog" aria-label={t("ride.heading", { place: ride.to })} style={{ ["--pace" as string]: String(PACE[mode] ?? 1) }} onClick={onDone}>
       <svg className="cs-scene" viewBox={`${X0} ${225 - H} ${VW} ${H}`} preserveAspectRatio="xMidYMax slice" aria-hidden dangerouslySetInnerHTML={{ __html: scene }} />
       <div className="cs-card" onClick={e => e.stopPropagation()}>
         {ride.art && <div className="cs-dest" aria-hidden dangerouslySetInnerHTML={{ __html: placeArt(ride.art, hour, "art") }} />}
         <div className="cs-text">
           <small>{ride.label} · {ride.km} km · {ride.minutes} min</small>
-          <b>{p >= 1 ? "You've arrived!" : `Heading to ${ride.to}`}</b>
+          <b>{p >= 1 ? t("ride.arrived") : t("ride.heading", { place: ride.to })}</b>
           <div className="cs-bar"><i style={{ width: `${Math.round(p * 100)}%` }} /></div>
         </div>
-        <button className="btn" onClick={onDone}>Skip ▸</button>
+        <button className="btn" onClick={onDone}>{t("ride.skip")}</button>
       </div>
     </div>
   );

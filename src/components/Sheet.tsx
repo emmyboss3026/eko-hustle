@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useLang } from "../i18n/react";
 
 /** A panel that slides up over the 3D view (on wide screens it sits on the right). */
 export default function Sheet({ title, onClose, children, size = "big" }: {
@@ -7,11 +8,12 @@ export default function Sheet({ title, onClose, children, size = "big" }: {
   children: ReactNode;
   size?: "big" | "small";
 }) {
+  const { t } = useLang();
   return (
     <section className={`panel-sheet ${size}`} role="dialog" aria-label={typeof title === "string" ? title : undefined}>
       <header className="panel-head">
         <h2>{title}</h2>
-        <button className="btn plain close" onClick={onClose} aria-label="Close">✕</button>
+        <button className="btn plain close" onClick={onClose} aria-label={t("ui.close")}>✕</button>
       </header>
       <div className="panel-body">{children}</div>
     </section>

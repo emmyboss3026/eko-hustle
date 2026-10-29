@@ -53,9 +53,9 @@ export function importSave(text: string): GameState {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("That file isn't a save.");
+    throw new Error("save.notSave");
   }
   const state = upgrade(data);
-  if (!state) throw new Error("That file isn't an Eko Hustle save.");
+  if (!state) throw new Error("save.notEko");
   return state;
 }

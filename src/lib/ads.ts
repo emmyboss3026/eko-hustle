@@ -45,7 +45,7 @@ export function showRewardedAd(onReward: () => void, onNoReward: (reason: string
       window.setTimeout(onReward, 1500);
       return;
     }
-    onNoReward("Ads aren't available right now.");
+    onNoReward("ads.unavailable");
     return;
   }
   initAds();
@@ -60,7 +60,7 @@ export function showRewardedAd(onReward: () => void, onNoReward: (reason: string
     },
     adDismissed: () => {},
     adBreakDone: (info: AdBreakInfo) => {
-      if (!rewarded) onNoReward(info.breakStatus === "dismissed" ? "Ad closed early, so no reward." : "No ad available right now. Try again later.");
+      if (!rewarded) onNoReward(info.breakStatus === "dismissed" ? "ads.closed" : "ads.none");
     },
   });
 }

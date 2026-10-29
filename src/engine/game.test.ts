@@ -169,7 +169,7 @@ describe("your room", () => {
 
   it("buying furniture costs money and unlocks its actions", () => {
     const rich = fresh({ money: 100_000 });
-    expect(reduce(rich, { type: "act", id: "tv" }).log[0]).toContain("flat-screen tv");
+    expect(reduce(rich, { type: "act", id: "tv" }).log[0]).toContain("Flat-screen TV");
     const s = reduce(rich, { type: "buy", item: "tv", x: 2, y: 6, rot: 0 });
     expect(s.money).toBe(100_000 - CATALOG.tv.price);
     const watched = reduce(s, { type: "act", id: "tv" });
@@ -210,7 +210,7 @@ describe("NEPA and the generator", () => {
       return reduce(base, { type: "buy", item: "shower", x: 6, y: 2, rot: 0 });
     };
     const noGen = reduce(withShower({}), { type: "act", id: "shower" });
-    expect(noGen.log[0]).toContain("No light");
+    expect(noGen.log[0]).toContain("No power");
     let s = withShower({});
     s = reduce(s, { type: "buy", item: "generator", x: 0, y: 6, rot: 0 });
     s = { ...s, home: { ...s.home, fuel: 5 } };

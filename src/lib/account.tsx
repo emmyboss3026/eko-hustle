@@ -44,11 +44,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   // Back from Bachs: the unlock arrives by webhook a few seconds later, so check a few times.
   useEffect(() => {
     if (returnStatus === "cancel") {
-      setNotice("Payment cancelled. Nothing was charged.");
+      setNotice("pay.cancelled");
       return;
     }
     if (returnStatus !== "success" || !supabase) return;
-    setNotice("Payment received! Unlocking your supporter pack…");
+    setNotice("pay.received");
     let tries = 0;
     let stopped = false;
     const tick = async () => {
@@ -59,12 +59,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         const p = await fetchProfile(user.id, user.email ?? "");
         setProfile(p);
         if (p.supporter) {
-          setNotice("🌟 Supporter pack unlocked. Thank you! Start a new life to use your new looks.");
+          setNotice("pay.unlocked");
           return;
         }
       }
       if (++tries < 12) window.setTimeout(tick, 5000);
-      else setNotice("Your payment is still being confirmed. It can take a few minutes; check the Me tab later. Keep your Bachs receipt.");
+      else setNotice("pay.pending");
     };
     void tick();
     return () => {

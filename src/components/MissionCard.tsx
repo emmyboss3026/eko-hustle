@@ -2,33 +2,34 @@ import { useEffect, useState } from "react";
 import type { GameState } from "../engine/game";
 import { currentMission, missions } from "../data/missions";
 import { naira } from "../engine/economy";
+import { useLang } from "../i18n/react";
 
 /** The current mission as a small card over the game: tap it for the steps. */
 export default function MissionCard({ state, onShow }: { state: GameState; onShow: () => void }) {
+  const { t, tx } = useLang();
   const m = currentMission(state);
   const index = state.mission ?? 0;
   const [open, setOpen] = useState(false);
   // A new mission starts folded up again
   useEffect(() => setOpen(false), [index]);
-  if (!m) {
-    return <div className="mission-chip done">🏆 All missions done! Chase your dream in ✈️ Goals.</div>;
-  }
+  if (!m) return <div className="mission-chip done">{t("mission.allDone")}</div>;
+  const mt = tx.mission(m);
   return (
-    <section className={`mission-chip ${open ? "open" : ""}`} aria-label="Current mission">
+    <section className={`mission-chip ${open ? "open" : ""}`} aria-label={t("mission.current")}>
       <button className="mission-line" onClick={() => setOpen(o => !o)} aria-expanded={open}>
         <span className="mission-emoji" aria-hidden>{m.emoji}</span>
         <span className="mission-text">
-          <small>🎯 Mission {index + 1}/{missions.length}{m.reward ? ` · ${naira(m.reward)}` : ""}</small>
-          <b>{m.title}</b>
-          {!open && <span>{m.goal}</span>}
+          <small>{t("mission.counter", { n: index + 1, total: missions.length })}{m.reward ? ` · ${naira(m.reward)}` : ""}</small>
+          <b>{mt.title}</b>
+          {!open && <span>{mt.goal}</span>}
         </span>
-        <span className="mission-toggle">{open ? "Hide" : "How?"}</span>
+        <span className="mission-toggle">{open ? t("mission.hide") : t("mission.how")}</span>
       </button>
       {open && (
         <div className="mission-body">
-          <p>{m.goal}</p>
+          <p>{mt.goal}</p>
           <ol>
-            {m.steps.map((step, i) => <li key={i}>{step}</li>)}
+            {mt.steps.map((step, i) => <li key={i}>{step}</li>)}
           </ol>
           <button
             className="btn"
@@ -37,7 +38,7 @@ export default function MissionCard({ state, onShow }: { state: GameState; onSho
               onShow();
             }}
           >
-            👉 Show me
+            {t("mission.show")}
           </button>
         </div>
       )}

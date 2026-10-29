@@ -4,16 +4,19 @@ import { newGame, reduce, type Command, type GameState } from "./engine/game";
 import { loadGame, saveGame, clearSave, localSavedAt } from "./engine/save";
 import type { Sim } from "./data/traits";
 import { AccountProvider, useAccount } from "./lib/account";
+import { LangProvider, useLang } from "./i18n/react";
+import { recordLife } from "./lib/lives";
+import type { Lang } from "./i18n/core";
 import { loadCloudSave, pushCloudSave, submitRun } from "./lib/cloud";
 import CreateSim from "./screens/CreateSim";
 import Ending from "./screens/Ending";
 import Game from "./screens/Game";
 
 // Everything that can happen: a game command, starting a new life, loading a cloud save, or resetting.
-type Msg = Command | { type: "start"; sim: Sim } | { type: "load"; state: GameState } | { type: "reset" };
+type Msg = Command | { type: "start"; sim: Sim; lang: Lang } | { type: "load"; state: GameState } | { type: "reset" };
 
 function root(state: GameState | null, msg: Msg): GameState | null {
-  if (msg.type === "start") return newGame(msg.sim);
+  if (msg.type === "start") return newGame(msg.sim, msg.lang);
   if (msg.type === "load") return msg.state;
   if (msg.type === "reset") return null;
   return state ? reduce(state, msg) : state;
@@ -24,6 +27,7 @@ const SUBMITTED_KEY = "eko-hustle-submitted-run";
 function Root() {
   const [state, dispatch] = useReducer(root, null, loadGame);
   const { profile } = useAccount();
+  const { lang } = useLang();
   const [synced, setSynced] = useState<"off" | "syncing" | "saved" | "error">("off");
   const firstSave = useRef(true);
   const userId = profile?.id ?? null;
@@ -69,6 +73,11 @@ function Root() {
     return () => window.clearTimeout(t);
   }, [state, userId]);
 
+  // Remember a finished life on this device
+  useEffect(() => {
+    if (state?.ending) recordLife(state);
+  }, [state]);
+
   // Post a finished life to the leaderboard once
   useEffect(() => {
     if (!userId || !state?.ending) return;
@@ -87,15 +96,17 @@ function Root() {
     dispatch({ type: "reset" });
   }
 
-  if (!state) return <CreateSim onDone={sim => dispatch({ type: "start", sim })} />;
+  if (!state) return <CreateSim onDone={sim => dispatch({ type: "start", sim, lang })} />;
   if (state.ending) return <Ending state={state} onRestart={restart} />;
   return <Game state={state} dispatch={dispatch} onRestart={restart} onLoad={s => dispatch({ type: "load", state: s })} synced={synced} />;
 }
 
 export default function App() {
   return (
-    <AccountProvider>
-      <Root />
-    </AccountProvider>
+    <LangProvider>
+      <AccountProvider>
+        <Root />
+      </AccountProvider>
+    </LangProvider>
   );
 }

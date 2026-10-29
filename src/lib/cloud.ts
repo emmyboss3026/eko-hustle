@@ -8,7 +8,7 @@ export type Profile = { id: string; email: string; supporter: boolean };
 export type Run = { sim_name: string; trait: string; ending: string; days: number; earned: number };
 
 export async function signInWithEmail(email: string): Promise<string | null> {
-  if (!supabase) return "Accounts are not set up yet.";
+  if (!supabase) return "account.notSetUp";
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: window.location.origin },
@@ -17,7 +17,7 @@ export async function signInWithEmail(email: string): Promise<string | null> {
 }
 
 export async function signInWithGoogle(): Promise<string | null> {
-  if (!supabase) return "Accounts are not set up yet.";
+  if (!supabase) return "account.notSetUp";
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: { redirectTo: window.location.origin },
@@ -78,4 +78,56 @@ export async function fetchLeaderboard(ending: "japa" | "landlord", limit = 10):
     .order("days", { ascending: true })
     .limit(limit);
   return (data as Run[] | null) ?? [];
+}
+
+export type FeedbackCategory = "bug" | "idea" | "like" | "confusing";
+export type Feedback = { category: FeedbackCategory; rating: number | null; message: string; lang: string; gameDay: number };
+
+export const APP_VERSION = "2.1.0";
+const QUEUE_KEY = "eko-hustle-feedback-queue";
+
+/** Send feedback to the game's database. Without a connection it waits on this device and is sent later. */
+export async function sendFeedback(f: Feedback): Promise<"sent" | "queued"> {
+  const ok = await postFeedback(f);
+  if (ok) return "sent";
+  try {
+    const queue: Feedback[] = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]");
+    localStorage.setItem(QUEUE_KEY, JSON.stringify([...queue, f].slice(-20)));
+  } catch {
+    // storage blocked: nothing more we can do
+  }
+  return "queued";
+}
+
+/** Try again to send feedback that couldn't go out before. */
+export async function flushFeedback() {
+  let queue: Feedback[] = [];
+  try {
+    queue = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]");
+  } catch {
+    return;
+  }
+  if (!queue.length || !supabase) return;
+  const left: Feedback[] = [];
+  for (const f of queue) if (!(await postFeedback(f))) left.push(f);
+  try {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(left));
+  } catch {
+    // ignore
+  }
+}
+
+async function postFeedback(f: Feedback): Promise<boolean> {
+  if (!supabase) return false;
+  const { data } = await supabase.auth.getSession();
+  const { error } = await supabase.from("feedback").insert({
+    user_id: data.session?.user.id ?? null,
+    category: f.category,
+    rating: f.rating,
+    message: f.message.slice(0, 1000),
+    lang: f.lang,
+    game_day: f.gameDay,
+    app_version: APP_VERSION,
+  });
+  return !error;
 }

@@ -129,12 +129,24 @@ export const actions: Action[] = [
   { id: "shawarma", label: "Shawarma at the mall", emoji: "🌯", minutes: 30, cost: 2_000, category: "food", where: "ikeja", spot: "mall", effect: { hunger: 40, fun: 10 }, mood: "fullTummy" },
   { id: "mall", label: "Window-shop at the mall", emoji: "🛍️", minutes: 120, cost: 500, category: "fun", where: "ikeja", spot: "mall", effect: { fun: 35, social: 15 } },
 
+  // ---------------- Fast food (quick, filling, but dearer than cooking)
+  { id: "mamaput-rice", label: "Rice and stew takeaway", emoji: "🍛", minutes: 15, cost: 1_200, category: "food", where: "mushin", spot: "mamaput", effect: { hunger: 40 }, mood: "fullTummy" },
+  { id: "mamaput-bole", label: "Bole and fish", emoji: "🐟", minutes: 15, cost: 1_000, category: "food", where: "mushin", spot: "mamaput", effect: { hunger: 35, fun: 4 } },
+  { id: "jollof-combo", label: "Jollof and chicken combo", emoji: "🍗", minutes: 25, cost: 3_000, category: "food", where: "yaba", spot: "jollof", effect: { hunger: 60, fun: 8 }, mood: "fullTummy" },
+  { id: "meat-pie", label: "Meat pie and Chapman", emoji: "🥧", minutes: 15, cost: 1_500, category: "food", where: "yaba", spot: "jollof", effect: { hunger: 25, fun: 8 } },
+  { id: "burger-meal", label: "Burger, chips and a drink", emoji: "🍔", minutes: 25, cost: 4_500, category: "food", where: "island", spot: "bigbite", effect: { hunger: 60, fun: 12 }, mood: "fullTummy" },
+  { id: "milkshake", label: "Milkshake with friends", emoji: "🥤", minutes: 30, cost: 2_000, category: "fun", where: "island", spot: "bigbite", effect: { fun: 15, social: 15, hunger: 10 }, mood: "goodGist" },
+  { id: "chicken-bucket", label: "Share a chicken bucket", emoji: "🍗", minutes: 40, cost: 6_000, category: "food", where: "ikeja", spot: "crunchy", effect: { hunger: 70, social: 15, fun: 10 }, mood: "fullTummy" },
+  { id: "chicken-chips", label: "Chicken and chips", emoji: "🍟", minutes: 20, cost: 3_500, category: "food", where: "ikeja", spot: "crunchy", effect: { hunger: 50, fun: 6 } },
+
   // ---------------- Your phone and the roadside: anywhere
   { id: "call-mummy", label: "Call Mummy", emoji: "👵🏾", minutes: 20, cost: 0, category: "phone", where: "any", spot: "phone", effect: { social: 25, fun: 5 }, mood: "mummyLove" },
   { id: "scroll", label: "Scroll social media", emoji: "🤳🏾", minutes: 30, cost: 0, category: "phone", where: "any", spot: "phone", effect: { fun: 12, social: 6, energy: -2 } },
   { id: "whatsapp-hustle", label: "WhatsApp hustle (sell for others)", emoji: "💬", minutes: 60, cost: 0, earn: { base: 300, per: 350, skill: "hustle" }, category: "money", where: "any", spot: "phone", effect: { fun: -4 }, skill: { hustle: 0.3 } },
   { id: "phone-course", label: "Online course on your phone", emoji: "🎓", minutes: 120, cost: 1_000, category: "learn", where: "any", spot: "phone", effect: { energy: -10, fun: -5 }, skill: { study: 0.3 } },
   { id: "order-groceries", label: "Order groceries delivered (5 packs)", emoji: "🛵", minutes: 5, cost: 5_200, category: "home", where: "any", spot: "phone", effect: {}, stock: { food: 5 } },
+  { id: "chopnow-jollof", label: "ChopNow: order jollof delivered", emoji: "🛵", minutes: 40, cost: 4_000, category: "food", where: "any", spot: "phone", effect: { hunger: 55, fun: 5 }, mood: "fullTummy" },
+  { id: "chopnow-pizza", label: "ChopNow: order pizza for the gang", emoji: "🍕", minutes: 45, cost: 8_000, category: "food", where: "any", spot: "phone", effect: { hunger: 50, social: 20, fun: 15 }, mood: "goodGist" },
   { id: "fuel", label: "Buy generator fuel (5 litres)", emoji: "⛽", minutes: 15, cost: 5_000, category: "home", where: "any", spot: "phone", effect: {}, stock: { fuel: 5 } },
   { id: "puff-puff", label: "Buy puff-puff from a hawker", emoji: "🍩", minutes: 5, cost: 300, category: "food", where: "any", spot: "phone", effect: { hunger: 15 } },
   { id: "pure-water", label: "Buy pure water", emoji: "💧", minutes: 2, cost: 50, category: "food", where: "any", spot: "phone", effect: { hunger: 3, bladder: -5 } },

@@ -3,6 +3,7 @@ import { generatorOn, powered, type GameState } from "../engine/game";
 import { CATALOG, HOME, type FurnitureType } from "../data/home";
 import { canPlace } from "../engine/path";
 import { HouseView } from "../three/HouseView";
+import { useLang } from "../i18n/react";
 
 export type Placing = { type: FurnitureType; uid: number | null; x: number | null; y: number | null; rot: number };
 
@@ -28,6 +29,7 @@ export function placingValid(state: GameState, p: Placing | null): boolean {
 
 /** Your room in 3D, filling the whole screen. Tap furniture to use it, tap the floor to walk. */
 export default function RoomScene({ state, viewRef, selected, onSelect, placing, onPlaceTile, shift }: Props) {
+  const { t } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const [noGl, setNoGl] = useState(false);
   const objects = state.home.objects;
@@ -38,7 +40,7 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
   useEffect(() => {
     if (!box.current) return;
     try {
-      viewRef.current = new HouseView(box.current, shirts[state.sim.trait]);
+      viewRef.current = new HouseView(box.current, state.sim.look ?? { outfit: shirts[state.sim.trait] });
     } catch {
       setNoGl(true); // no WebGL on this device: the menus still work
     }
@@ -95,9 +97,9 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
         onPointerDown={e => (down.current = { x: e.clientX, y: e.clientY })}
         onPointerUp={onPointerUp}
         role="img"
-        aria-label="Your room in 3D. Tap furniture to use it."
+        aria-label={t("room.aria")}
       />
-      {noGl && <div className="scene-msg">This device can't show 3D. Use 📍 Places → 🏠 Your room to use your furniture.</div>}
+      {noGl && <div className="scene-msg">{t("room.noGl")}</div>}
     </>
   );
 }

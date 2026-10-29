@@ -2078,3 +2078,265 @@ label.row {
     width: 26px;
   }
 }
+
+/* ---------- language picker ---------- */
+.lang-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lang-picker button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--sign);
+}
+
+.lang-picker button[aria-checked="true"] {
+  border-color: var(--asphalt);
+  background: var(--danfo);
+}
+
+.lang-picker.big {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.lang-picker.big button {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.lang-picker.big button > span {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.lang-picker.big small {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+/* ---------- character select ---------- */
+.presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.preset {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--sign);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.preset[aria-pressed="true"] {
+  border-color: var(--asphalt);
+  background: #fff8d6;
+}
+
+.preset-face {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.preset-trait {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.char-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 2px solid var(--asphalt);
+  border-radius: 12px;
+  background: var(--sign);
+}
+
+.char-preview {
+  flex: 0 0 auto;
+  width: 130px;
+  height: 170px;
+  border-radius: 10px;
+  background: linear-gradient(#fff3b0, #f6e7a6);
+  overflow: hidden;
+}
+
+.char-preview canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.char-info {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.char-info p {
+  margin: 0;
+}
+
+.customise {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  background: var(--sign);
+}
+
+.swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch-row > span {
+  flex: 0 0 100%;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.swatch-row button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  padding: 0;
+}
+
+.swatch-row button[aria-checked="true"] {
+  border-color: var(--asphalt);
+  box-shadow: 0 0 0 2px var(--sign), 0 0 0 4px var(--asphalt);
+}
+
+.swatch-row button.hair {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--sign);
+  font-size: 22px;
+}
+
+.swatch-row button.hair[aria-checked="true"],
+.swatch-row button.text-choice[aria-checked="true"] {
+  background: var(--danfo);
+  box-shadow: none;
+}
+
+.swatch-row button.text-choice {
+  width: auto;
+  height: auto;
+  border-radius: 10px;
+  padding: 6px 12px;
+  background: var(--sign);
+}
+
+.avatars button[aria-checked="true"] {
+  border-color: var(--asphalt);
+  background: var(--danfo);
+}
+
+/* ---------- feedback ---------- */
+.feedback-cats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.feedback-cats button {
+  padding: 10px 8px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--sign);
+  font-weight: 700;
+}
+
+.feedback-cats button[aria-checked="true"] {
+  border-color: var(--asphalt);
+  background: var(--danfo);
+}
+
+.feedback-stars {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.feedback-stars span {
+  margin-right: 6px;
+  font-weight: 700;
+}
+
+.feedback-stars button {
+  border: 0;
+  background: none;
+  font-size: 28px;
+  line-height: 1;
+  padding: 2px 4px;
+  color: #b8860b;
+}
+
+.field textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 2px solid var(--asphalt);
+  border-radius: 8px;
+  background: var(--sign);
+  font: inherit;
+  font-weight: 400;
+  resize: vertical;
+}
+
+form .field + .note {
+  margin: 6px 0 12px;
+}
+
+.feedback-done {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.feedback-done h3 {
+  margin: 4px 0;
+}
+
+/* ---------- diary ---------- */
+.log.diary li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.diary-time {
+  flex: 0 0 auto;
+  font-family: var(--receipt);
+  font-size: 13px;
+  color: var(--ink-soft);
+}

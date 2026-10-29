@@ -3,6 +3,7 @@ import { districts, distanceKm, isRushHour, modes, trip, type DistrictId } from 
 import { spotList } from "../data/spots";
 import { fareFor } from "../data/traits";
 import { naira } from "../engine/economy";
+import { useLang, Rich } from "../i18n/react";
 import { duration, Tag } from "./ui";
 import Art from "./Art";
 import type { Ride } from "./Cutscene";
@@ -16,45 +17,41 @@ type Props = {
 };
 
 // The picture for each district
+// eslint-disable-next-line react-refresh/only-export-components
 export const districtArt: Partial<Record<DistrictId, string>> = { mushin: "market", yaba: "hub", island: "beach" };
 
 export default function GoTab({ state, dispatch, onRide, onWalk, missionTab }: Props) {
+  const { t, tx } = useLang();
   const others = (Object.keys(districts) as DistrictId[]).filter(d => d !== state.location);
   const canWalk = state.location !== "ikeja";
 
   return (
     <>
-      <p className="lede">You're in <b>{districts[state.location].name}</b>. Pick a place and a ride. Faster rides cost more. Every trip takes time and energy.</p>
+      <p className="lede"><Rich text={t("travel.lede", { place: tx.district(state.location) })} /></p>
 
       <button className={`walk-card ${missionTab ? "row-mission" : ""}`} onClick={onWalk} disabled={!canWalk}>
         <span className="walk-emoji" aria-hidden>🚶🏾</span>
         <span>
-          <b>Walk the streets (3D)</b>
-          <span className="note">
-            {canWalk
-              ? "Walk around town yourself and go into any building. Free, but it takes time."
-              : "Ikeja isn't on the walking map. Take a ride back to Mushin, Yaba or the Island first."}
-          </span>
+          <b>{t("travel.walk")}</b>
+          <span className="note">{canWalk ? t("travel.walkInfo") : t("travel.noWalk")}</span>
         </span>
         {missionTab && <Tag kind="mission" />}
       </button>
 
-      {isRushHour(state.time) && (
-        <div className="rush">🚦 Rush hour (7–10 am, 4–8 pm): danfo and keke crawl. Okada still weaves through.</div>
-      )}
+      {isRushHour(state.time) && <div className="rush">{t("travel.rush")}</div>}
 
       {others.map(to => (
         <div key={to} className="place">
           {districtArt[to] && <div className="place-art"><Art id={districtArt[to]!} time={state.time} /></div>}
-          <div className="place-name">{districts[to].name}</div>
-          <div className="note">{distanceKm(state.location, to)} km · {districts[to].blurb}</div>
+          <div className="place-name">{tx.district(to)}</div>
+          <div className="note">{distanceKm(state.location, to)} km · {tx.districtBlurb(to)}</div>
           <div className="note">
-            {spotList.filter(s => s.district === to && s.id !== "home").map(s => `${s.emoji} ${s.name}`).join(" · ")}
+            {spotList.filter(s => s.district === to && s.id !== "home").map(s => `${s.emoji} ${tx.spot(s.id)}`).join(" · ")}
           </div>
           <div className="modes">
             {modes.map(m => {
-              const t = trip(state.location, to, m, state.time);
-              const fare = fareFor(t.cost, state.sim.trait);
+              const trp = trip(state.location, to, m, state.time);
+              const fare = fareFor(trp.cost, state.sim.trait);
               return (
                 <button
                   key={m.id}
@@ -63,13 +60,13 @@ export default function GoTab({ state, dispatch, onRide, onWalk, missionTab }: P
                   onClick={() => {
                     dispatch({ type: "travel", to, mode: m.id });
                     onRide({
-                      mode: m.id, to: districts[to].name, art: districtArt[to], minutes: t.minutes,
-                      km: distanceKm(state.location, to), label: `${m.emoji} ${m.label}`, time: state.time,
+                      mode: m.id, to: tx.district(to), art: districtArt[to], minutes: trp.minutes,
+                      km: distanceKm(state.location, to), label: `${m.emoji} ${tx.mode(m.id)}`, time: state.time,
                     });
                   }}
                 >
-                  <b>{m.emoji} {m.label}</b>
-                  <span>{duration(t.minutes)} · {fare ? naira(fare) : "free"}</span>
+                  <b>{m.emoji} {tx.mode(m.id)}</b>
+                  <span>{duration(trp.minutes)} · {fare ? naira(fare) : t("ui.free").toLowerCase()}</span>
                 </button>
               );
             })}

@@ -6,7 +6,7 @@ import { type Needs, startNeeds, decay, apply } from "./needs";
 import { updateHealth } from "./health";
 import { RENT, START_MONEY, rentDue, naira } from "./economy";
 import { actionById, type Action } from "../data/actions";
-import { districts, distanceKm, modes, trip, type DistrictId } from "../data/places";
+import { distanceKm, modes, trip, type DistrictId } from "../data/places";
 import { payBonus, fareFor, type Sim, type TraitId } from "../data/traits";
 import { careers, type CareerId } from "../data/careers";
 import { eventById, pickEvent, EVENT_CHANCE, EVENT_COOLDOWN, type Outcome } from "../data/events";
@@ -18,8 +18,10 @@ import {
 } from "../data/home";
 import { canPlace } from "./path";
 import { moodlets as moodInfo, type ActiveMoodlet, type MoodletId } from "../data/moodlets";
-import { spots, spotOpen, openText, type SpotId } from "../data/spots";
+import { spots, spotOpen, type SpotId } from "../data/spots";
 import { missions } from "../data/missions";
+import { translate, type Lang } from "../i18n/core";
+import { text } from "../i18n/text";
 
 export type EndingKind = "japa" | "landlord" | "evicted" | "collapsed";
 export type Ending = { kind: EndingKind; day: number };
@@ -65,7 +67,13 @@ export type GameState = {
   moodlets: ActiveMoodlet[];  // short moods (see data/moodlets.ts)
   counts: Record<string, number>; // how often you did things (for missions)
   mission: number;          // index of the current mission (see data/missions.ts)
+  lang?: Lang;              // language for game messages
+  diary?: DiaryEntry[];     // everything that has happened, oldest first (the life story)
+  dayStart?: { earned: number; spent: number }; // money at the start of today (for the day summary)
 };
+
+export type DiaryEntry = { t: number; line: string };
+export const DIARY_SIZE = 500;
 
 export type Command =
   | { type: "tick"; minutes: number; roll: number; pick: number; power?: number; powerPick?: number }
@@ -79,6 +87,7 @@ export type Command =
   | { type: "quit" }
   | { type: "travel"; to: DistrictId; mode: string }
   | { type: "walk"; to: DistrictId; spot: SpotId }   // walked in through a door in the 3D streets
+  | { type: "lang"; lang: Lang }
   | { type: "choose"; index: number; roll: number }
   | { type: "goal"; id: GoalStepId; roll: number }
   | { type: "reward" };   // the player finished watching a rewarded ad
@@ -106,7 +115,8 @@ function startHome(): Home {
   };
 }
 
-export function newGame(sim: Sim): GameState {
+export function newGame(sim: Sim, lang: Lang = "en"): GameState {
+  const first = translate(lang, "log.arrive", { name: sim.name, money: naira(START_MONEY), rent: naira(RENT) });
   return {
     version: 4,
     sim,
@@ -121,7 +131,9 @@ export function newGame(sim: Sim): GameState {
     visa: false,
     eventId: null,
     lastEventAt: 0,
-    log: [`👋 ${sim.name} arrives in Mushin with ${naira(START_MONEY)} and big dreams. Rent is ${naira(RENT)} every 7 days.`],
+    log: [first],
+    diary: [{ t: 8 * 60, line: first }],
+    lang,
     stats: { earned: 0, spent: 0, shifts: 0, trips: 0, events: 0, sentHome: 0, promotions: 0 },
     ending: null,
     home: startHome(),
@@ -151,7 +163,7 @@ export function upgrade(data: unknown): GameState | null {
         home = { ...home, objects: [...home.objects, placed], nextUid: home.nextUid + 1 };
       } else {
         money += CATALOG[o.type]?.price ?? 0;
-        notes.push(`🔨 Your room was rebuilt with 3 rooms. Your ${CATALOG[o.type]?.name ?? o.type} didn't fit, so you got ${naira(CATALOG[o.type]?.price ?? 0)} back.`);
+        notes.push(translate("en", "log.refund", { item: CATALOG[o.type]?.name ?? o.type, money: naira(CATALOG[o.type]?.price ?? 0) }));
       }
     }
     home = { ...home, food: d.home.food, fuel: d.home.fuel };
@@ -167,8 +179,13 @@ export function upgrade(data: unknown): GameState | null {
 // ---------- small helpers ----------
 
 function say(s: GameState, line: string): GameState {
-  return { ...s, log: [line, ...s.log].slice(0, LOG_SIZE) };
+  const diary = [...(s.diary ?? []), { t: s.time, line }];
+  return { ...s, log: [line, ...s.log].slice(0, LOG_SIZE), diary: diary.length > DIARY_SIZE ? diary.slice(-DIARY_SIZE) : diary };
 }
+
+/** A game message in the player's language. */
+const msg = (s: GameState, key: string, vars?: Record<string, string | number>) => translate(s.lang ?? "en", key, vars);
+const tx = (s: GameState) => text(s.lang ?? "en");
 
 function pay(s: GameState, amount: number): GameState {
   if (amount <= 0) return s;
@@ -236,13 +253,11 @@ function learn(s: GameState, gain: Partial<Skills> | undefined): GameState {
   let next: GameState = { ...s, skills: addSkills(s.skills, scaled) };
   for (const id of Object.keys(scaled) as (keyof Skills)[]) {
     if (Math.floor(next.skills[id]) > Math.floor(s.skills[id])) {
-      next = say(addMood(next, "learned"), `📈 ${skillName[id]} is now level ${Math.floor(next.skills[id])}!`);
+      next = say(addMood(next, "learned"), msg(next, "log.levelUp", { skill: tx(next).skill(id), level: Math.floor(next.skills[id]) }));
     }
   }
   return next;
 }
-
-const skillName: Record<keyof Skills, string> = { hustle: "Hustle", study: "Study", charisma: "Charisma", fitness: "Fitness", cooking: "Cooking" };
 
 /** Money an action pays you (with your trait bonus). */
 export function earnings(s: GameState, a: Action): number {
@@ -258,6 +273,14 @@ export function passTime(s: GameState, minutes: number, effect?: Partial<Needs>,
   const needs = effect ? apply(drained, effect) : drained;
   const health = updateHealth(s.health, s.needs, minutes, needs);
   let next: GameState = runPower({ ...s, time, needs, health }, s.time, time);
+  // A new day: write yesterday's summary in the diary
+  if (dayOf(time) > dayOf(s.time)) {
+    const start = s.dayStart ?? { earned: 0, spent: 0 };
+    const line = msg(s, "log.dayEnd", {
+      day: dayOf(s.time), earned: naira(next.stats.earned - start.earned), spent: naira(next.stats.spent - start.spent),
+    });
+    next = { ...next, dayStart: { earned: next.stats.earned, spent: next.stats.spent }, diary: [...(next.diary ?? []), { t: time, line }].slice(-DIARY_SIZE) };
+  }
   next = { ...next, moodlets: (next.moodlets ?? []).filter(m => m.until > time) };
   if (needs.social < 15 && !next.moodlets.some(m => m.id === "lonely")) next = addMood(next, "lonely");
   const h = (time % 1440) / 60;
@@ -272,17 +295,17 @@ export function passTime(s: GameState, minutes: number, effect?: Partial<Needs>,
     next = { ...charge(next, paid), rentOwed: left };
     if (left === 0) {
       next = dropMood(bump(next, "rentPaid"), "rentPressure");
-      next = say(next, owed > RENT ? `🏠 Rent and arrears paid: ${naira(owed)}` : `🏠 Rent paid: ${naira(RENT)}`);
+      next = say(next, owed > RENT ? msg(next, "log.rentArrears", { money: naira(owed) }) : msg(next, "log.rentPaid", { money: naira(RENT) }));
     } else if (left > RENT * (EVICT_AFTER_WEEKS - 1)) {
-      next = say(next, `🚪 Landlord don throw you out. You owed ${naira(left)}.`);
+      next = say(next, msg(next, "log.evicted", { money: naira(left) }));
       return end(next, "evicted");
     } else {
       next = addMood({ ...next, needs: { ...next.needs, fun: Math.max(0, next.needs.fun - 15) } }, "rentPressure");
-      next = say(next, `😬 Rent day! You're short: you still owe ${naira(left)}. Pay the landlord before next rent day or you're out.`);
+      next = say(next, msg(next, "log.rentShort", { money: naira(left) }));
     }
   }
   if (next.health <= 0) {
-    next = say(next, "🚑 You collapsed and were rushed to hospital.");
+    next = say(next, msg(next, "log.collapsed"));
     return end(next, "collapsed");
   }
   return next;
@@ -296,10 +319,10 @@ function runPower(s: GameState, from: number, to: number): GameState {
   if (s.location === "mushin" && hasItem(s, "generator") && s.home.fuel > 0 && darkMinutes > 0) {
     const fuel = Math.max(0, s.home.fuel - (darkMinutes / 60) * POWER.fuelPerHour);
     next = { ...next, home: { ...next.home, fuel: fuel < 0.01 ? 0 : fuel } };
-    if (next.home.fuel === 0) next = say(next, "⛽ Your generator ran out of fuel.");
+    if (next.home.fuel === 0) next = say(next, msg(next, "log.fuelOut"));
   }
   if (to >= s.power.outageEnds) {
-    next = say(addMood({ ...next, power: { grid: true, outageEnds: 0 } }, "lightBack"), "💡 Light is back! UP NEPA!");
+    next = say(addMood({ ...next, power: { grid: true, outageEnds: 0 } }, "lightBack"), msg(next, "log.lightBack"));
   }
   return next;
 }
@@ -310,27 +333,33 @@ export const hasItem = (s: GameState, type: FurnitureType) => s.home.objects.som
 export const generatorOn = (s: GameState) => !s.power.grid && hasItem(s, "generator") && s.home.fuel > 0;
 export const powered = (s: GameState) => s.power.grid || generatorOn(s);
 
-function article(name: string) {
-  return /^[aeiou]/i.test(name) ? `an ${name}` : `a ${name}`;
-}
-
 export function canDo(s: GameState, a: Action): string | null {
-  if (a.where !== "any" && a.where !== s.location) return `Go to ${districts[a.where].name} first.`;
-  if (!spotOpen(a.spot, s.time)) return `${spots[a.spot].name} is closed now. ${openText(a.spot)}.`;
-  if (a.req && !meets(s.skills, a.req)) return `Needs ${describeReq(a.req)}. Train it first.`;
+  const x = tx(s);
+  if (a.where !== "any" && a.where !== s.location) return msg(s, "problem.goTo", { place: x.district(a.where) });
+  if (!spotOpen(a.spot, s.time)) return msg(s, "problem.closed", { place: x.spot(a.spot), hours: openHours(s, a.spot) });
+  if (a.req && !meets(s.skills, a.req)) return msg(s, "problem.needs", { req: x.req(a.req) });
   if (a.uses && !a.uses.some(t => hasItem(s, t))) {
-    return `You need ${a.uses.map(t => article(CATALOG[t].name.toLowerCase())).join(" or ")}. Buy one in the Home tab.`;
+    return msg(s, "problem.needItem", { items: a.uses.map(t => x.furniture(t)).join(msg(s, "word.or")) });
   }
-  if (a.power && !powered(s)) return "No light! NEPA took it. A generator with fuel fixes that.";
-  if (a.food && s.home.food < a.food) return "No food at home. Buy groceries.";
-  if (s.money < a.cost) return "Not enough money.";
+  if (a.power && !powered(s)) return msg(s, "problem.noLight");
+  if (a.food && s.home.food < a.food) return msg(s, "problem.noFood");
+  if (s.money < a.cost) return msg(s, "problem.noMoney");
   return null;
 }
 
+/** "Open 07:00–21:00" or "Always open", in the player's language. */
+export function openHours(s: GameState | { lang?: Lang }, id: SpotId): string {
+  const open = spots[id].open;
+  const lang = s.lang ?? "en";
+  if (!open) return translate(lang, "hours.always");
+  const h = (n: number) => `${String(n % 24).padStart(2, "0")}:00`;
+  return translate(lang, "hours.open", { from: h(open[0]), to: h(open[1]) });
+}
+
 export function itemBlocker(s: GameState, item: FurnitureType): string | null {
-  if (s.location !== "mushin") return "Go home to Mushin to arrange your room.";
-  if (CATALOG[item].fixed) return "That comes with the room.";
-  if (s.money < CATALOG[item].price) return `You need ${naira(CATALOG[item].price)}.`;
+  if (s.location !== "mushin") return msg(s, "problem.goHome");
+  if (CATALOG[item].fixed) return msg(s, "problem.fixed");
+  if (s.money < CATALOG[item].price) return msg(s, "problem.needMoney", { money: naira(CATALOG[item].price) });
   return null;
 }
 
@@ -357,13 +386,13 @@ export function nextPromotion(s: GameState): { title: string; shiftsLeft: number
 
 export function goalBlocker(s: GameState, id: GoalStepId): string | null {
   const g = goalSteps[id];
-  if (id === "visa" && !s.ielts) return "Pass IELTS first.";
-  if (id === "flight" && !s.visa) return "You need a visa first.";
-  if (id === "ielts" && s.ielts) return "Already passed.";
-  if (id === "visa" && s.visa) return "Visa already approved.";
-  if (g.where !== "any" && g.where !== s.location) return `Go to ${districts[g.where].name} first.`;
-  if (s.money < g.cost) return `You need ${naira(g.cost)}.`;
-  if (id === "visa" && s.money - g.cost < PROOF_OF_FUNDS) return `Proof of funds: you need ${naira(PROOF_OF_FUNDS)} left after the fee.`;
+  if (id === "visa" && !s.ielts) return msg(s, "problem.ieltsFirst");
+  if (id === "flight" && !s.visa) return msg(s, "problem.visaFirst");
+  if (id === "ielts" && s.ielts) return msg(s, "problem.passed");
+  if (id === "visa" && s.visa) return msg(s, "problem.visaDone");
+  if (g.where !== "any" && g.where !== s.location) return msg(s, "problem.goTo", { place: tx(s).district(g.where) });
+  if (s.money < g.cost) return msg(s, "problem.needMoney", { money: naira(g.cost) });
+  if (id === "visa" && s.money - g.cost < PROOF_OF_FUNDS) return msg(s, "problem.proof", { money: naira(PROOF_OF_FUNDS) });
   return null;
 }
 
@@ -393,7 +422,7 @@ export function checkMissions(s: GameState): GameState {
     next = { ...next, mission: (next.mission ?? 0) + 1 };
     if (m.reward) next = pay(next, m.reward);
     next = addMood(next, "mission");
-    next = say(next, `🎯 MISSION COMPLETE: ${m.title}!${m.reward ? ` +${naira(m.reward)}` : ""}`);
+    next = say(next, msg(next, "log.mission", { title: tx(next).mission(m).title }) + (m.reward ? ` +${naira(m.reward)}` : ""));
   }
   return next;
 }
@@ -410,9 +439,7 @@ function step(s: GameState, cmd: Command): GameState {
         const [lo, hi] = POWER.outageHours;
         const hours = lo + Math.floor((cmd.powerPick ?? 0) * (hi - lo + 1));
         next = { ...next, power: { grid: false, outageEnds: next.time + hours * 60 } };
-        next = say(next, generatorOn(next) && next.location === "mushin"
-          ? "🕯️ NEPA took light! Your generator kicks in."
-          : "🕯️ NEPA took light! Anything electric at home won't work until it's back.");
+        next = say(next, msg(next, generatorOn(next) && next.location === "mushin" ? "log.nepaGen" : "log.nepa"));
       }
       if (!next.ending && next.time - next.lastEventAt >= EVENT_COOLDOWN && cmd.roll < EVENT_CHANCE) {
         const e = pickEvent(next.location, cmd.pick);
@@ -425,7 +452,7 @@ function step(s: GameState, cmd: Command): GameState {
       const a = actionById(cmd.id);
       if (!a) return s;
       const problem = canDo(s, a);
-      if (problem) return say(s, `❌ ${a.label}: ${problem}`);
+      if (problem) return say(s, `❌ ${tx(s).action(a)}: ${problem}`);
       let next = charge(s, a.cost);
       if (a.food || a.stock) {
         next = {
@@ -444,9 +471,9 @@ function step(s: GameState, cmd: Command): GameState {
       if (a.mood) next = addMood(next, a.mood);
       const earned = earnings(s, a);
       if (earned > 0) {
-        next = say(bump(pay(next, earned), "earned", earned), `${a.emoji} ${a.label}: made ${naira(earned)}`);
+        next = say(bump(pay(next, earned), "earned", earned), `${a.emoji} ${tx(s).action(a)}: +${naira(earned)}`);
       } else {
-        next = say(next, `${a.emoji} ${a.label}`);
+        next = say(next, `${a.emoji} ${tx(s).action(a)}`);
       }
       return next;
     }
@@ -454,21 +481,21 @@ function step(s: GameState, cmd: Command): GameState {
     case "apply": {
       const c = careers[cmd.career];
       const first = c.levels[0];
-      if (!meets(s.skills, first.req)) return say(s, `❌ ${c.name} needs ${describeReq(first.req)}.`);
+      if (!meets(s.skills, first.req)) return say(s, msg(s, "log.jobNeeds", { job: tx(s).career(c.id), req: tx(s).req(first.req) }));
       if (s.career?.id === c.id) return s;
-      return say(bump({ ...s, career: { id: c.id, level: 0, shifts: 0 } }, "apply"), `${c.emoji} You got a job: ${first.title}! Work at ${districts[c.where].name}.`);
+      return say(bump({ ...s, career: { id: c.id, level: 0, shifts: 0 } }, "apply"), msg(s, "log.hired", { emoji: c.emoji, title: tx(s).title(c.id, 0), place: tx(s).district(c.where) }));
     }
 
     case "quit": {
       if (!s.career) return s;
-      return say({ ...s, career: null }, "🚪 You quit your job.");
+      return say({ ...s, career: null }, msg(s, "log.quit"));
     }
 
     case "work": {
-      if (!s.career) return say(s, "❌ You don't have a job. Check the Jobs tab.");
+      if (!s.career) return say(s, msg(s, "log.noJob"));
       const c = careers[s.career.id];
-      if (s.location !== c.where) return say(s, `❌ Your job is in ${districts[c.where].name}.`);
-      if (s.needs.energy < 15) return say(s, "😴 You are too tired to work. Sleep first.");
+      if (s.location !== c.where) return say(s, msg(s, "log.jobFar", { place: tx(s).district(c.where) }));
+      if (s.needs.energy < 15) return say(s, msg(s, "log.tooTired"));
       const earned = shiftPay(s);
       let next = passTime(s, c.hours * 60, c.effect);
       if (next.ending) return next;
@@ -476,7 +503,7 @@ function step(s: GameState, cmd: Command): GameState {
       next = addMood(bump(bump(pay(next, earned), "work"), "earned", earned), "payday");
       const career = { ...s.career, shifts: s.career.shifts + 1 };
       next = { ...next, career, stats: { ...next.stats, shifts: next.stats.shifts + 1 } };
-      next = say(next, `💼 Shift done as ${c.levels[s.career.level].title}: +${naira(earned)}`);
+      next = say(next, msg(s, "log.shift", { title: tx(s).title(c.id, s.career.level), money: naira(earned) }));
       // Promotion?
       const up = c.levels[career.level + 1];
       if (up && career.shifts >= c.shiftsToPromote && meets(next.skills, up.req)) {
@@ -486,7 +513,7 @@ function step(s: GameState, cmd: Command): GameState {
           stats: { ...next.stats, promotions: next.stats.promotions + 1 },
         };
         next = addMood(next, "promoted");
-        next = say(next, `🎉 PROMOTION! You are now ${up.title}. New pay: ${naira(Math.round(up.pay * payBonus(s.sim.trait)))} per shift.`);
+        next = say(next, msg(s, "log.promo", { title: tx(s).title(c.id, career.level + 1), money: naira(Math.round(up.pay * payBonus(s.sim.trait))) }));
       }
       return next;
     }
@@ -496,7 +523,7 @@ function step(s: GameState, cmd: Command): GameState {
       if (!mode || cmd.to === s.location) return s;
       const t = trip(s.location, cmd.to, mode, s.time);
       const fare = fareFor(t.cost, s.sim.trait);
-      if (s.money < fare) return say(s, `❌ Not enough money for ${mode.label}.`);
+      if (s.money < fare) return say(s, msg(s, "log.fare", { mode: tx(s).mode(mode.id) }));
       let next = charge(s, fare);
       next = passTime(next, t.minutes, { energy: -t.energy });
       if (next.ending) return next;
@@ -504,7 +531,8 @@ function step(s: GameState, cmd: Command): GameState {
       if (t.rush && (mode.id === "danfo" || mode.id === "keke")) next = addMood(next, "goSlow");
       if (mode.id === "okada") next = addMood(next, "okadaRush");
       if (mode.id === "trek" && distanceKm(s.location, cmd.to) >= 5) next = addMood(next, "longWalk");
-      return say(next, `${mode.emoji} ${mode.label} to ${districts[cmd.to].name}: ${t.minutes} min${fare ? `, ${naira(fare)}` : ""}${t.rush ? " — go-slow!" : ""}`);
+      return say(next, msg(s, "log.trip", { emoji: mode.emoji, mode: tx(s).mode(mode.id), place: tx(s).district(cmd.to), minutes: t.minutes })
+        + (fare ? `, ${naira(fare)}` : "") + (t.rush ? msg(s, "log.goSlow") : ""));
     }
 
     case "walk": {
@@ -517,8 +545,13 @@ function step(s: GameState, cmd: Command): GameState {
       }
       const closed = !spotOpen(cmd.spot, s.time);
       return say(next, cmd.spot === "home"
-        ? "🏠 You walked home. Home sweet home."
-        : `🚶🏾 You walked to ${spot.emoji} ${spot.name} in ${districts[cmd.to].name}.${closed ? ` It's closed now. ${openText(cmd.spot)}.` : ""}`);
+        ? msg(s, "log.walkHome")
+        : msg(s, "log.walk", { emoji: spot.emoji, place: tx(s).spot(cmd.spot), district: tx(s).district(cmd.to) })
+          + (closed ? " " + msg(s, "log.walkClosed", { hours: openHours(s, cmd.spot) }) : ""));
+    }
+
+    case "lang": {
+      return { ...s, lang: cmd.lang };
     }
 
     case "choose": {
@@ -526,7 +559,7 @@ function step(s: GameState, cmd: Command): GameState {
       const c = e?.choices[cmd.index];
       if (!e || !c) return { ...s, eventId: null };
       const cost = c.cost ?? 0;
-      if (s.money < cost) return say(s, "❌ You can't afford that.");
+      if (s.money < cost) return say(s, msg(s, "log.cantAfford"));
       const won = c.chance && cmd.roll < c.chance.odds;
       const outcome: Outcome = won && c.chance ? c.chance.win : c;
       let next: GameState = { ...charge(s, cost), eventId: null };
@@ -534,79 +567,79 @@ function step(s: GameState, cmd: Command): GameState {
       next = passTime(next, c.minutes ?? 0, outcome.effect ? boosted(outcome.effect, s.sim.trait, false) : undefined);
       next = learn(next, outcome.skill);
       next = pay(next, outcome.gain ?? 0);
-      return say(next, `${e.emoji} ${outcome.result}`);
+      return say(next, `${e.emoji} ${tx(s).event(e).result(cmd.index, !!won)}`);
     }
 
     case "buy": {
       const spec = CATALOG[cmd.item];
       if (!spec) return s;
       const problem = itemBlocker(s, cmd.item);
-      if (problem) return say(s, `❌ ${spec.name}: ${problem}`);
+      if (problem) return say(s, `❌ ${tx(s).furniture(cmd.item)}: ${problem}`);
       const obj: Placed = { uid: s.home.nextUid, type: cmd.item, x: cmd.x, y: cmd.y, rot: cmd.rot % 4 };
-      if (!canPlace(HOME, s.home.objects, obj)) return say(s, `❌ ${spec.name} doesn't fit there.`);
+      if (!canPlace(HOME, s.home.objects, obj)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(cmd.item) }));
       const next = bump(charge(s, spec.price), "buy");
       return say(
         { ...next, home: { ...next.home, objects: [...next.home.objects, obj], nextUid: obj.uid + 1 } },
-        `🛒 Bought: ${spec.name} (${naira(spec.price)})`,
+        msg(s, "log.bought", { item: tx(s).furniture(cmd.item), money: naira(spec.price) }),
       );
     }
 
     case "move": {
       const obj = s.home.objects.find(o => o.uid === cmd.uid);
       if (!obj || CATALOG[obj.type].fixed) return s;
-      if (s.location !== "mushin") return say(s, "❌ Go home to Mushin to arrange your room.");
+      if (s.location !== "mushin") return say(s, `❌ ${msg(s, "problem.goHome")}`);
       const moved = { ...obj, x: cmd.x, y: cmd.y, rot: cmd.rot % 4 };
-      if (!canPlace(HOME, s.home.objects, moved)) return say(s, `❌ ${CATALOG[obj.type].name} doesn't fit there.`);
+      if (!canPlace(HOME, s.home.objects, moved)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(obj.type) }));
       return { ...s, home: { ...s.home, objects: s.home.objects.map(o => (o.uid === obj.uid ? moved : o)) } };
     }
 
     case "sell": {
       const obj = s.home.objects.find(o => o.uid === cmd.uid);
       if (!obj || CATALOG[obj.type].fixed) return s;
-      if (s.location !== "mushin") return say(s, "❌ Go home to Mushin to sell furniture.");
+      if (s.location !== "mushin") return say(s, msg(s, "log.goHomeSell"));
       const refund = sellPrice(obj.type);
       return say(
         { ...s, money: s.money + refund, home: { ...s.home, objects: s.home.objects.filter(o => o.uid !== obj.uid) } },
-        `💸 Sold ${CATALOG[obj.type].name} for ${naira(refund)}`,
+        msg(s, "log.sold", { item: tx(s).furniture(obj.type), money: naira(refund) }),
       );
     }
 
     case "payRent": {
-      if (s.rentOwed <= 0) return say(s, "🏠 You don't owe the landlord anything.");
+      if (s.rentOwed <= 0) return say(s, msg(s, "log.noOwe"));
       const amount = Math.min(s.money, s.rentOwed);
-      if (amount <= 0) return say(s, "❌ You have no money to give the landlord.");
+      if (amount <= 0) return say(s, msg(s, "log.noMoneyRent"));
       let next = { ...charge(s, amount), rentOwed: s.rentOwed - amount };
       if (next.rentOwed <= 0) next = dropMood(next, "rentPressure");
       return say(next, next.rentOwed > 0
-        ? `🏠 Paid the landlord ${naira(amount)}. You still owe ${naira(next.rentOwed)}.`
-        : `🏠 Paid the landlord ${naira(amount)}. You're all clear!`);
+        ? msg(s, "log.paidPart", { money: naira(amount), left: naira(next.rentOwed) })
+        : msg(s, "log.paidAll", { money: naira(amount) }));
     }
 
     case "reward": {
-      if (!canClaimReward(s)) return say(s, "📺 You already claimed today's reward. Come back tomorrow (in-game).");
+      if (!canClaimReward(s)) return say(s, msg(s, "log.adDone"));
       const next = { ...pay(s, AD_REWARD), lastRewardDay: dayOf(s.time) };
-      return say(next, `📺 Thanks for watching! +${naira(AD_REWARD)}`);
+      return say(next, msg(s, "log.ad", { money: naira(AD_REWARD) }));
     }
 
     case "goal": {
       const g = goalSteps[cmd.id];
       const problem = goalBlocker(s, cmd.id);
-      if (problem) return say(s, `❌ ${g.name}: ${problem}`);
+      if (problem) return say(s, `❌ ${tx(s).goal(cmd.id).name}: ${problem}`);
       const chance = goalChance(s, cmd.id);
       let next = passTime(charge(s, g.cost), g.minutes, { energy: -15 });
       if (next.ending) return next;
       if (cmd.id === "ielts") {
         return cmd.roll < (chance ?? 0)
-          ? say({ ...next, ielts: true }, "📝 IELTS RESULT: PASSED! One step closer to japa.")
-          : say(next, "📝 IELTS result: failed. Study more and try again.");
+          ? say({ ...next, ielts: true }, msg(s, "log.ieltsPass"))
+          : say(next, msg(s, "log.ieltsFail"));
       }
       if (cmd.id === "visa") {
         return cmd.roll < (chance ?? 0)
-          ? say({ ...next, visa: true }, "🛂 VISA APPROVED! Book your flight when you're ready.")
-          : say(next, "🛂 Visa refused. \"Insufficient ties to home country.\" You can try again.");
+          ? say({ ...next, visa: true }, msg(s, "log.visaPass"))
+          : say(next, msg(s, "log.visaFail"));
       }
-      if (cmd.id === "flight") return end(say(next, "✈️ You boarded the plane. JAPA SUCCESSFUL!"), "japa");
-      if (cmd.id === "house") return end(say(next, "🏡 You bought your own flat. Landlord wahala is over!"), "landlord");
+      if (cmd.id === "flight") return end(say(next, msg(s, "log.japa")), "japa");
+      if (cmd.id === "house") return end(say(next, msg(s, "log.landlord")), "landlord");
       return next;
     }
   }

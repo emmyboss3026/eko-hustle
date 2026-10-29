@@ -173,7 +173,7 @@ function buildCar(color) {
 
 // ----------------------------------------------------------------- places
 
-function buildPlace(id) {
+function buildPlace(id, labelFor) {
   const lot = PLACE_LOTS[id];
   const g = new THREE.Group();
   g.position.set(lot.cx, 0, lot.cz);
@@ -359,7 +359,7 @@ function buildPlace(id) {
   }
 
   const p = id === 'home' ? { emoji: '🏠', name: 'Home' } : spots[id];
-  const tag = label(`${p.emoji} ${p.name}`);
+  const tag = label(labelFor ? labelFor(id) : `${p.emoji} ${p.name}`);
   tag.position.set(0, height + 2, 0);
   add(tag);
   g.userData.door = id;
@@ -406,12 +406,12 @@ export class StreetView {
     this.scene.fog = new THREE.Fog('#bcd9f2', 120, 340);
 
     this.buildTown();
-    this.places = Object.keys(PLACE_LOTS).map((id) => buildPlace(id));
+    this.places = Object.keys(PLACE_LOTS).map((id) => buildPlace(id, hooks.labelFor));
     this.places.forEach((g) => this.scene.add(g));
     this.buildTraffic();
     this.buildPeople();
 
-    const sim = buildSim();
+    const sim = buildSim(hooks.look ?? {});
     this.sim = sim;
     sim.root.scale.setScalar(SIM_SCALE);
     this.scene.add(sim.root);

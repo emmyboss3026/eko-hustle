@@ -3,6 +3,9 @@
 /* eslint-disable */
 import * as THREE from "three";
 import type { FurnitureType } from "../data/home";
+import type { Look } from "../data/characters";
+
+const BASE_LOOK: Look = { skin: "#7b4a2d", hair: "short", hairColor: "#1e1e1e", outfit: "#2ecc71", bottom: "#34495e", build: "m" };
 
 export type Tick = (dt: number, t: number) => void;
 
@@ -265,13 +268,16 @@ export function buildPiece(type: FurnitureType, { powered, active }: { powered: 
 }
 
 /** The Sim: blocky but friendly, ~1.05 units tall, facing +z. */
-export function buildSim(shirtColor = '#2ecc71') {
+/** The Sim: blocky but friendly, ~1.05 units tall, facing +z. The look sets skin, hair and clothes. */
+export function buildSim(look: Partial<Look> | string = {}) {
+  const l: Look = typeof look === 'string' ? { ...BASE_LOOK, outfit: look } : { ...BASE_LOOK, ...look };
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
-  const skin = mat('#7b4a2d');
-  const shirt = mat(shirtColor);
-  const trousers = mat('#34495e');
+  const skin = mat(l.skin);
+  const shirt = mat(l.outfit);
+  const trousers = mat(l.bottom);
+  const hairMat = mat(l.hairColor);
   const legL = new THREE.Group(); legL.position.set(-0.09, 0.45, 0);
   const legR = new THREE.Group(); legR.position.set(0.09, 0.45, 0);
   legL.add(box(0.13, 0.45, 0.14, trousers, 0, -0.225, 0));
@@ -283,14 +289,60 @@ export function buildSim(shirtColor = '#2ecc71') {
   armL.add(box(0.11, 0.14, 0.12, shirt, 0, -0.04, 0));
   armR.add(box(0.11, 0.14, 0.12, shirt, 0, -0.04, 0));
   body.add(legL, legR, armL, armR);
-  body.add(box(0.38, 0.42, 0.2, shirt, 0, 0.66, 0));
+  body.add(box(l.build === 'f' ? 0.34 : 0.38, 0.42, 0.2, shirt, 0, 0.66, 0));
+  if (l.build === 'f') {
+    // A wrapper skirt over the top of the legs
+    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.24, 0.36, 12), trousers);
+    skirt.position.set(0, 0.32, 0);
+    skirt.castShadow = true;
+    body.add(skirt);
+  }
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12), skin);
   head.position.set(0, 1.0, 0);
   head.castShadow = true;
   body.add(head);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.145, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.2), mat('#1e1e1e'));
-  hair.position.copy(head.position);
-  body.add(hair);
+  const cap = (r: number, part = Math.PI / 2.2) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 8, 0, Math.PI * 2, 0, part), hairMat);
+    m.position.copy(head.position);
+    m.castShadow = true;
+    return m;
+  };
+  switch (l.hair) {
+    case 'short': body.add(cap(0.145)); break;
+    case 'afro': { const a = cap(0.2, Math.PI / 1.8); a.position.y += 0.04; body.add(a); break; }
+    case 'braids': {
+      body.add(cap(0.148));
+      for (let i = 0; i < 6; i++) {
+        const ang = 0.15 + (i / 5) * (Math.PI - 0.3); // round the back of the head
+        body.add(cyl(0.018, 0.018, 0.26, hairMat, Math.cos(ang) * 0.13, 0.9, -Math.sin(ang) * 0.13, 6));
+      }
+      break;
+    }
+    case 'locs': {
+      body.add(cap(0.15));
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 7) * Math.PI; // round the back of the head
+        body.add(cyl(0.022, 0.022, 0.2, hairMat, Math.cos(ang) * 0.14, 0.93, -Math.sin(ang) * 0.14, 6));
+      }
+      break;
+    }
+    case 'gele': {
+      const g = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.06, 8, 16), hairMat);
+      g.rotation.x = Math.PI / 2 - 0.3;
+      g.position.set(0, 1.12, -0.02);
+      body.add(g);
+      body.add(cyl(0.12, 0.16, 0.1, hairMat, 0, 1.2, -0.03, 12));
+      break;
+    }
+    case 'hijab': {
+      const h = cap(0.165, Math.PI / 1.6);
+      body.add(h);
+      body.add(cyl(0.17, 0.22, 0.16, hairMat, 0, 0.84, 0, 14));
+      break;
+    }
+    case 'kufi': body.add(cyl(0.135, 0.14, 0.09, hairMat, 0, 1.11, 0, 14)); break;
+    default: break; // bald
+  }
   for (const x of [-0.05, 0.05]) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), new THREE.MeshBasicMaterial({ color: '#111' }));
     eye.position.set(x, 1.02, 0.13);

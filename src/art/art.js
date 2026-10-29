@@ -54,6 +54,22 @@ const windowGlow = (night) => (night ? '#ffd27a' : '#bfe3ff');
 
 // ------------------------------------------------------------------ places
 
+/** A fast-food shop front: sign, glass, a menu board and a queue. Original drawing. */
+function fastFood(sk, { sign, wall, band, accent }) {
+  return `${sky(sk)}${ground(108, '#a7a19a', '#8e8881')}
+    <rect x="56" y="40" width="208" height="70" fill="${wall}"/>
+    <rect x="56" y="40" width="208" height="20" fill="${band}"/>
+    <text x="160" y="55" font-size="12" font-weight="800" fill="#fff" text-anchor="middle" font-family="Sora,system-ui,sans-serif">${sign}</text>
+    <rect x="70" y="66" width="70" height="44" fill="${windowGlow(sk.night)}" opacity="0.9"/>
+    <rect x="70" y="66" width="70" height="3" fill="${accent}"/>
+    <rect x="150" y="66" width="30" height="44" fill="#2d3436"/><rect x="152" y="68" width="26" height="40" fill="#bfe3ff" opacity="0.7"/>
+    <rect x="190" y="66" width="62" height="28" rx="2" fill="#2d3436"/>
+    ${[0, 1, 2].map((i) => `<rect x="196" y="${71 + i * 7}" width="34" height="3" fill="${accent}"/><rect x="236" y="${71 + i * 7}" width="10" height="3" fill="#fff"/>`).join('')}
+    <circle cx="96" cy="88" r="7" fill="${accent}"/><rect x="108" y="84" width="16" height="10" rx="2" fill="#f39c12"/>
+    <path d="M56 60 L44 72 L56 72z M264 60 L276 72 L264 72z" fill="${band}"/>
+    ${person(200, 110, '#2ecc71')}${person(216, 110, '#e84393')}${person(232, 110, '#2980b9')}${person(110, 110, accent)}`;
+}
+
 const PLACE_ART = {
   home: (sk) => `${sky(sk)}${ground(108, '#8fae5a', '#7a9a4a')}
     ${tree(36, 110, 0.9)}
@@ -90,6 +106,11 @@ const PLACE_ART = {
       ${person(78, 110, '#d35400')}${person(146, 112, '#2c3e50')}${person(214, 110, '#e84393')}${person(284, 112, '#2ecc71')}
       <ellipse cx="300" cy="102" rx="10" ry="4" fill="#d35400"/><rect x="291" y="92" width="18" height="10" fill="#e67e22"/>`;
   },
+
+  mamaput: (sk) => fastFood(sk, { sign: 'MAMA PUT EXPRESS', wall: '#f5e6c8', band: '#27ae60', accent: '#f1c40f' }),
+  jollof: (sk) => fastFood(sk, { sign: 'JOLLOF JUNCTION', wall: '#fdebd0', band: '#e74c3c', accent: '#f39c12' }),
+  bigbite: (sk) => fastFood(sk, { sign: 'BIG BITE BURGERS', wall: '#fef9e7', band: '#2c3e50', accent: '#e67e22' }),
+  crunchy: (sk) => fastFood(sk, { sign: 'CRUNCHY CHICKEN', wall: '#fdedec', band: '#c0392b', accent: '#f1c40f' }),
 
   hub: (sk) => `${sky(sk)}${ground(108, '#9aa5ae', '#7f8c8d')}
     ${tree(40, 110, 1)}${tree(286, 110, 0.85)}

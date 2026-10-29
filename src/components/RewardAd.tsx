@@ -2,12 +2,14 @@ import { useState } from "react";
 import { AD_REWARD, canClaimReward, type Command, type GameState } from "../engine/game";
 import { adsAvailable, showRewardedAd } from "../lib/ads";
 import { naira } from "../engine/economy";
+import { useLang } from "../i18n/react";
 
 type Props = { state: GameState; dispatch: (c: Command) => void };
 
 // "Watch an ad: +₦3,000" — once per in-game day, always the player's choice.
 export default function RewardAd({ state, dispatch }: Props) {
   const [status, setStatus] = useState<"idle" | "playing" | string>("idle");
+  const { t } = useLang();
   if (!adsAvailable) return null;
   const available = canClaimReward(state);
 
@@ -29,11 +31,11 @@ export default function RewardAd({ state, dispatch }: Props) {
       >
         <span className="row-emoji" aria-hidden>📺</span>
         <span className="row-main">
-          <span className="row-title">Watch a short ad</span>
+          <span className="row-title">{t("ad.title")}</span>
           <span className="row-meta">
-            {" "}· {status === "playing" ? "Loading ad…" : available ? "once per in-game day" : "come back tomorrow"}
+            {" "}· {status === "playing" ? t("ad.loading") : available ? t("ad.daily") : t("ad.tomorrow")}
           </span>
-          {status !== "idle" && status !== "playing" && <span className="note bad"><br />{status}</span>}
+          {status !== "idle" && status !== "playing" && <span className="note bad"><br />{t(status)}</span>}
         </span>
         <span className="row-price earn">+{naira(AD_REWARD)}</span>
       </button>

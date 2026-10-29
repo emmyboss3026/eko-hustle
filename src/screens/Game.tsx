@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { clockOf, dayOf, generatorOn, mood, weekdayOf, type Command, type GameState } from "../engine/game";
+import { clockOf, dayOf, generatorOn, mood, type Command, type GameState } from "../engine/game";
 import { naira, RENT, RENT_EVERY_DAYS } from "../engine/economy";
-import { districts, isRushHour } from "../data/places";
+import { isRushHour } from "../data/places";
 import { careers } from "../data/careers";
 import { needInfo, needKeys } from "../components/ui";
 import EventSheet from "../components/EventSheet";
@@ -28,25 +28,27 @@ import { CATALOG, type FurnitureType } from "../data/home";
 import { spots, type SpotId } from "../data/spots";
 import { skylineStrip, skyFor } from "../art/art.js";
 import type { HouseView } from "../three/HouseView";
+import FeedbackSheet from "../components/FeedbackSheet";
+import DiarySheet from "../components/DiarySheet";
+import { useLang } from "../i18n/react";
+import { flushFeedback } from "../lib/cloud";
 
 // The 3D scenes are a big download, so they load in the background.
 const RoomScene = lazy(() => import("../components/RoomScene"));
 const StreetScene = lazy(() => import("../components/StreetScene"));
 
-type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help";
+type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary";
 
-const dock: { id: Panel; emoji: string; label: string }[] = [
-  { id: "do", emoji: "📍", label: "Places" },
-  { id: "go", emoji: "🚌", label: "Travel" },
-  { id: "work", emoji: "💼", label: "Jobs" },
-  { id: "shop", emoji: "🛒", label: "Shop" },
-  { id: "goals", emoji: "✈️", label: "Goals" },
-  { id: "me", emoji: "👤", label: "Me" },
+const dock: { id: Panel; emoji: string }[] = [
+  { id: "do", emoji: "📍" },
+  { id: "go", emoji: "🚌" },
+  { id: "work", emoji: "💼" },
+  { id: "shop", emoji: "🛒" },
+  { id: "goals", emoji: "✈️" },
+  { id: "me", emoji: "👤" },
 ];
 
-const titles: Record<Panel, string> = {
-  do: "📍 Places", go: "🚌 Travel", work: "💼 Jobs", shop: "🛒 Furniture shop", goals: "✈️ Your big dream", me: "👤 Me", help: "❓ Help",
-};
+const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
 // What you see when you're out (and not walking): the main place of that part of Lagos
 const DISTRICT_VIEW: Record<string, SpotId | null> = { yaba: "hub", island: "beach", ikeja: null, mushin: null };
@@ -71,6 +73,7 @@ type Props = {
 
 /** The whole game on one screen: the 3D world fills it, and everything else sits around it. */
 export default function Game({ state, dispatch, onRestart, onLoad, synced }: Props) {
+  const { t, tx, lang } = useLang();
   const [panel, setPanel] = useState<Panel | null>(null);
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -125,7 +128,13 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
   }, [eventOpen]);
   useEffect(() => {
     initAds();
+    void flushFeedback(); // send any feedback written while offline
   }, []);
+
+  // Game messages follow the chosen language
+  useEffect(() => {
+    if (state.lang !== lang) dispatch({ type: "lang", lang });
+  }, [lang, state.lang, dispatch]);
 
   // Leaving home closes the furniture card
   useEffect(() => {
@@ -193,7 +202,7 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
   return (
     <div className="game">
       {/* ---------- the world, full screen ---------- */}
-      <Suspense fallback={<div className="scene"><Loading what="Lagos" /></div>}>
+      <Suspense fallback={<div className="scene"><Loading /></div>}>
         {showRoom && (
           <RoomScene
             state={state}
@@ -223,7 +232,7 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
           />
         )}
       </Suspense>
-      {!showRoom && !showStreet && <CityBackdrop time={state.time} name={districts[state.location].name} />}
+      {!showRoom && !showStreet && <CityBackdrop time={state.time} name={tx.district(state.location)} />}
 
       {/* ---------- top: who, when, money and needs ---------- */}
       <header className="hud2">
@@ -232,29 +241,29 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
           <div className="hud2-who">
             <b>{state.sim.name}</b>
             <span>
-              {weekdayOf(state.time)} · Day {day} · {clockOf(state.time)}{isRushHour(state.time) ? " 🚦" : ""}
+              {t(`day.${WEEKDAY_KEYS[Math.floor(state.time / 1440) % 7]}`)} · {t("hud.day", { day })} · {clockOf(state.time)}{isRushHour(state.time) ? " 🚦" : ""}
             </span>
-            <span>📍 {districts[state.location].name} · <span className={rentWarn ? "warn" : ""}>rent in {daysToRent} day{daysToRent > 1 ? "s" : ""}</span></span>
+            <span>📍 {tx.district(state.location)} · <span className={rentWarn ? "warn" : ""}>{t(daysToRent > 1 ? "hud.rentIn" : "hud.rentIn1", { days: daysToRent })}</span></span>
           </div>
           <div className="hud2-right">
             <div className="hud2-money">{naira(state.money)}</div>
             <div className="hud2-stats">
-              <span className={state.health <= 30 ? "low" : ""} title="Health">❤️ {Math.round(state.health)}</span>
-              <span className={m < 35 ? "low" : ""} title="Mood: 70+ = shifts pay 10% more">{moodFace(m)} {m}</span>
-              <span className={lit ? "" : "low"} title={state.power.grid ? "Light is on" : generatorOn(state) ? "Generator on" : "NEPA took light"}>
+              <span className={state.health <= 30 ? "low" : ""} title={t("hud.health")}>❤️ {Math.round(state.health)}</span>
+              <span className={m < 35 ? "low" : ""} title={t("hud.moodTip")}>{moodFace(m)} {m}</span>
+              <span className={lit ? "" : "low"} title={state.power.grid ? t("hud.lightOn") : generatorOn(state) ? t("hud.genOn") : t("hud.lightOff")}>
                 {state.power.grid ? "💡" : generatorOn(state) ? "⚡" : "🕯️"}
               </span>
             </div>
           </div>
         </div>
-        <div className="hud2-needs" aria-label="Your needs">
+        <div className="hud2-needs" aria-label={t("hud.needs")}>
           {needKeys.map(k => {
             const v = Math.round(state.needs[k]);
             return (
-              <div key={k} className={`need2 ${v <= 25 ? "low" : ""}`} title={`${needInfo[k].name}: ${v}`}>
+              <div key={k} className={`need2 ${v <= 25 ? "low" : ""}`} title={`${tx.need(k)}: ${v}`}>
                 <span aria-hidden>{needInfo[k].emoji}</span>
                 <span className="need2-bar"><i style={{ width: `${v}%` }} /></span>
-                <span className="sr">{needInfo[k].name} {v}</span>
+                <span className="sr">{tx.need(k)} {v}</span>
               </div>
             );
           })}
@@ -262,12 +271,13 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
       </header>
 
       <div className="side-buttons">
-        <button onClick={() => openPanel(panel === "help" ? null : "help")} aria-label="Help">❓<small>Help</small></button>
-        <button aria-pressed={paused} onClick={() => setPaused(p => !p)} aria-label={paused ? "Resume" : "Pause"}>
-          {paused ? "▶" : "❚❚"}<small>{paused ? "Play" : "Pause"}</small>
+        <button onClick={() => openPanel(panel === "help" ? null : "help")} aria-label={t("side.help")}>❓<small>{t("side.help")}</small></button>
+        <button className="feedback-btn" onClick={() => openPanel(panel === "feedback" ? null : "feedback")} aria-label={t("side.feedback")}>💬<small>{t("side.feedback")}</small></button>
+        <button aria-pressed={paused} onClick={() => setPaused(p => !p)} aria-label={paused ? t("side.play") : t("side.pause")}>
+          {paused ? "▶" : "❚❚"}<small>{paused ? t("side.play") : t("side.pause")}</small>
         </button>
-        <button onClick={() => setSpeed(s => (s === 1 ? 2 : s === 2 ? 4 : 1))} aria-label={`Game speed ${speed} times`}>
-          {speed}×<small>Speed</small>
+        <button onClick={() => setSpeed(s => (s === 1 ? 2 : s === 2 ? 4 : 1))} aria-label={t("side.speedAria", { speed })}>
+          {speed}×<small>{t("side.speed")}</small>
         </button>
       </div>
 
@@ -276,12 +286,12 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
         <PaymentNotice />
         {state.rentOwed > 0 && (
           <div className="owed2" role="alert">
-            <span>😬 You owe <b>{naira(state.rentOwed)}</b> rent</span>
-            <button className="btn" disabled={state.money <= 0} onClick={() => dispatch({ type: "payRent" })}>Pay</button>
+            <span>{t("hud.owe", { money: naira(state.rentOwed) })}</span>
+            <button className="btn" disabled={state.money <= 0} onClick={() => dispatch({ type: "payRent" })}>{t("hud.pay")}</button>
           </div>
         )}
-        {!paused && (panel || placing) && <div className="paused-note">⏸ Time is paused while this is open</div>}
-        {paused && <div className="paused-note">⏸ Paused. Tap ▶ to play.</div>}
+        {!paused && (panel || placing) && <div className="paused-note">{t("hud.pausedPanel")}</div>}
+        {paused && <div className="paused-note">{t("hud.paused")}</div>}
       </div>
 
       {/* ---------- bottom: messages, tips, quick buttons and the dock ---------- */}
@@ -291,7 +301,7 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
           <div className="quick">
             {canWork && (
               <button className="btn big" disabled={state.needs.energy < 15} onClick={() => dispatch({ type: "work" })}>
-                {state.needs.energy < 15 ? "😴 Too tired to work" : `💼 Go to work (${job!.hours} h)`}
+                {state.needs.energy < 15 ? t("work.tooTired") : t("work.goTo", { hours: job!.hours })}
               </button>
             )}
             {state.location !== "ikeja" && (
@@ -303,7 +313,7 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
                   setWalking(true);
                 }}
               >
-                🚶🏾 Walk outside
+                🚶🏾 {t("hud.walk")}
               </button>
             )}
           </div>
@@ -311,26 +321,26 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
         {!placing && !panel && selected === null && !walking && <TipBubble state={state} onHelp={() => openPanel("help")} />}
 
         {placing && (
-          <div className="place-bar" role="group" aria-label="Placing furniture">
+          <div className="place-bar" role="group" aria-label={t("place.aria")}>
             <div>
-              <b>{CATALOG[placing.type].emoji} {CATALOG[placing.type].name}</b>
-              <small>{placing.x === null ? "Tap the floor where it should go." : placingValid(state, placing) ? "Fits here. Tap Buy." : "Doesn't fit here. Try another spot or ⟳ turn it."}</small>
+              <b>{CATALOG[placing.type].emoji} {tx.furniture(placing.type)}</b>
+              <small>{placing.x === null ? t("place.tapFloor") : placingValid(state, placing) ? t("place.fits") : t("place.noFit")}</small>
             </div>
-            <button className="btn plain" onClick={() => setPlacing({ ...placing, rot: (placing.rot + 1) % 4 })} aria-label="Turn it">⟳</button>
+            <button className="btn plain" onClick={() => setPlacing({ ...placing, rot: (placing.rot + 1) % 4 })} aria-label={t("place.turn")}>⟳</button>
             <button className="btn" disabled={!placingValid(state, placing)} onClick={confirmPlacing}>
-              {placing.uid !== null ? "Put here" : `Buy ${naira(CATALOG[placing.type].price)}`}
+              {placing.uid !== null ? t("place.put") : t("place.buy", { money: naira(CATALOG[placing.type].price) })}
             </button>
-            <button className="btn plain" onClick={() => setPlacing(null)}>Cancel</button>
+            <button className="btn plain" onClick={() => setPlacing(null)}>{t("place.cancel")}</button>
           </div>
         )}
 
         {!walking && (
-          <nav className="dock" aria-label="Menu">
+          <nav className="dock" aria-label={t("hud.menu")}>
             {dock.map(d => (
               <button key={d.id} aria-pressed={panel === d.id} onClick={() => openPanel(panel === d.id ? null : d.id)}>
                 <span aria-hidden>{d.emoji}</span>
-                {d.label}
-                {missionDock === d.id && <i className="tab-tag" aria-label="Your mission is here">🎯</i>}
+                {t(`dock.${d.id}`)}
+                {missionDock === d.id && <i className="tab-tag" aria-label={t("hud.missionHere")}>🎯</i>}
               </button>
             ))}
           </nav>
@@ -339,7 +349,7 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
 
       {/* ---------- panels over the world ---------- */}
       {panel && (
-        <Sheet title={panel === "do" ? `📍 Places in ${districts[state.location].name}` : titles[panel]} onClose={() => setPanel(null)}>
+        <Sheet title={panel === "do" ? t("panel.doIn", { place: tx.district(state.location) }) : t(`panel.${panel}`)} onClose={() => setPanel(null)}>
           {panel === "do" && <DoTab state={state} dispatch={dispatch} goTo={t => openPanel(t === "home" ? null : t)} />}
           {panel === "go" && (
             <GoTab
@@ -369,7 +379,19 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
             />
           )}
           {panel === "goals" && <GoalsTab state={state} dispatch={dispatch} />}
-          {panel === "me" && <MeTab state={state} onRestart={onRestart} onLoad={onLoad} onGuide={() => setGuide(true)} synced={synced} />}
+          {panel === "me" && (
+            <MeTab
+              state={state}
+              onRestart={onRestart}
+              onLoad={onLoad}
+              onGuide={() => setGuide(true)}
+              onDiary={() => openPanel("diary")}
+              onFeedback={() => openPanel("feedback")}
+              synced={synced}
+            />
+          )}
+          {panel === "feedback" && <FeedbackSheet state={state} />}
+          {panel === "diary" && <DiarySheet state={state} />}
           {panel === "help" && <HelpSheet onGuide={() => setGuide(true)} />}
         </Sheet>
       )}

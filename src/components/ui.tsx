@@ -1,5 +1,7 @@
 import type { Needs } from "../engine/needs";
 import { naira } from "../engine/economy";
+import { useLang } from "../i18n/react";
+import type { T } from "../i18n/core";
 
 export const needInfo: Record<keyof Needs, { name: string; emoji: string }> = {
   hunger: { name: "Hunger", emoji: "🍲" },
@@ -19,8 +21,12 @@ export function duration(minutes: number): string {
   return m ? `${h} h ${m} min` : `${h} h`;
 }
 
+/** Translate a message that may be a key (e.g. from lib code), or show it as it is. */
+export const tmsg = (t: T, m: string) => t(m);
+
 // Small "+40 Hunger" / "−15 Energy" chips for an effect
 export function EffectChips({ effect }: { effect: Partial<Needs> }) {
+  const { tx } = useLang();
   const keys = needKeys.filter(k => effect[k]);
   if (keys.length === 0) return null;
   return (
@@ -30,7 +36,7 @@ export function EffectChips({ effect }: { effect: Partial<Needs> }) {
         return (
           <span key={k} className={`chip ${v > 0 ? "up" : "down"}`}>
             {v > 0 ? "+" : "−"}
-            {Math.abs(v)} {needInfo[k].name}
+            {Math.abs(v)} {tx.need(k)}
           </span>
         );
       })}
@@ -39,9 +45,10 @@ export function EffectChips({ effect }: { effect: Partial<Needs> }) {
 }
 
 export function Price({ cost, pay }: { cost?: number; pay?: number }) {
+  const { t } = useLang();
   if (pay) return <span className="row-price earn">+{naira(pay)}</span>;
   if (cost) return <span className="row-price">{naira(cost)}</span>;
-  return <span className="row-price">Free</span>;
+  return <span className="row-price">{t("ui.free")}</span>;
 }
 
 export function Progress({ value, max }: { value: number; max: number }) {
@@ -57,22 +64,15 @@ export function Progress({ value, max }: { value: number; max: number }) {
 
 export type TagKind = "money" | "skill" | "light" | "lock" | "closed" | "mission" | "food" | "open";
 
-export const tagInfo: Record<TagKind, { emoji: string; text: string; help: string }> = {
-  mission: { emoji: "🎯", text: "Mission", help: "Do this for your current mission." },
-  money: { emoji: "💰", text: "Earns", help: "This earns you money." },
-  skill: { emoji: "📈", text: "Skill", help: "This trains a skill." },
-  light: { emoji: "💡", text: "Needs light", help: "Needs electricity: NEPA or your generator." },
-  food: { emoji: "🧺", text: "Uses 1 meal pack", help: "Uses groceries from your kitchen." },
-  lock: { emoji: "🔒", text: "Locked", help: "You need a higher skill first." },
-  closed: { emoji: "🕒", text: "Closed", help: "Come back during opening hours." },
-  open: { emoji: "🟢", text: "Open", help: "Open now." },
+export const tagEmoji: Record<TagKind, string> = {
+  mission: "🎯", money: "💰", skill: "📈", light: "💡", food: "🧺", lock: "🔒", closed: "🕒", open: "🟢",
 };
 
 export function Tag({ kind, text }: { kind: TagKind; text?: string }) {
-  const t = tagInfo[kind];
+  const { t } = useLang();
   return (
-    <span className={`tag tag-${kind}`} title={t.help}>
-      {t.emoji} {text ?? t.text}
+    <span className={`tag tag-${kind}`} title={t(`tag.${kind}.help`)}>
+      {tagEmoji[kind]} {text ?? t(`tag.${kind}`)}
     </span>
   );
 }

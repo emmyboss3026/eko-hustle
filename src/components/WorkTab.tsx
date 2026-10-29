@@ -1,59 +1,59 @@
-import { nextPromotion, shiftPay, type Command, type GameState } from "../engine/game";
+import { shiftPay, type Command, type GameState } from "../engine/game";
 import { careerList, careers } from "../data/careers";
-import { districts } from "../data/places";
-import { describeReq, meets } from "../data/skills";
+import { meets } from "../data/skills";
 import { naira } from "../engine/economy";
 import { payBonus } from "../data/traits";
+import { useLang, Rich } from "../i18n/react";
 import { Progress } from "./ui";
 
 type Props = { state: GameState; dispatch: (c: Command) => void; goTo: () => void };
 
 export default function WorkTab({ state, dispatch, goTo }: Props) {
+  const { t, tx } = useLang();
   const current = state.career ? careers[state.career.id] : null;
-  const promo = nextPromotion(state);
   const bonus = payBonus(state.sim.trait);
+  const next = current && state.career ? current.levels[state.career.level + 1] : undefined;
+  const shiftsLeft = current && state.career ? Math.max(0, current.shiftsToPromote - state.career.shifts) : 0;
+  const missing = next && !meets(state.skills, next.req) ? tx.req(next.req) : "";
 
   return (
     <>
       <ol className="how">
-        <li><b>Apply</b> for a job below (🔒 ones need a skill first).</li>
-        <li><b>Go</b> to the job's area with 🚌 Travel.</li>
-        <li>Tap <b>Work a shift</b>. It takes a few hours and pays at the end.</li>
-        <li>Work enough shifts and train the right skill to get <b>promoted</b>.</li>
+        {[1, 2, 3, 4].map(i => <li key={i}><Rich text={t(`jobs.how${i}`)} /></li>)}
       </ol>
 
       {current && state.career ? (
         <div className="work-card">
-          <div className="title">{current.emoji} {current.levels[state.career.level].title}</div>
+          <div className="title">{current.emoji} {tx.title(current.id, state.career.level)}</div>
           <div className="sub">
-            {naira(shiftPay(state))} per {current.hours} h shift in {districts[current.where].name}
+            {t("jobs.payLine", { money: naira(shiftPay(state)), hours: current.hours, place: tx.district(current.where) })}
           </div>
-          {promo ? (
+          {next ? (
             <>
-              <Progress value={current.shiftsToPromote - promo.shiftsLeft} max={current.shiftsToPromote} />
+              <Progress value={current.shiftsToPromote - shiftsLeft} max={current.shiftsToPromote} />
               <div className="note">
-                Next: {promo.title}.{" "}
-                {promo.shiftsLeft > 0 ? `${promo.shiftsLeft} more shift${promo.shiftsLeft > 1 ? "s" : ""}.` : "Shifts done."}{" "}
-                {promo.missing && <>Also needs {promo.missing}.</>}
+                {t("jobs.next", { title: tx.title(current.id, state.career.level + 1) })}{" "}
+                {shiftsLeft > 0 ? t(shiftsLeft > 1 ? "jobs.shiftsLeft" : "jobs.shiftLeft", { n: shiftsLeft }) : t("jobs.shiftsDone")}{" "}
+                {missing && t("jobs.alsoNeeds", { req: missing })}
               </div>
             </>
           ) : (
-            <div className="note">You're at the top of this career. 👑</div>
+            <div className="note">{t("jobs.top")}</div>
           )}
           {state.location === current.where ? (
             <button className="btn block" disabled={state.needs.energy < 15} onClick={() => dispatch({ type: "work" })}>
-              {state.needs.energy < 15 ? "😴 Too tired: sleep first" : `💼 Work a shift (${current.hours} h)`}
+              {state.needs.energy < 15 ? t("work.tooTired") : t("work.doShift", { hours: current.hours })}
             </button>
           ) : (
-            <button className="btn block" onClick={goTo}>🚌 Travel to {districts[current.where].name} to work</button>
+            <button className="btn block" onClick={goTo}>{t("jobs.travelTo", { place: tx.district(current.where) })}</button>
           )}
-          <button className="btn plain block" onClick={() => dispatch({ type: "quit" })}>Quit this job</button>
+          <button className="btn plain block" onClick={() => dispatch({ type: "quit" })}>{t("jobs.quit")}</button>
         </div>
       ) : (
-        <p className="lede">You don't have a job yet. Pick one below and tap <b>Apply</b>. 🏧 POS business needs no skills, so it's the easiest start.</p>
+        <p className="lede"><Rich text={t("jobs.none")} /></p>
       )}
 
-      <h3>Careers</h3>
+      <h3>{t("jobs.careers")}</h3>
       <div className="group">
         {careerList.map(c => {
           const mine = state.career?.id === c.id;
@@ -63,22 +63,22 @@ export default function WorkTab({ state, dispatch, goTo }: Props) {
               <div className="career-head">
                 <span className="row-emoji" aria-hidden>{c.emoji}</span>
                 <span className="row-main">
-                  <span className="row-title">{c.name}</span>
+                  <span className="row-title">{tx.career(c.id)}</span>
                   <br />
-                  <span className="row-meta">{districts[c.where].name} · {c.hours} h shifts</span>
+                  <span className="row-meta">{t("jobs.where", { place: tx.district(c.where), hours: c.hours })}</span>
                 </span>
                 {mine ? (
-                  <span className="note">Your job</span>
+                  <span className="note">{t("jobs.yours")}</span>
                 ) : (
                   <button className="btn" disabled={!canApply} onClick={() => dispatch({ type: "apply", career: c.id })}>
-                    {canApply ? "Apply" : "🔒 Locked"}
+                    {canApply ? t("jobs.apply") : t("jobs.locked")}
                   </button>
                 )}
               </div>
               <ol className="ladder">
                 {c.levels.map((l, i) => (
                   <li key={l.title} className={mine && state.career?.level === i ? "current" : ""}>
-                    <span>{l.title}{l.req ? <span className="note"> ({describeReq(l.req)})</span> : null}</span>
+                    <span>{tx.title(c.id, i)}{l.req ? <span className="note"> ({tx.req(l.req)})</span> : null}</span>
                     <span>{naira(Math.round(l.pay * bonus))}</span>
                   </li>
                 ))}
@@ -87,7 +87,7 @@ export default function WorkTab({ state, dispatch, goTo }: Props) {
           );
         })}
       </div>
-      <p className="note">Switching careers starts you at the bottom of the new ladder.</p>
+      <p className="note">{t("jobs.switch")}</p>
     </>
   );
 }

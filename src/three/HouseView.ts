@@ -7,6 +7,7 @@ import { CATALOG, HOME, type FurnitureType, type Placed } from "../data/home";
 import { findPath, footprint, routeToObject, walkable, type Tile } from "../engine/path";
 import { box, buildPiece, buildSim, daylight, mat, type Tick } from "./pieces";
 import { buildCompound } from "./compound.js";
+import type { Look } from "../data/characters";
 
 export { daylight };
 
@@ -61,7 +62,7 @@ export class HouseView {
   private shift = 0;
   private resizeObserver: ResizeObserver | null = null;
 
-  constructor(container: HTMLElement, shirtColor?: string) {
+  constructor(container: HTMLElement, look?: Partial<Look>) {
     this.container = container;
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -95,7 +96,7 @@ export class HouseView {
 
     this.buildShell();
     this.scene.add(this.furniture);
-    if (shirtColor) this.sim = buildSim(shirtColor);
+    if (look) this.sim = buildSim(look);
     this.scene.add(this.sim.root);
 
     this.marker = new THREE.Mesh(

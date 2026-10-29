@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import type { Command, GameState } from "../engine/game";
-import { districts, type DistrictId } from "../data/places";
+import type { DistrictId } from "../data/places";
 import { spotOpen, spots, type SpotId } from "../data/spots";
 import { StreetView } from "../three/street.js";
 import { DOORS } from "../three/world.js";
+import { useLang } from "../i18n/react";
 
 type Props = {
   state: GameState;
@@ -22,6 +23,7 @@ const DOOR_IDS = Object.keys(DOORS) as SpotId[];
 /** The open-world streets, full screen: walk around Lagos in 3D and go in through any door.
  *  When you're not walking, it shows the place you're at. */
 export default function StreetScene({ state, dispatch, walking, focus, onEnter, onStop }: Props) {
+  const { t, tx } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const view = useRef<StreetView | null>(null);
   const info = useRef({ hour: 12, grid: true });
@@ -77,6 +79,8 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
     const sv = new StreetView(renderer, {
       onMove: () => {},
       onArrive: (id: string) => enterRef.current(id as SpotId),
+      look: state.sim.look ?? {},
+      labelFor: (id: string) => `${spots[id as SpotId]?.emoji ?? "🏠"} ${tx.spot(id as SpotId)}`,
     });
     view.current = sv;
 
@@ -201,42 +205,42 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
         onPointerDown={e => (down.current = { x: e.clientX, y: e.clientY })}
         onPointerUp={onPointerUp}
         role="img"
-        aria-label={walking ? "The streets of Lagos in 3D" : "The place you're at"}
+        aria-label={walking ? t("street.aria") : t("street.ariaPlace")}
       />
-      {noGl && <div className="scene-msg">This device can't show the 3D streets. Use 🚌 Travel to get around.</div>}
+      {noGl && <div className="scene-msg">{t("street.noGl")}</div>}
 
       {walking && (
         <>
           <div className="walk-help">
             {target
-              ? <>Walking to {spots[target].emoji} <b>{spots[target].name}</b>. Follow the yellow light.</>
-              : <>Tap a building to walk to it, or use the thumbstick / arrow keys. Glowing rings are doors.</>}
+              ? <>{t("street.walkingTo", { place: `${spots[target].emoji} ${tx.spot(target)}` })}</>
+              : <>{t("street.help")}</>}
           </div>
 
           <div className="walk-actions">
             {near ? (
               <button className="btn big" onClick={() => enterRef.current(near)}>
-                🚪 Go into {spots[near].emoji} {spots[near].name}
-                {!spotOpen(near, state.time) && <small> (closed now)</small>}
+                🚪 {t("street.goInto", { place: `${spots[near].emoji} ${tx.spot(near)}` })}
+                {!spotOpen(near, state.time) && <small> ({t("street.closedNow")})</small>}
               </button>
             ) : (
               <>
-                <button className="btn" onClick={() => setMenu(m => !m)} aria-expanded={menu}>📍 Where to?</button>
-                <button className="btn plain" aria-pressed={run} onClick={() => setRun(r => !r)}>🏃🏾 {run ? "Running" : "Run"}</button>
+                <button className="btn" onClick={() => setMenu(m => !m)} aria-expanded={menu}>📍 {t("street.whereTo")}</button>
+                <button className="btn plain" aria-pressed={run} onClick={() => setRun(r => !r)}>🏃🏾 {run ? t("street.running") : t("street.run")}</button>
               </>
             )}
-            <button className="btn plain" onClick={onStop}>✕ Stop walking</button>
+            <button className="btn plain" onClick={onStop}>✕ {t("street.stop")}</button>
           </div>
 
           {menu && (
             <div className="walk-menu" role="menu">
-              <b>Walk to…</b>
+              <b>{t("street.walkTo")}</b>
               {DOOR_IDS.map(id => (
                 <button key={id} role="menuitem" className="row" onClick={() => walkToDoor(id)}>
                   <span className="row-emoji" aria-hidden>{spots[id].emoji}</span>
                   <span className="row-main">
-                    <span className="row-title">{spots[id].name}</span>
-                    <span className="note">{spots[id].district !== "any" && districts[spots[id].district as DistrictId].name}{spotOpen(id, state.time) ? "" : " · closed now"}</span>
+                    <span className="row-title">{tx.spot(id)}</span>
+                    <span className="note">{spots[id].district !== "any" && tx.district(spots[id].district as DistrictId)}{spotOpen(id, state.time) ? "" : ` · ${t("street.closedNow")}`}</span>
                   </span>
                 </button>
               ))}
@@ -260,7 +264,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
             }}
             onPointerUp={joyEnd}
             onPointerCancel={joyEnd}
-            aria-label="Thumbstick: drag to walk"
+            aria-label={t("street.stick")}
           >
             <div ref={knob} className="joy-knob" />
           </div>

@@ -6,14 +6,28 @@ import { traits } from "../data/traits";
 import { naira } from "../engine/economy";
 import { Progress } from "./ui";
 import AccountPanel from "./AccountPanel";
+import LangPicker from "./LangPicker";
 import { isMuted, setMuted } from "../lib/sound";
 import { exportSave, importSave } from "../engine/save";
+import { useLang } from "../i18n/react";
 
-type Props = { state: GameState; onRestart: () => void; onLoad: (s: GameState) => void; onGuide: () => void; synced: "off" | "syncing" | "saved" | "error" };
+type Props = {
+  state: GameState;
+  onRestart: () => void;
+  onLoad: (s: GameState) => void;
+  onGuide: () => void;
+  onDiary: () => void;
+  onFeedback: () => void;
+  synced: "off" | "syncing" | "saved" | "error";
+};
 
-export default function MeTab({ state, onRestart, onLoad, onGuide, synced }: Props) {
+export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFeedback, synced }: Props) {
+  const { t, tx } = useLang();
   const [confirming, setConfirming] = useState(false);
   const [fileMsg, setFileMsg] = useState<string | null>(null);
+  const [muted, setMutedState] = useState(isMuted());
+  const s = state.stats;
+  const tr = tx.trait(state.sim.trait);
 
   function download() {
     const blob = new Blob([exportSave(state)], { type: "application/json" });
@@ -25,85 +39,84 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, synced }: Pro
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    setFileMsg("Save file downloaded. Keep it somewhere safe.");
+    setFileMsg("me.saved");
   }
 
   async function upload(file: File | undefined) {
     if (!file) return;
     try {
       onLoad(importSave(await file.text()));
-      setFileMsg("Save loaded. Welcome back!");
+      setFileMsg("me.loaded");
     } catch (e) {
       setFileMsg((e as Error).message);
     }
   }
-  const [muted, setMutedState] = useState(isMuted());
-  const s = state.stats;
 
   return (
     <>
       <h2>{state.sim.avatar} {state.sim.name}</h2>
-      <p className="lede">
-        {traits[state.sim.trait].emoji} {traits[state.sim.trait].name}: {traits[state.sim.trait].desc}
-      </p>
+      <p className="lede">{traits[state.sim.trait].emoji} {tr.name}: {tr.desc}</p>
+      {state.sim.preset && tx.presetStory(state.sim.preset) && <p className="note">“{tx.presetStory(state.sim.preset)}”</p>}
 
-      <h3>Account</h3>
-      <AccountPanel synced={synced} />
+      <h3>🌍 {t("me.language")}</h3>
+      <LangPicker />
 
-      <h3>Skills</h3>
+      <h3>{t("me.skills")}</h3>
       <div className="group">
         {(Object.keys(skillInfo) as SkillId[]).map(id => (
-          <div key={id} className="skill" title={skillInfo[id].desc}>
-            <span>{skillInfo[id].emoji} {skillInfo[id].name}</span>
+          <div key={id} className="skill" title={tx.skillDesc(id)}>
+            <span>{skillInfo[id].emoji} {tx.skill(id)}</span>
             <Progress value={state.skills[id]} max={MAX_SKILL} />
             <b>{state.skills[id].toFixed(1)}</b>
           </div>
         ))}
       </div>
-      <p className="note">Grow skills in the 📚 Learn & grow actions, at work, and through some events.</p>
+      <p className="note">{t("me.skillsHow")}</p>
 
-      <h3>Mood: {mood(state)} / 100</h3>
+      <h3>{t("me.mood", { mood: mood(state) })}</h3>
       <div className="group">
-        {(state.moodlets ?? []).length === 0 && <p className="note pad">No special moods right now. Eat, sleep, have fun and get paid to collect good ones.</p>}
+        {(state.moodlets ?? []).length === 0 && <p className="note pad">{t("me.noMoods")}</p>}
         {(state.moodlets ?? []).map(x => {
           const info = moodlets[x.id];
+          const mt = tx.mood(x.id);
           const hoursLeft = Math.max(1, Math.round((x.until - state.time) / 60));
           return (
-            <div key={x.id} className="skill" title={info.desc}>
-              <span>{info.emoji} {info.label}</span>
-              <span className="note">{info.desc} {hoursLeft} h left</span>
+            <div key={x.id} className="skill" title={mt.desc}>
+              <span>{info.emoji} {mt.label}</span>
+              <span className="note">{mt.desc} {t("me.hoursLeft", { h: hoursLeft })}</span>
               <b className={info.value < 0 ? "bad-text" : "good-text"}>{info.value > 0 ? "+" : ""}{info.value}</b>
             </div>
           );
         })}
       </div>
       <p className="note">
-        Your mood is the average of your needs plus these moods.{" "}
-        {moodPay(state) > 1 ? "😄 Good mood: your shifts pay 10% more right now." : moodPay(state) < 1 ? "😣 Bad mood: your shifts pay 10% less right now." : "Get it to 70 or more and shifts pay 10% more."}
+        {t("me.moodHow")}{" "}
+        {moodPay(state) > 1 ? t("me.moodGood") : moodPay(state) < 1 ? t("me.moodBad") : t("me.moodAim")}
       </p>
 
-      <h3>Your story so far</h3>
+      <h3>{t("me.story")}</h3>
       <div className="group stats">
-        <div className="stat"><b>{dayOf(state.time)}</b><span>days in Lagos</span></div>
-        <div className="stat"><b>{naira(s.earned)}</b><span>earned</span></div>
-        <div className="stat"><b>{s.shifts}</b><span>shifts worked</span></div>
-        <div className="stat"><b>{s.promotions}</b><span>promotions</span></div>
-        <div className="stat"><b>{s.trips}</b><span>trips</span></div>
-        <div className="stat"><b>{naira(s.sentHome)}</b><span>sent to family</span></div>
+        <div className="stat"><b>{dayOf(state.time)}</b><span>{t("me.days")}</span></div>
+        <div className="stat"><b>{naira(s.earned)}</b><span>{t("me.earned")}</span></div>
+        <div className="stat"><b>{s.shifts}</b><span>{t("me.shifts")}</span></div>
+        <div className="stat"><b>{s.promotions}</b><span>{t("me.promotions")}</span></div>
+        <div className="stat"><b>{s.trips}</b><span>{t("me.trips")}</span></div>
+        <div className="stat"><b>{naira(s.sentHome)}</b><span>{t("me.sentHome")}</span></div>
       </div>
+      <button className="btn block" onClick={onDiary}>📖 {t("me.openDiary")}</button>
 
-      <h3>What happened</h3>
-      <div className="group">
-        <ul className="log">
-          {state.log.slice(0, 15).map((line, i) => <li key={i}>{line}</li>)}
-        </ul>
-      </div>
+      <h3>{t("me.account")}</h3>
+      <AccountPanel synced={synced} />
 
-      <h3>Settings</h3>
+      <h3>{t("me.settings")}</h3>
       <div className="group">
         <button className="row" onClick={onGuide}>
           <span className="row-emoji" aria-hidden>❓</span>
-          <span className="row-main"><span className="row-title">How to play</span><span className="note">The beginner guide: the screen, the tabs, missions and tags.</span></span>
+          <span className="row-main"><span className="row-title">{t("me.howToPlay")}</span><span className="note">{t("me.howToPlayInfo")}</span></span>
+        </button>
+        <button className="row" onClick={onFeedback}>
+          <span className="row-emoji" aria-hidden>💬</span>
+          <span className="row-main"><span className="row-title">{t("me.feedback")}</span><span className="note">{t("me.feedbackInfo")}</span></span>
         </button>
         <button
           className="row"
@@ -114,33 +127,33 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, synced }: Pro
           }}
         >
           <span className="row-emoji" aria-hidden>{muted ? "🔇" : "🔊"}</span>
-          <span className="row-main"><span className="row-title">Sound effects</span></span>
-          <span className="row-price">{muted ? "Off" : "On"}</span>
+          <span className="row-main"><span className="row-title">{t("me.sound")}</span></span>
+          <span className="row-price">{muted ? t("me.off") : t("me.on")}</span>
         </button>
         <button className="row" onClick={download}>
           <span className="row-emoji" aria-hidden>💾</span>
-          <span className="row-main"><span className="row-title">Download a save file</span></span>
+          <span className="row-main"><span className="row-title">{t("me.download")}</span></span>
         </button>
         <label className="row">
           <span className="row-emoji" aria-hidden>📂</span>
-          <span className="row-main"><span className="row-title">Load a save file</span></span>
+          <span className="row-main"><span className="row-title">{t("me.upload")}</span></span>
           <input type="file" accept="application/json,.json" hidden onChange={e => void upload(e.target.files?.[0])} />
         </label>
       </div>
-      {fileMsg && <p className="note" role="status">{fileMsg}</p>}
+      {fileMsg && <p className="note" role="status">{t(fileMsg)}</p>}
       <p className="note footer-links">
-        <a href="/privacy.html">Privacy policy</a> · <a href="/terms.html">Terms of use</a>
+        <a href="/privacy.html">{t("me.privacy")}</a> · <a href="/terms.html">{t("me.terms")}</a>
       </p>
 
       <div className="confirm">
         {confirming ? (
           <>
-            <p className="note bad">This deletes {state.sim.name}'s save for good.</p>
-            <button className="btn" onClick={onRestart}>Yes, start a new life</button>{" "}
-            <button className="btn plain" onClick={() => setConfirming(false)}>Keep playing</button>
+            <p className="note bad">{t("me.deleteWarn", { name: state.sim.name })}</p>
+            <button className="btn" onClick={onRestart}>{t("me.yesNew")}</button>{" "}
+            <button className="btn plain" onClick={() => setConfirming(false)}>{t("me.keep")}</button>
           </>
         ) : (
-          <button className="btn plain" onClick={() => setConfirming(true)}>Start a new life</button>
+          <button className="btn plain" onClick={() => setConfirming(true)}>{t("me.newLife")}</button>
         )}
       </div>
     </>

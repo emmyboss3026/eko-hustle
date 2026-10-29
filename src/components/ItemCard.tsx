@@ -7,6 +7,7 @@ import { naira } from "../engine/economy";
 import type { HouseView } from "../three/HouseView";
 import ActionRow from "./ActionRow";
 import Sheet from "./Sheet";
+import { useLang } from "../i18n/react";
 
 type Props = {
   state: GameState;
@@ -19,14 +20,15 @@ type Props = {
 
 /** What you can do with the piece of furniture you tapped. */
 export default function ItemCard({ state, uid, dispatch, viewRef, onClose, onMove }: Props) {
+  const { t, tx } = useLang();
   const item = state.home.objects.find(o => o.uid === uid);
   if (!item) return null;
   const spec = CATALOG[item.type];
   const tags = missionTags(state);
   const atHome = state.location === "mushin";
   return (
-    <Sheet title={<>{spec.emoji} {spec.name} <small className="note">· {roomAt(item.x, item.y)}</small></>} onClose={onClose} size="small">
-      <p className="note">{spec.blurb} Tap what to do:</p>
+    <Sheet title={<>{spec.emoji} {tx.furniture(item.type)} <small className="note">· {tx.room(roomAt(item.x, item.y))}</small></>} onClose={onClose} size="small">
+      <p className="note">{tx.furnitureBlurb(item.type)} {t("item.tapWhat")}</p>
       <div className="group">
         {actionsFor(item.type).map(a => (
           <ActionRow
@@ -42,13 +44,13 @@ export default function ItemCard({ state, uid, dispatch, viewRef, onClose, onMov
           />
         ))}
         {item.type === "generator" && (
-          <p className="note pad">{state.home.fuel > 0 ? `Runs by itself when NEPA takes light. ${state.home.fuel.toFixed(1)} L of fuel left.` : "Out of fuel. Buy fuel: 📍 Places → 📱 Your phone → ⛽ Buy generator fuel."}</p>
+          <p className="note pad">{state.home.fuel > 0 ? t("item.genFuel", { litres: state.home.fuel.toFixed(1) }) : t("item.genEmpty")}</p>
         )}
-        {actionsFor(item.type).length === 0 && item.type !== "generator" && <p className="note pad">Just for looks. It makes the room yours.</p>}
+        {actionsFor(item.type).length === 0 && item.type !== "generator" && <p className="note pad">{t("item.decor")}</p>}
       </div>
       {!spec.fixed && (
         <div className="item-actions">
-          <button className="btn plain" disabled={!atHome} onClick={onMove}>↔ Move</button>
+          <button className="btn plain" disabled={!atHome} onClick={onMove}>↔ {t("item.move")}</button>
           <button
             className="btn plain"
             disabled={!atHome}
@@ -57,7 +59,7 @@ export default function ItemCard({ state, uid, dispatch, viewRef, onClose, onMov
               onClose();
             }}
           >
-            Sell for {naira(sellPrice(item.type))}
+            {t("item.sell", { money: naira(sellPrice(item.type)) })}
           </button>
         </div>
       )}

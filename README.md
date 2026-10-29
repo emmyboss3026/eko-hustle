@@ -14,11 +14,18 @@ Eko Hustle merges **Hustle & Japa** with **Gidi Hustle v0.5**:
 
 **New in this version:** the whole game is on one screen. Your 3D flat (or the streets, or the place you're at) fills the screen, and everything else sits around it: the top bar, the 🎯 mission card, live 💡 tips, a ❓ Help button with simple how-tos, and a dock of buttons that open panels over the world.
 
+**Also new:**
+- **3 languages:** English (UK), Deutsch and Naija Pidgin. Pick one on the first screen or in 👤 Me → Language.
+- **10 ready-made characters** from all over Nigeria (and one from London), different ages, skin tones and backgrounds, or customise skin, hair, headwear and clothes yourself.
+- **💬 Feedback box** on the right side of the screen (bug, idea, confusing, I like…, plus a star rating). It works offline too and sends later.
+- **📖 Diary:** everything that happens is saved with your game, day by day and searchable, plus a list of your past lives.
+- **Fast food:** Mama Put Express, Jollof Junction, Big Bite Burgers, Crunchy Chicken and ChopNow delivery, and a fast-food career. All names are made up for the game.
+
 ## How to play (short)
 
 - **Tap furniture** in your flat to use it (bed, burner, bucket, toilet…). Tap the floor to walk, drag to turn, pinch or scroll to zoom.
 - **Top bar:** name, day and clock, where you are, days until rent, money, ❤️ health, 😄 mood, 💡 light, and your six needs.
-- **Right side:** ❓ Help, ❚❚ Pause, Speed.
+- **Right side:** ❓ Help, 💬 Feedback, ❚❚ Pause, Speed.
 - **Bottom dock:** 📍 Places · 🚌 Travel · 💼 Jobs · 🛒 Shop · ✈️ Goals · 👤 Me. Each opens a panel over the world; time waits while it's open.
 - **🚶🏾 Walk outside** to walk the 3D streets, and **💼 Go to work** when you're near your job.
 - The **🎯 Mission** card says what to do next: **How?** shows the steps, **👉 Show me** takes you there.
@@ -30,7 +37,7 @@ Eko Hustle merges **Hustle & Japa** with **Gidi Hustle v0.5**:
 ```powershell
 npm install      # once, or after package.json changes
 npm run dev      # play at http://localhost:5173
-npm test         # 33 rule tests
+npm test         # 44 tests: game rules and translations
 npm run build    # production build in the dist folder
 ```
 
@@ -43,6 +50,7 @@ npm run build    # production build in the dist folder
 | `src/three/` | 3D: `HouseView.ts` (your room), `pieces.ts` (furniture), `compound.js` (the yard and neighbours), `street.js` + `world.js` (the open-world streets). |
 | `src/art/` | `art.js`: place pictures and the rides for the travel scene, drawn in code as SVG. |
 | `src/screens/`, `src/components/` | What the player sees. `Game.tsx` is the one-screen layout; `RoomScene.tsx` and `StreetScene.tsx` are the full-screen 3D views. |
+| `src/i18n/` | Languages: `en.ts` (English UI text), `de.ts` (German), `pcm.ts` (Pidgin), `text.ts` (game content by key). A test checks that every text exists in every language. |
 | `src/lib/` | Accounts and cloud save (Supabase), ads, payments, sound. |
 | `supabase/` | Database setup (`schema.sql`) and the Bachs payment functions. |
 | `public/` | Icons, privacy policy, terms, hosting headers. |
@@ -54,6 +62,8 @@ npm run build    # production build in the dist folder
 - Places and opening hours: `src/data/spots.ts` · moods: `src/data/moodlets.ts`
 - Missions, their steps and rewards: `src/data/missions.ts` · tips: `src/data/tips.ts` · help answers: `src/components/HelpSheet.tsx`
 - Rent amount and start money: `src/engine/economy.ts`
+- Characters and looks: `src/data/characters.ts`
+- Text in other languages: `src/i18n/de.ts` and `src/i18n/pcm.ts` (when you add or change English text, add the same key there too)
 
 ## Optional online features
 
@@ -61,7 +71,7 @@ Copy `.env.example` to `.env` and fill in what you've set up. Anything left empt
 
 | Feature | Needs |
 | --- | --- |
-| Accounts, cloud save, leaderboard | Supabase project + `supabase/schema.sql` |
+| Accounts, cloud save, leaderboard, feedback | Supabase project + `supabase/schema.sql` (feedback is section 5) |
 | Rewarded ads | Google AdSense approval for H5 Games Ads |
 | Supporter pack | Bachs account + `supabase/functions/bachs-checkout` and `bachs-webhook` |
 

@@ -13,7 +13,7 @@ export const avatars = ["🧑🏾", "👩🏾", "🧔🏾", "👩🏾‍🦱", "
 // Cosmetic looks for players who support the game. They change nothing in gameplay.
 export const supporterAvatars = ["🤴🏾", "👸🏾", "🧑🏾‍🚀", "🧑🏾‍🎤", "🦸🏾", "🧑🏾‍🍳", "👨🏾‍🎓", "💃🏾"];
 
-export type Sim = { name: string; trait: TraitId; avatar: string };
+export type Sim = { name: string; trait: TraitId; avatar: string; look?: import("./characters").Look; preset?: string };
 
 export const payBonus = (trait: TraitId) => (trait === "hustler" ? 1.25 : 1);
 export const fareFor = (cost: number, trait: TraitId) => (trait === "sharp" ? Math.round(cost * 0.7) : cost);

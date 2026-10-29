@@ -77,3 +77,25 @@ create table if not exists public.payments (
 
 alter table public.payments enable row level security;
 -- No policies on purpose: players can neither read nor write payments.
+
+-- 5. Player feedback from the in-game 💬 Feedback box.
+-- Anyone may send feedback (signed in or not); nobody can read it back through the app.
+-- Read it in the Supabase dashboard: Table Editor → feedback.
+create table if not exists public.feedback (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  user_id uuid references auth.users on delete set null,
+  category text not null check (category in ('bug', 'idea', 'like', 'confusing')),
+  rating smallint check (rating between 1 and 5),
+  message text not null check (char_length(message) between 1 and 1000),
+  lang text check (char_length(lang) <= 5),
+  game_day integer check (game_day >= 0),
+  app_version text check (char_length(app_version) <= 20)
+);
+
+alter table public.feedback enable row level security;
+
+grant insert on public.feedback to anon, authenticated;
+create policy "Anyone can send feedback"
+  on public.feedback for insert to anon, authenticated
+  with check (user_id is null or user_id = auth.uid());
