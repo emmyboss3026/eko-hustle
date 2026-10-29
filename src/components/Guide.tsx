@@ -35,7 +35,7 @@ const pages: Page[] = [
   { title: "guide.welcome", art: "home", body: t => <>{[0, 1, 2].map(i => <p key={i}><Rich text={t(`guide.welcome.${i}`)} /></p>)}</> },
   { title: "guide.screen", body: t => bullets(t, "guide.screen", 5) },
   { title: "guide.needs", body: t => <><p>{t("guide.needs.intro")}</p>{bullets(t, "guide.needs", 6)}</> },
-  { title: "guide.buttons", body: t => <><p>{t("guide.buttons.intro")}</p>{bullets(t, "guide.buttons", 8)}</> },
+  { title: "guide.buttons", body: t => <><p>{t("guide.buttons.intro")}</p>{bullets(t, "guide.buttons", 9)}</> },
   { title: "guide.missions", body: t => <>{[0, 1, 2].map(i => <p key={i}><Rich text={t(`guide.missions.${i}`)} /></p>)}</> },
   {
     title: "guide.tags",

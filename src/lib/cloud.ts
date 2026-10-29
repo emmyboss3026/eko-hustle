@@ -83,7 +83,7 @@ export async function fetchLeaderboard(ending: "japa" | "landlord", limit = 10):
 export type FeedbackCategory = "bug" | "idea" | "like" | "confusing";
 export type Feedback = { category: FeedbackCategory; rating: number | null; message: string; lang: string; gameDay: number };
 
-export const APP_VERSION = "2.1.0";
+export const APP_VERSION = "2.2.0";
 const QUEUE_KEY = "eko-hustle-feedback-queue";
 
 /** Send feedback to the game's database. Without a connection it waits on this device and is sent later. */

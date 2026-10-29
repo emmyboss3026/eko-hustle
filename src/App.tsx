@@ -8,15 +8,16 @@ import { LangProvider, useLang } from "./i18n/react";
 import { recordLife } from "./lib/lives";
 import type { Lang } from "./i18n/core";
 import { loadCloudSave, pushCloudSave, submitRun } from "./lib/cloud";
+import { submitStats } from "./lib/board";
 import CreateSim from "./screens/CreateSim";
 import Ending from "./screens/Ending";
 import Game from "./screens/Game";
 
 // Everything that can happen: a game command, starting a new life, loading a cloud save, or resetting.
-type Msg = Command | { type: "start"; sim: Sim; lang: Lang } | { type: "load"; state: GameState } | { type: "reset" };
+type Msg = Command | { type: "start"; sim: Sim; lang: Lang; seed: number } | { type: "load"; state: GameState } | { type: "reset" };
 
 function root(state: GameState | null, msg: Msg): GameState | null {
-  if (msg.type === "start") return newGame(msg.sim, msg.lang);
+  if (msg.type === "start") return newGame(msg.sim, msg.lang, msg.seed);
   if (msg.type === "load") return msg.state;
   if (msg.type === "reset") return null;
   return state ? reduce(state, msg) : state;
@@ -73,6 +74,20 @@ function Root() {
     return () => window.clearTimeout(t);
   }, [state, userId]);
 
+  // Keep the global leaderboard up to date: soon after signing in, then once a minute while playing
+  const latest = useRef(state);
+  latest.current = state;
+  useEffect(() => {
+    if (!userId) return;
+    const send = () => latest.current && void submitStats(latest.current);
+    const first = window.setTimeout(send, 5000);
+    const id = window.setInterval(send, 60_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(id);
+    };
+  }, [userId]);
+
   // Remember a finished life on this device
   useEffect(() => {
     if (state?.ending) recordLife(state);
@@ -96,9 +111,9 @@ function Root() {
     dispatch({ type: "reset" });
   }
 
-  if (!state) return <CreateSim onDone={sim => dispatch({ type: "start", sim, lang })} />;
+  if (!state) return <CreateSim onDone={sim => dispatch({ type: "start", sim, lang, seed: Math.floor(Math.random() * 2 ** 31) })} />;
   if (state.ending) return <Ending state={state} onRestart={restart} />;
-  return <Game state={state} dispatch={dispatch} onRestart={restart} onLoad={s => dispatch({ type: "load", state: s })} synced={synced} />;
+  return <Game state={state} dispatch={dispatch} onRestart={restart} onLoad={s => dispatch({ type: "load", state: s })} synced={synced} userId={userId} />;
 }
 
 export default function App() {

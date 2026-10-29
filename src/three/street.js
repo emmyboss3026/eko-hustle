@@ -417,6 +417,11 @@ export class StreetView {
     this.scene.add(sim.root);
     this.player = new THREE.Vector3(DOORS.home.x, 0, DOORS.home.z);
     this.yaw = 0;
+    // First-person view: the camera sits at the Sim's eyes and you drag to look around.
+    this.fp = false;
+    this.fpYaw = 0;
+    this.fpPitch = -0.08;
+    this.manual = false;
 
     this.beacon = new THREE.Group();
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 60, 16, 1, true),
@@ -612,6 +617,7 @@ export class StreetView {
       // Entering the street (or a save was loaded): put the Sim where the state says.
       this.player.set(a.x, 0, a.z);
       this.yaw = a.yaw ?? 0;
+      this.fpYaw = this.yaw;
       this.route = [];
       this.routeDoor = null;
       this.frameCamera(this.player, 18, this.yaw);
@@ -643,6 +649,28 @@ export class StreetView {
     this.controls.target.copy(t);
     this.camera.position.copy(t).addScaledVector(dir, distance).add(new THREE.Vector3(0, distance * 0.6, 0));
     this.controls.update();
+  }
+
+  /** Switch between the overhead camera and the Sim's own eyes. @param {boolean} on */
+  setFirstPerson(on) {
+    if (on === this.fp) return;
+    this.fp = on;
+    this.camera.fov = on ? 72 : 52;
+    this.camera.near = on ? 0.1 : 1;
+    this.camera.updateProjectionMatrix();
+    if (on) {
+      this.fpYaw = this.yaw;
+      this.fpPitch = -0.08;
+    } else if (this.mode === 'street') {
+      this.frameCamera(this.player, 18, this.yaw);
+    }
+  }
+
+  /** Drag to look around in first person. @param {number} dx @param {number} dy */
+  look(dx, dy) {
+    if (!this.fp) return;
+    this.fpYaw -= dx * 0.006;
+    this.fpPitch = Math.max(-1.0, Math.min(0.7, this.fpPitch - dy * 0.005));
   }
 
   setActive(on) {
@@ -731,7 +759,8 @@ export class StreetView {
 
     // The Sim.
     const moving = this.mode === 'street' && !paused ? this.step(dt) : false;
-    this.sim.root.visible = this.mode === 'street';
+    const firstPerson = this.fp && this.mode === 'street';
+    this.sim.root.visible = this.mode === 'street' && !firstPerson;
     this.sim.root.position.copy(this.player);
     this.sim.root.rotation.y = this.yaw;
     this.animate(this.sim, moving ? (this.running ? 16 : 11) : 0, t, moving);
@@ -775,14 +804,30 @@ export class StreetView {
       p.legR.rotation.x = -sw;
     }
 
-    // Camera follows the Sim.
-    if (this.mode === 'street') {
-      const want = this.player.clone().setY(1.8);
-      const delta = want.sub(this.controls.target);
-      this.controls.target.add(delta);
-      this.camera.position.add(delta);
+    // Camera follows the Sim: from behind and above, or from its eyes.
+    if (firstPerson) {
+      // Walking a tapped route turns your head the way you're going.
+      if (moving && !this.manual) {
+        let d = this.yaw - this.fpYaw;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        this.fpYaw += d * Math.min(1, dt * 4);
+      }
+      const eye = this.player.clone().setY(1.72);
+      const dir = new THREE.Vector3(Math.sin(this.fpYaw) * Math.cos(this.fpPitch), Math.sin(this.fpPitch), Math.cos(this.fpYaw) * Math.cos(this.fpPitch));
+      // A step behind the eyes, so walls you walk up to don't fill the screen
+      const flat = new THREE.Vector3(Math.sin(this.fpYaw), 0, Math.cos(this.fpYaw));
+      this.camera.position.copy(eye).addScaledVector(flat, -0.6);
+      this.camera.lookAt(eye.clone().add(dir));
+      this.controls.target.copy(this.player).setY(1.8); // shadows follow the Sim
+    } else {
+      if (this.mode === 'street') {
+        const want = this.player.clone().setY(1.8);
+        const delta = want.sub(this.controls.target);
+        this.controls.target.add(delta);
+        this.camera.position.add(delta);
+      }
+      this.controls.update();
     }
-    this.controls.update();
 
     this.applyOffset();
     // Who's near a door?
@@ -801,6 +846,7 @@ export class StreetView {
     ix += this.joy.x;
     iz += this.joy.y;
     const manual = Math.hypot(ix, iz) > 0.08;
+    this.manual = manual;
     let dx = 0;
     let dz = 0;
     this.running = this.run || this.shift || Math.hypot(this.joy.x, this.joy.y) > 0.92;
@@ -808,8 +854,10 @@ export class StreetView {
     if (manual) {
       this.route = [];
       this.routeDoor = null;
-      // Relative to the camera: "up" walks away from it.
-      const fwd = new THREE.Vector3().subVectors(this.controls.target, this.camera.position).setY(0).normalize();
+      // Relative to the camera: "up" walks away from it (in first person: the way you're looking).
+      const fwd = this.fp
+        ? new THREE.Vector3(Math.sin(this.fpYaw), 0, Math.cos(this.fpYaw))
+        : new THREE.Vector3().subVectors(this.controls.target, this.camera.position).setY(0).normalize();
       const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
       const len = Math.min(1, Math.hypot(ix, iz));
       const v = fwd.multiplyScalar(iz).add(right.multiplyScalar(ix)).normalize().multiplyScalar(speed * len * dt);

@@ -33,6 +33,10 @@ import FeedbackSheet from "../components/FeedbackSheet";
 import DiarySheet from "../components/DiarySheet";
 import { useLang } from "../i18n/react";
 import { flushFeedback } from "../lib/cloud";
+import Phone, { type AppId } from "../components/phone/Phone";
+import { openInvites, unreadCount } from "../engine/phone";
+import { claimDaily, getDailyStatus, type DailyStatus } from "../lib/daily";
+import { naira as nairaFmt } from "../engine/economy";
 
 // The 3D scenes are a big download, so they load in the background.
 const RoomScene = lazy(() => import("../components/RoomScene"));
@@ -40,10 +44,11 @@ const StreetScene = lazy(() => import("../components/StreetScene"));
 
 type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary";
 
-const dock: { id: Panel; emoji: string }[] = [
+const dock: { id: Panel | "phone"; emoji: string }[] = [
   { id: "do", emoji: "📍" },
   { id: "go", emoji: "🚌" },
   { id: "work", emoji: "💼" },
+  { id: "phone", emoji: "📱" },
   { id: "shop", emoji: "🛒" },
   { id: "goals", emoji: "✈️" },
   { id: "me", emoji: "👤" },
@@ -69,10 +74,13 @@ type Props = {
   onRestart: () => void;
   onLoad: (s: GameState) => void;
   synced: "off" | "syncing" | "saved" | "error";
+  userId: string | null;
 };
 
+const DAILY_SEEN_KEY = "eko-hustle-daily-seen";
+
 /** The whole game on one screen: the 3D world fills it, and everything else sits around it. */
-export default function Game({ state, dispatch, onRestart, onLoad, synced }: Props) {
+export default function Game({ state, dispatch, onRestart, onLoad, synced, userId }: Props) {
   const { t, tx, lang } = useLang();
   const [panel, setPanel] = useState<Panel | null>(null);
   const [paused, setPaused] = useState(false);
@@ -85,6 +93,15 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
   const [placing, setPlacing] = useState<Placing | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const viewRef = useRef<HouseView | null>(null);
+  const [phone, setPhone] = useState<AppId | "home" | null>(null);
+  const [daily, setDaily] = useState<DailyStatus | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [claimed, setClaimed] = useState<{ amount: number; day: number } | null>(null);
+  const firstPerson = state.camera === "first";
+  const [camHint, setCamHint] = useState(false);
+  const [dailySeen, setDailySeen] = useState(() => {
+    try { return sessionStorage.getItem(DAILY_SEEN_KEY) ?? ""; } catch { return ""; }
+  });
   const mission = currentMission(state);
   const atHome = state.location === "mushin";
 
@@ -99,7 +116,7 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
   // The clock: game minutes per real second (slower with relaxed survival, see data/survival.ts). It waits while a panel, event, the guide or a ride is open,
   // so you can read in peace.
   const eventOpen = state.eventId !== null;
-  const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null;
+  const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null || phone !== null;
   const minutesPerTick = isRelaxed(state) ? RELAXED.minutesPerTick : CLASSIC.minutesPerTick;
   useEffect(() => {
     if (stopped) return;
@@ -132,6 +149,33 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
     void flushFeedback(); // send any feedback written while offline
   }, []);
 
+  // Daily reward: check when the game opens, when you sign in or out, and when the phone's Rewards app opens
+  const refreshDaily = useCallback(async () => setDaily(await getDailyStatus()), []);
+  useEffect(() => {
+    void refreshDaily();
+  }, [userId, refreshDaily]);
+  useEffect(() => {
+    if (phone === "rewards") void refreshDaily();
+  }, [phone, refreshDaily]);
+  async function claim() {
+    setClaiming(true);
+    const r = await claimDaily();
+    setClaiming(false);
+    if ("error" in r) {
+      setToast(t(r.error));
+    } else if (r.claimed) {
+      dispatch({ type: "daily", id: r.id, streakDay: r.day, amount: r.amount, server: r.server });
+      setClaimed({ amount: r.amount, day: r.day });
+      play("cash");
+    }
+    await refreshDaily();
+  }
+  function hideDaily() {
+    const id = daily?.today ?? "";
+    setDailySeen(id);
+    try { sessionStorage.setItem(DAILY_SEEN_KEY, id); } catch { /* ignore */ }
+  }
+
   // Game messages follow the chosen language
   useEffect(() => {
     if (state.lang !== lang) dispatch({ type: "lang", lang });
@@ -147,6 +191,7 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
 
   const openPanel = useCallback((p: Panel | null, spot?: SpotId) => {
     setSelected(null);
+    setPhone(null);
     setPanel(p);
     if (p && spot) {
       window.setTimeout(() => document.getElementById(`spot-${spot}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
@@ -199,6 +244,7 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
   const missionDock = missionPanel(mission);
   const narrow = typeof innerWidth === "number" && innerWidth < 900;
   const lit = state.power.grid || generatorOn(state);
+  const phoneBadge = unreadCount(state) + openInvites(state).filter(i => i.until >= day).length + (daily?.canClaim ? 1 : 0);
 
   return (
     <div className="game">
@@ -216,6 +262,7 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
             placing={placing}
             onPlaceTile={(x, y) => placing && setPlacing({ ...placing, x, y })}
             shift={narrow && (panel || selected !== null) ? 0.12 : 0}
+            firstPerson={firstPerson}
           />
         )}
         {showStreet && (
@@ -230,9 +277,11 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
               if (id !== "home") openPanel("do", id);
             }}
             onStop={() => setWalking(false)}
+            firstPerson={firstPerson}
           />
         )}
       </Suspense>
+      {camHint && firstPerson && (showRoom || walking) && <div className="cam-hint" onAnimationEnd={() => setCamHint(false)}>{t("camera.look")}</div>}
       {!showRoom && !showStreet && <CityBackdrop time={state.time} name={tx.district(state.location)} />}
 
       {/* ---------- top: who, when, money and needs ---------- */}
@@ -277,6 +326,17 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
         <button aria-pressed={paused} onClick={() => setPaused(p => !p)} aria-label={paused ? t("side.play") : t("side.pause")}>
           {paused ? "▶" : "❚❚"}<small>{paused ? t("side.play") : t("side.pause")}</small>
         </button>
+        <button
+          aria-pressed={firstPerson}
+          onClick={() => {
+            dispatch({ type: "camera", mode: firstPerson ? "top" : "first" });
+            setCamHint(!firstPerson);
+          }}
+          aria-label={firstPerson ? t("camera.toTop") : t("camera.toFirst")}
+          title={firstPerson ? t("camera.toTop") : t("camera.toFirst")}
+        >
+          {firstPerson ? "🗺️" : "🎥"}<small>{t("camera.view")}</small>
+        </button>
         <button onClick={() => setSpeed(s => (s === 1 ? 2 : s === 2 ? 4 : 1))} aria-label={t("side.speedAria", { speed })}>
           {speed}×<small>{t("side.speed")}</small>
         </button>
@@ -291,7 +351,14 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
             <button className="btn" disabled={state.money <= 0} onClick={() => dispatch({ type: "payRent" })}>{t("hud.pay")}</button>
           </div>
         )}
-        {!paused && (panel || placing) && <div className="paused-note">{t("hud.pausedPanel")}</div>}
+        {daily?.canClaim && dailySeen !== daily.today && !phone && (
+          <div className="daily-note" role="status">
+            <span>🎁 {t("daily.ready", { money: nairaFmt(daily.nextAmount), day: daily.nextDay })}</span>
+            <button className="btn" onClick={() => { setPanel(null); setPhone("rewards"); }}>{t("daily.open")}</button>
+            <button className="btn plain" onClick={hideDaily} aria-label={t("ui.close")}>✕</button>
+          </div>
+        )}
+        {!paused && (panel || placing || phone) && <div className="paused-note">{t("hud.pausedPanel")}</div>}
         {paused && <div className="paused-note">{t("hud.paused")}</div>}
       </div>
 
@@ -338,10 +405,21 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
         {!walking && (
           <nav className="dock" aria-label={t("hud.menu")}>
             {dock.map(d => (
-              <button key={d.id} aria-pressed={panel === d.id} onClick={() => openPanel(panel === d.id ? null : d.id)}>
+              <button
+                key={d.id}
+                aria-pressed={d.id === "phone" ? phone !== null : panel === d.id}
+                onClick={() => {
+                  if (d.id === "phone") {
+                    setPanel(null);
+                    setSelected(null);
+                    setPhone(phone ? null : "home");
+                  } else openPanel(panel === d.id ? null : d.id);
+                }}
+              >
                 <span aria-hidden>{d.emoji}</span>
                 {t(`dock.${d.id}`)}
                 {missionDock === d.id && <i className="tab-tag" aria-label={t("hud.missionHere")}>🎯</i>}
+                {d.id === "phone" && phoneBadge > 0 && <i className="phone-badge dock-badge" aria-label={t("phone.badge", { n: phoneBadge })}>{phoneBadge > 9 ? "9+" : phoneBadge}</i>}
               </button>
             ))}
           </nav>
@@ -411,6 +489,21 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
         />
       )}
 
+      {phone && (
+        <Phone
+          state={state}
+          dispatch={dispatch}
+          app={phone === "home" ? null : phone}
+          onApp={a => setPhone(a ?? "home")}
+          onClose={() => { setPhone(null); setClaimed(null); }}
+          onTravel={() => { setPhone(null); setPanel("go"); }}
+          daily={daily}
+          onClaim={claim}
+          claiming={claiming}
+          claimed={claimed}
+          userId={userId}
+        />
+      )}
       {ride && <Cutscene ride={ride} onDone={endRide} />}
       {guide && <Guide time={state.time} onClose={() => setGuide(false)} />}
       {eventOpen && !guide && <EventSheet state={state} dispatch={dispatch} />}

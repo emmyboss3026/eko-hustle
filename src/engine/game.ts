@@ -23,6 +23,14 @@ import { spots, spotOpen, type SpotId } from "../data/spots";
 import { missions } from "../data/missions";
 import { translate, type Lang } from "../i18n/core";
 import { text } from "../i18n/text";
+import {
+  newDay, phoneStep, startPhone, addRep, bond, BANK_SIZE,
+  type Kit, type PhoneCommand, type Txn, type TxnCat, type Holding, type Trade, type ContactState,
+  type OpenInvite, type PhoneMsg, type DailyClaim,
+} from "./phone";
+import type { FundId } from "../data/invest";
+import type { OwnedBiz } from "../data/business";
+import type { ContactId } from "../data/contacts";
 
 export type EndingKind = "japa" | "landlord" | "evicted" | "collapsed";
 export type Ending = { kind: EndingKind; day: number };
@@ -72,6 +80,19 @@ export type GameState = {
   diary?: DiaryEntry[];     // everything that has happened, oldest first (the life story)
   dayStart?: { earned: number; spent: number }; // money at the start of today (for the day summary)
   relaxed?: boolean;        // relaxed survival (default on; false = classic rules). See data/survival.ts
+  // ----- the phone (see engine/phone.ts). All optional so older saves still load. -----
+  seed?: number;            // makes fund prices, business takings and invitations repeatable for this life
+  uidSeq?: number;          // next id for messages and invitations
+  bank?: Txn[];             // every naira in or out, oldest first
+  rep?: number;             // reputation 0–100
+  portfolio?: Partial<Record<FundId, Holding>>;
+  trades?: Trade[];
+  businesses?: OwnedBiz[];
+  contacts?: Partial<Record<ContactId, ContactState>>;
+  invites?: OpenInvite[];
+  messages?: PhoneMsg[];
+  daily?: DailyClaim[];     // daily login rewards credited to this life
+  camera?: "top" | "first"; // overhead or first-person view
 };
 
 export type DiaryEntry = { t: number; line: string };
@@ -93,7 +114,8 @@ export type Command =
   | { type: "relaxed"; on: boolean }
   | { type: "choose"; index: number; roll: number }
   | { type: "goal"; id: GoalStepId; roll: number }
-  | { type: "reward" };   // the player finished watching a rewarded ad
+  | { type: "reward" }    // the player finished watching a rewarded ad
+  | PhoneCommand;
 
 export const AD_REWARD = 3_000;
 
@@ -118,10 +140,11 @@ function startHome(): Home {
   };
 }
 
-export function newGame(sim: Sim, lang: Lang = "en"): GameState {
+export function newGame(sim: Sim, lang: Lang = "en", seed?: number): GameState {
   const first = translate(lang, "log.arrive", { name: sim.name, money: naira(START_MONEY), rent: naira(RENT) });
-  return {
+  return startPhone({
     version: 4,
+    seed,
     sim,
     time: 8 * 60,
     money: START_MONEY,
@@ -145,7 +168,9 @@ export function newGame(sim: Sim, lang: Lang = "en"): GameState {
     moodlets: [],
     counts: {},
     mission: 0,
-  };
+    rep: 0,
+    bank: [{ t: 8 * 60, amt: START_MONEY, cat: "other", label: translate(lang, "bank.start") }],
+  });
 }
 
 /** Bring an older save up to date, or return null if it isn't a save at all. */
@@ -190,15 +215,37 @@ function say(s: GameState, line: string): GameState {
 const msg = (s: GameState, key: string, vars?: Record<string, string | number>) => translate(s.lang ?? "en", key, vars);
 const tx = (s: GameState) => text(s.lang ?? "en");
 
-function pay(s: GameState, amount: number): GameState {
-  if (amount <= 0) return s;
-  return { ...s, money: s.money + amount, stats: { ...s.stats, earned: s.stats.earned + amount } };
+function ledger(s: GameState, amt: number, cat: TxnCat, label: string): GameState {
+  const bank = [...(s.bank ?? []), { t: s.time, amt: Math.round(amt), cat, label }];
+  return { ...s, bank: bank.length > BANK_SIZE ? bank.slice(-BANK_SIZE) : bank };
 }
 
-function charge(s: GameState, amount: number): GameState {
+/** Money in that counts as earnings. */
+function pay(s: GameState, amount: number, cat: TxnCat = "other", label = ""): GameState {
   if (amount <= 0) return s;
-  return { ...s, money: s.money - amount, stats: { ...s.stats, spent: s.stats.spent + amount } };
+  return ledger({ ...s, money: s.money + amount, stats: { ...s.stats, earned: s.stats.earned + amount } }, amount, cat, label);
 }
+
+/** Money out that counts as spending. */
+function charge(s: GameState, amount: number, cat: TxnCat = "other", label = ""): GameState {
+  if (amount <= 0) return s;
+  return ledger({ ...s, money: s.money - amount, stats: { ...s.stats, spent: s.stats.spent + amount } }, -amount, cat, label);
+}
+
+/** Money moved in or out that is neither income nor spending (investments, selling things). */
+function move(s: GameState, amount: number, cat: TxnCat, label: string): GameState {
+  if (!amount) return s;
+  return ledger({ ...s, money: s.money + amount }, amount, cat, label);
+}
+
+const ACTION_CAT: Record<Action["category"], TxnCat> = {
+  food: "food", home: "home", money: "hustle", fun: "social", care: "other", learn: "other", rest: "other", phone: "other",
+};
+
+// Reputation for being out and about
+const REP_ACTIONS: Record<string, number> = {
+  host: 1, gist: 1, worship: 1, networking: 2, mingle: 1, vip: 3, "mama-gist": 1, "call-mummy": 1, meetup: 1, "chopnow-pizza": 1,
+};
 
 function bump(s: GameState, key: string, by = 1): GameState {
   return { ...s, counts: { ...s.counts, [key]: (s.counts?.[key] ?? 0) + by } };
@@ -290,6 +337,7 @@ export function passTime(s: GameState, minutes: number, effect?: Partial<Needs>,
       day: dayOf(s.time), earned: naira(next.stats.earned - start.earned), spent: naira(next.stats.spent - start.spent),
     });
     next = { ...next, dayStart: { earned: next.stats.earned, spent: next.stats.spent }, diary: [...(next.diary ?? []), { t: time, line }].slice(-DIARY_SIZE) };
+    for (let d = dayOf(s.time) + 1; d <= dayOf(time); d++) next = newDay(next, d, kit);
   }
   next = { ...next, moodlets: (next.moodlets ?? []).filter(m => m.until > time) };
   if (needs.social < 15 && !next.moodlets.some(m => m.id === "lonely")) next = addMood(next, "lonely");
@@ -302,7 +350,7 @@ export function passTime(s: GameState, minutes: number, effect?: Partial<Needs>,
     const owed = next.rentOwed + RENT;
     const paid = Math.min(next.money, owed);
     const left = owed - paid;
-    next = { ...charge(next, paid), rentOwed: left };
+    next = { ...charge(next, paid, "rent", msg(next, "bank.rent")), rentOwed: left };
     if (left === 0) {
       next = dropMood(bump(next, "rentPaid"), "rentPressure");
       next = say(next, owed > RENT ? msg(next, "log.rentArrears", { money: naira(owed) }) : msg(next, "log.rentPaid", { money: naira(RENT) }));
@@ -310,11 +358,11 @@ export function passTime(s: GameState, minutes: number, effect?: Partial<Needs>,
       next = say(next, msg(next, "log.evicted", { money: naira(left) }));
       return end(next, "evicted");
     } else {
-      next = addMood({ ...next, needs: { ...next.needs, fun: Math.max(0, next.needs.fun - 15) } }, "rentPressure");
+      next = addRep(addMood({ ...next, needs: { ...next.needs, fun: Math.max(0, next.needs.fun - 15) } }, "rentPressure"), -3);
       next = say(next, msg(next, "log.rentShort", { money: naira(left) }));
     }
   }
-  if (accident) next = addMood(say(next, msg(next, "log.accident")), "accident");
+  if (accident) next = addRep(addMood(say(next, msg(next, "log.accident")), "accident"), -2);
   if (next.health <= 0) {
     next = say(next, msg(next, "log.collapsed"));
     return end(next, "collapsed");
@@ -437,8 +485,8 @@ export function checkMissions(s: GameState): GameState {
     const m = missions[next.mission ?? 0];
     if (!m || !m.done(next)) break;
     next = { ...next, mission: (next.mission ?? 0) + 1 };
-    if (m.reward) next = pay(next, m.reward);
-    next = addMood(next, "mission");
+    if (m.reward) next = pay(next, m.reward, "mission", tx(next).mission(m).title);
+    next = addRep(addMood(next, "mission"), 1);
     next = say(next, msg(next, "log.mission", { title: tx(next).mission(m).title }) + (m.reward ? ` +${naira(m.reward)}` : ""));
   }
   return next;
@@ -470,7 +518,7 @@ function step(s: GameState, cmd: Command): GameState {
       if (!a) return s;
       const problem = canDo(s, a);
       if (problem) return say(s, `❌ ${tx(s).action(a)}: ${problem}`);
-      let next = charge(s, a.cost);
+      let next = charge(s, a.cost, ACTION_CAT[a.category], tx(s).action(a));
       if (a.food || a.stock) {
         next = {
           ...next,
@@ -486,9 +534,13 @@ function step(s: GameState, cmd: Command): GameState {
       if (next.ending) return next;
       next = bump(learn(next, a.skill), a.id);
       if (a.mood) next = addMood(next, a.mood);
+      if (REP_ACTIONS[a.id]) next = addRep(next, REP_ACTIONS[a.id]);
+      if (a.id === "call-mummy") next = bond(next, "mummy", 4);
+      if (a.id === "mama-gist") next = bond(next, "ronke", 4);
+      if (a.id === "gist") next = bond(next, "tunde", 2);
       const earned = earnings(s, a);
       if (earned > 0) {
-        next = say(bump(pay(next, earned), "earned", earned), `${a.emoji} ${tx(s).action(a)}: +${naira(earned)}`);
+        next = say(bump(pay(next, earned, "hustle", tx(s).action(a)), "earned", earned), `${a.emoji} ${tx(s).action(a)}: +${naira(earned)}`);
       } else {
         next = say(next, `${a.emoji} ${tx(s).action(a)}`);
       }
@@ -517,7 +569,7 @@ function step(s: GameState, cmd: Command): GameState {
       let next = passTime(s, c.hours * 60, c.effect);
       if (next.ending) return next;
       next = learn(next, c.skill);
-      next = addMood(bump(bump(pay(next, earned), "work"), "earned", earned), "payday");
+      next = addMood(bump(bump(pay(next, earned, "work", tx(s).title(c.id, s.career.level)), "work"), "earned", earned), "payday");
       const career = { ...s.career, shifts: s.career.shifts + 1 };
       next = { ...next, career, stats: { ...next.stats, shifts: next.stats.shifts + 1 } };
       next = say(next, msg(s, "log.shift", { title: tx(s).title(c.id, s.career.level), money: naira(earned) }));
@@ -529,7 +581,7 @@ function step(s: GameState, cmd: Command): GameState {
           career: { id: c.id, level: career.level + 1, shifts: 0 },
           stats: { ...next.stats, promotions: next.stats.promotions + 1 },
         };
-        next = addMood(next, "promoted");
+        next = addRep(addMood(next, "promoted"), 3);
         next = say(next, msg(s, "log.promo", { title: tx(s).title(c.id, career.level + 1), money: naira(Math.round(up.pay * payBonus(s.sim.trait))) }));
       }
       return next;
@@ -541,7 +593,7 @@ function step(s: GameState, cmd: Command): GameState {
       const t = trip(s.location, cmd.to, mode, s.time);
       const fare = fareFor(t.cost, s.sim.trait);
       if (s.money < fare) return say(s, msg(s, "log.fare", { mode: tx(s).mode(mode.id) }));
-      let next = charge(s, fare);
+      let next = charge(s, fare, "transport", `${tx(s).mode(mode.id)} → ${tx(s).district(cmd.to)}`);
       next = passTime(next, t.minutes, { energy: -t.energy });
       if (next.ending) return next;
       next = bump({ ...next, location: cmd.to, stats: { ...next.stats, trips: next.stats.trips + 1 } }, "travel");
@@ -583,11 +635,11 @@ function step(s: GameState, cmd: Command): GameState {
       if (s.money < cost) return say(s, msg(s, "log.cantAfford"));
       const won = c.chance && cmd.roll < c.chance.odds;
       const outcome: Outcome = won && c.chance ? c.chance.win : c;
-      let next: GameState = { ...charge(s, cost), eventId: null };
+      let next: GameState = { ...charge(s, cost, c.sendHome ? "family" : "event", tx(s).event(e).title), eventId: null };
       if (c.sendHome) next = { ...next, stats: { ...next.stats, sentHome: next.stats.sentHome + cost } };
       next = passTime(next, c.minutes ?? 0, outcome.effect ? boosted(outcome.effect, s.sim.trait, false) : undefined);
       next = learn(next, outcome.skill);
-      next = pay(next, outcome.gain ?? 0);
+      next = pay(next, outcome.gain ?? 0, "event", tx(s).event(e).title);
       return say(next, `${e.emoji} ${tx(s).event(e).result(cmd.index, !!won)}`);
     }
 
@@ -598,7 +650,7 @@ function step(s: GameState, cmd: Command): GameState {
       if (problem) return say(s, `❌ ${tx(s).furniture(cmd.item)}: ${problem}`);
       const obj: Placed = { uid: s.home.nextUid, type: cmd.item, x: cmd.x, y: cmd.y, rot: cmd.rot % 4 };
       if (!canPlace(HOME, s.home.objects, obj)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(cmd.item) }));
-      const next = bump(charge(s, spec.price), "buy");
+      const next = bump(charge(s, spec.price, "home", tx(s).furniture(cmd.item)), "buy");
       return say(
         { ...next, home: { ...next.home, objects: [...next.home.objects, obj], nextUid: obj.uid + 1 } },
         msg(s, "log.bought", { item: tx(s).furniture(cmd.item), money: naira(spec.price) }),
@@ -620,7 +672,7 @@ function step(s: GameState, cmd: Command): GameState {
       if (s.location !== "mushin") return say(s, msg(s, "log.goHomeSell"));
       const refund = sellPrice(obj.type);
       return say(
-        { ...s, money: s.money + refund, home: { ...s.home, objects: s.home.objects.filter(o => o.uid !== obj.uid) } },
+        move({ ...s, home: { ...s.home, objects: s.home.objects.filter(o => o.uid !== obj.uid) } }, refund, "home", tx(s).furniture(obj.type)),
         msg(s, "log.sold", { item: tx(s).furniture(obj.type), money: naira(refund) }),
       );
     }
@@ -629,7 +681,7 @@ function step(s: GameState, cmd: Command): GameState {
       if (s.rentOwed <= 0) return say(s, msg(s, "log.noOwe"));
       const amount = Math.min(s.money, s.rentOwed);
       if (amount <= 0) return say(s, msg(s, "log.noMoneyRent"));
-      let next = { ...charge(s, amount), rentOwed: s.rentOwed - amount };
+      let next = { ...charge(s, amount, "rent", msg(s, "bank.rent")), rentOwed: s.rentOwed - amount };
       if (next.rentOwed <= 0) next = dropMood(next, "rentPressure");
       return say(next, next.rentOwed > 0
         ? msg(s, "log.paidPart", { money: naira(amount), left: naira(next.rentOwed) })
@@ -638,7 +690,7 @@ function step(s: GameState, cmd: Command): GameState {
 
     case "reward": {
       if (!canClaimReward(s)) return say(s, msg(s, "log.adDone"));
-      const next = { ...pay(s, AD_REWARD), lastRewardDay: dayOf(s.time) };
+      const next = { ...pay(s, AD_REWARD, "reward", msg(s, "bank.ad")), lastRewardDay: dayOf(s.time) };
       return say(next, msg(s, "log.ad", { money: naira(AD_REWARD) }));
     }
 
@@ -647,7 +699,7 @@ function step(s: GameState, cmd: Command): GameState {
       const problem = goalBlocker(s, cmd.id);
       if (problem) return say(s, `❌ ${tx(s).goal(cmd.id).name}: ${problem}`);
       const chance = goalChance(s, cmd.id);
-      let next = passTime(charge(s, g.cost), g.minutes, { energy: -15 });
+      let next = passTime(charge(s, g.cost, "goals", tx(s).goal(cmd.id).name), g.minutes, { energy: -15 });
       if (next.ending) return next;
       if (cmd.id === "ielts") {
         return cmd.roll < (chance ?? 0)
@@ -663,5 +715,12 @@ function step(s: GameState, cmd: Command): GameState {
       if (cmd.id === "house") return end(say(next, msg(s, "log.landlord")), "landlord");
       return next;
     }
+
+    default:
+      // Everything on the phone (bank, invest, business, contacts, invites, messages, daily rewards, camera)
+      return phoneStep(s, cmd, kit);
   }
 }
+
+/** The helpers the phone module uses (passed in to avoid a circular import). */
+const kit: Kit = { say, msg, pay, charge, move, passTime, learn, addMood, bump };

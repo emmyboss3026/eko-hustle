@@ -14,6 +14,7 @@ type Props = {
   focus: SpotId | null;        // the place shown when you're not walking
   onEnter: (went: SpotId) => void;
   onStop: () => void;          // stop walking
+  firstPerson: boolean;        // see through the Sim's eyes while walking
 };
 
 // Where you appear when you step outside in each district
@@ -22,7 +23,7 @@ const DOOR_IDS = Object.keys(DOORS) as SpotId[];
 
 /** The open-world streets, full screen: walk around Lagos in 3D and go in through any door.
  *  When you're not walking, it shows the place you're at. */
-export default function StreetScene({ state, dispatch, walking, focus, onEnter, onStop }: Props) {
+export default function StreetScene({ state, dispatch, walking, focus, onEnter, onStop, firstPerson }: Props) {
   const { t, tx } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const view = useRef<StreetView | null>(null);
@@ -100,7 +101,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       const dt = Math.min(0.25, (now - last) / 1000);
       last = now;
       sv.setActive(walkingRef.current);
-      sv.controls.enabled = true; // you can always turn the camera
+      sv.controls.enabled = !sv.fp; // you can always turn the camera (in first person, dragging looks around)
       sv.setState(scene.current, info.current);
       sv.update(dt, { paused: blocked.current || !walkingRef.current });
       const n = sv.near?.id ?? null;
@@ -135,6 +136,10 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
     if (view.current) view.current.run = run;
   }, [run]);
 
+  useEffect(() => {
+    view.current?.setFirstPerson(firstPerson && walking);
+  }, [firstPerson, walking]);
+
   // Start walking: step out a few paces from the door of where you are.
   // Stop walking: look at the place you're at.
   useEffect(() => {
@@ -142,7 +147,8 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       const start = DOORS[focusRef.current ?? START[state.location] ?? "home"] ?? DOORS.home;
       const out: Record<string, [number, number]> = { n: [0, -6], s: [0, 6], e: [6, 0], w: [-6, 0] };
       const [ox, oz] = out[start.face] ?? [0, 0];
-      scene.current = { sim: { away: { kind: "street", x: start.x + ox, z: start.z + oz, yaw: 0 } } };
+      // Face away from the door you came out of
+      scene.current = { sim: { away: { kind: "street", x: start.x + ox, z: start.z + oz, yaw: Math.atan2(ox, oz) } } };
     } else {
       scene.current = { sim: { away: { kind: "place", place: focus ?? "hub" } } };
       setMenu(false);
@@ -152,6 +158,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
 
   // Tap: walk to a building's door, or to a spot on the ground
   const down = useRef<{ x: number; y: number } | null>(null);
+  const last = useRef({ x: 0, y: 0 });
   function onPointerUp(e: React.PointerEvent) {
     const start = down.current;
     down.current = null;
@@ -202,7 +209,16 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       <div
         ref={box}
         className="scene"
-        onPointerDown={e => (down.current = { x: e.clientX, y: e.clientY })}
+        onPointerDown={e => {
+          down.current = { x: e.clientX, y: e.clientY };
+          last.current = { x: e.clientX, y: e.clientY };
+        }}
+        onPointerMove={e => {
+          // First person: drag to look around
+          if (!down.current || !view.current?.fp) return;
+          view.current.look(e.clientX - last.current.x, e.clientY - last.current.y);
+          last.current = { x: e.clientX, y: e.clientY };
+        }}
         onPointerUp={onPointerUp}
         role="img"
         aria-label={walking ? t("street.aria") : t("street.ariaPlace")}

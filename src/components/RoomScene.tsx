@@ -15,6 +15,7 @@ type Props = {
   placing: Placing | null;
   onPlaceTile: (x: number, y: number) => void;
   shift: number;   // how far to draw the room up the screen (when a panel covers the bottom)
+  firstPerson: boolean; // see through the Sim's eyes
 };
 
 const shirts: Record<string, string> = {
@@ -28,7 +29,7 @@ export function placingValid(state: GameState, p: Placing | null): boolean {
 }
 
 /** Your room in 3D, filling the whole screen. Tap furniture to use it, tap the floor to walk. */
-export default function RoomScene({ state, viewRef, selected, onSelect, placing, onPlaceTile, shift }: Props) {
+export default function RoomScene({ state, viewRef, selected, onSelect, placing, onPlaceTile, shift, firstPerson }: Props) {
   const { t } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const [noGl, setNoGl] = useState(false);
@@ -59,6 +60,10 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
     viewRef.current?.setViewShift(shift);
   }, [shift, viewRef]);
 
+  useEffect(() => {
+    viewRef.current?.setFirstPerson(firstPerson);
+  }, [firstPerson, viewRef]);
+
   const valid = placingValid(state, placing);
   useEffect(() => {
     viewRef.current?.setGhost(
@@ -70,6 +75,7 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
 
   // Taps (a drag turns the camera instead)
   const down = useRef<{ x: number; y: number } | null>(null);
+  const last = useRef({ x: 0, y: 0 });
   function onPointerUp(e: React.PointerEvent) {
     const start = down.current;
     down.current = null;
@@ -94,7 +100,17 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
       <div
         ref={box}
         className="scene"
-        onPointerDown={e => (down.current = { x: e.clientX, y: e.clientY })}
+        onPointerDown={e => {
+          down.current = { x: e.clientX, y: e.clientY };
+          last.current = { x: e.clientX, y: e.clientY };
+        }}
+        onPointerMove={e => {
+          // First person: drag to look around
+          const v = viewRef.current;
+          if (!down.current || !v?.firstPerson) return;
+          v.look(e.clientX - last.current.x, e.clientY - last.current.y);
+          last.current = { x: e.clientX, y: e.clientY };
+        }}
         onPointerUp={onPointerUp}
         role="img"
         aria-label={t("room.aria")}

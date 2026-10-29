@@ -3,6 +3,7 @@ import { useLang } from "../i18n/react";
 
 // Simple how-tos, written as taps on this screen. The words are in the translation files ("help.<id>.*").
 const howTos = [
+  { id: "phone", emoji: "📱", steps: 3 },
   { id: "eat", emoji: "🍲", steps: 3 },
   { id: "sleep", emoji: "😴", steps: 3 },
   { id: "toilet", emoji: "🚽", steps: 2 },
@@ -18,6 +19,9 @@ const howTos = [
   { id: "fastfood", emoji: "🍔", steps: 3 },
   { id: "diary", emoji: "📖", steps: 2 },
   { id: "language", emoji: "🌍", steps: 2 },
+  { id: "rewards", emoji: "🎁", steps: 2 },
+  { id: "board", emoji: "🏆", steps: 2 },
+  { id: "camera", emoji: "🎥", steps: 2 },
   { id: "feedback", emoji: "💬", steps: 3 },
 ];
 

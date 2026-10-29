@@ -55,3 +55,25 @@ describe("language", () => {
     expect(switched.lang).toBe("pcm");
   });
 });
+
+describe("phone text", () => {
+  it("every fund, business, invitation, contact, achievement, status and app has its English text", async () => {
+    const { FUNDS } = await import("../data/invest");
+    const { BUSINESSES } = await import("../data/business");
+    const { INVITES } = await import("../data/invites");
+    const { CONTACTS } = await import("../data/contacts");
+    const { ACHIEVEMENTS, STATUS } = await import("../engine/progress");
+    const { APPS } = await import("../components/phone/Phone");
+    const keys = [
+      ...FUNDS.flatMap(f => [`fund.${f.id}.name`, `fund.${f.id}.desc`]),
+      ...BUSINESSES.flatMap(b => [`biz.${b.id}.name`, `biz.${b.id}.desc`]),
+      ...INVITES.flatMap(i => [`invite.${i.id}.name`, `invite.${i.id}.desc`, `invites.kind.${i.kind}`]),
+      ...CONTACTS.flatMap(c => ["name", "role", "about", "helps"].map(p => `contact.${c.id}.${p}`).concat(`help.from.${c.id}`)),
+      ...ACHIEVEMENTS.flatMap(a => [`ach.${a.id}.name`, `ach.${a.id}.desc`]),
+      ...STATUS.map(s => s.key),
+      ...APPS.map(a => `app.${a.id}`),
+      ...["work", "hustle", "mission", "reward", "event", "family", "food", "home", "rent", "transport", "goals", "invest", "business", "social", "other"].map(c => `bank.cat.${c}`),
+    ];
+    expect(keys.filter(k => !(k in en))).toEqual([]);
+  });
+});

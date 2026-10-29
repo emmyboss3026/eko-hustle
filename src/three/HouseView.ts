@@ -50,6 +50,7 @@ export class HouseView {
   private raycaster = new THREE.Raycaster();
   private windowMat!: THREE.MeshStandardMaterial;
   private backWall = new THREE.Group();
+  private fpWalls = new THREE.Group(); // full-height walls and a ceiling, only in first person
   private leftWall = new THREE.Group();
   private compound!: ReturnType<typeof buildCompound>;
   private objects: Placed[] = [];
@@ -60,6 +61,11 @@ export class HouseView {
   private raf = 0;
   private onResize = () => this.resize();
   private shift = 0;
+  // First-person view: the camera at the Sim's eyes; drag to look around.
+  private fp = false;
+  private fpYaw = 0;
+  private fpPitch = -0.15;
+  private saved: { pos: THREE.Vector3; target: THREE.Vector3 } | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
   constructor(container: HTMLElement, look?: Partial<Look>) {
@@ -114,6 +120,38 @@ export class HouseView {
       this.resizeObserver.observe(container);
     }
     this.raf = requestAnimationFrame(this.frame);
+  }
+
+  /** Switch between the overhead camera and the Sim's own eyes. */
+  setFirstPerson(on: boolean) {
+    if (on === this.fp) return;
+    this.fp = on;
+    this.controls.enabled = !on;
+    this.camera.fov = on ? 75 : 45;
+    this.fpWalls.visible = on;
+    if (on) {
+      this.saved = { pos: this.camera.position.clone(), target: this.controls.target.clone() };
+      // Start by looking into the flat, not out of the door.
+      const p = this.simPos ?? tileCenter(this.simTile.x, this.simTile.y);
+      this.fpYaw = Math.atan2(-p.x, -p.z);
+      this.fpPitch = -0.15;
+    } else if (this.saved) {
+      this.camera.position.copy(this.saved.pos);
+      this.controls.target.copy(this.saved.target);
+      this.camera.lookAt(this.saved.target);
+    }
+    this.camera.updateProjectionMatrix();
+  }
+
+  get firstPerson() {
+    return this.fp;
+  }
+
+  /** Drag to look around in first person. */
+  look(dx: number, dy: number) {
+    if (!this.fp) return;
+    this.fpYaw -= dx * 0.006;
+    this.fpPitch = Math.max(-1.2, Math.min(0.6, this.fpPitch - dy * 0.005));
   }
 
   /** Draw the room higher up the screen (0 = centred), e.g. while a panel covers the bottom. */
@@ -218,6 +256,7 @@ export class HouseView {
     shell.add(box(1, 0.02, 0.14, "#6d4c41", (doorX0 + doorX1) / 2, 0.01, dz));
 
     // Inside walls, with gaps for doors.
+    const topH = WALL_H - 1.1;
     for (const w of HOME.walls) {
       for (let i = w.from; i < w.to; i++) {
         if (w.doors.includes(i)) continue;
@@ -226,9 +265,30 @@ export class HouseView {
             ? box(0.08, 1.1, 1, mat(HOME.wall), w.at - HALF, 0.55, i + 0.5 - HALF)
             : box(1, 1.1, 0.08, mat(HOME.wall), i + 0.5 - HALF, 0.55, w.at - HALF),
         );
+        // In first person the inside walls go up to the ceiling.
+        this.fpWalls.add(
+          w.axis === "v"
+            ? box(0.08, topH, 1, wallMat, w.at - HALF, 1.1 + topH / 2, i + 0.5 - HALF)
+            : box(1, topH, 0.08, wallMat, i + 0.5 - HALF, 1.1 + topH / 2, w.at - HALF),
+        );
       }
     }
-    this.scene.add(shell);
+    // First person: the front and right walls stand at full height (with the front door open)…
+    const upH = WALL_H - stub;
+    this.fpWalls.add(box(doorX0 + HALF, upH, 0.1, wallMat, (-HALF + doorX0) / 2, stub + upH / 2, dz));
+    this.fpWalls.add(box(HALF - doorX1, upH, 0.1, wallMat, (doorX1 + HALF) / 2, stub + upH / 2, dz));
+    this.fpWalls.add(box(1, WALL_H - 1.25, 0.1, wallMat, (doorX0 + doorX1) / 2, 1.25 + (WALL_H - 1.25) / 2, dz)); // over the door
+    this.fpWalls.add(box(0.1, upH, HOME.size + 0.1, wallMat, HALF + 0.05, stub + upH / 2, 0));
+    // …and there's a ceiling.
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(HOME.size + 0.2, HOME.size + 0.2), new THREE.MeshStandardMaterial({ color: "#f1ede4", side: THREE.DoubleSide }));
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.position.y = WALL_H;
+    this.fpWalls.add(ceiling);
+    this.fpWalls.traverse(o => {
+      if (o instanceof THREE.Mesh) o.castShadow = false;
+    });
+    this.fpWalls.visible = false;
+    this.scene.add(shell, this.fpWalls);
   }
 
   /** Feed the latest furniture and light. Rebuilds furniture only when something changed. */
@@ -373,7 +433,7 @@ export class HouseView {
     }
     for (const tick of this.ticks) tick(dt, t);
 
-    this.sim.root.visible = this.info.home;
+    this.sim.root.visible = this.info.home && !this.fp;
     this.marker.visible = this.info.home && this.path.length > 0;
     if (this.marker.visible) {
       const end = this.path[this.path.length - 1];
@@ -406,6 +466,21 @@ export class HouseView {
       this.pose(moving && pose !== "lie" && pose !== "sit" ? "walk" : pose, t);
     }
 
+    if (this.fp && this.simPos) {
+      // Walking somewhere turns your head that way.
+      const head = this.path[0];
+      if (head) {
+        let d = this.simYaw - this.fpYaw;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        this.fpYaw += d * Math.min(1, dt * 4);
+      }
+      const eye = this.simPos.clone().setY(this.simPos.y > 0.01 ? this.simPos.y + 0.45 : 1.0); // standing, or sitting/lying
+      const dir = new THREE.Vector3(Math.sin(this.fpYaw) * Math.cos(this.fpPitch), Math.sin(this.fpPitch), Math.cos(this.fpYaw) * Math.cos(this.fpPitch));
+      this.camera.position.copy(eye);
+      this.camera.lookAt(eye.clone().add(dir));
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
     this.controls.update();
     const tg = this.controls.target;
     const lim = HALF + 1;

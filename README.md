@@ -21,6 +21,22 @@ Eko Hustle merges **Hustle & Japa** with **Gidi Hustle v0.5**:
 - **📖 Diary:** everything that happens is saved with your game, day by day and searchable, plus a list of your past lives.
 - **Fast food:** Mama Put Express, Jollof Junction, Big Bite Burgers, Crunchy Chicken and ChopNow delivery, and a fast-food career. All names are made up for the game.
 
+**New: the 📱 phone.** A real phone in the game (bottom dock), with red badges for anything new:
+
+| App | What it does |
+| --- | --- |
+| 💬 Messages | Story messages from the people in your life, invitations and reports. Quick replies change friendships. |
+| 🏦 Bank | Balance, net worth, money in and out by category, and every transaction. |
+| 📈 Invest | Six made-up funds, from a safe savings box to a wild token. Prices move once a game day. Profit, loss and history. |
+| 🏪 Business | Buy a pure water stand, suya spot, POS kiosk, keke, salon or mini-mart. Upgrade, hire and fire staff, and collect the daily profit. |
+| 💌 Invites | Parties, business mixers, VIP nights, job chances. Accept or decline before they expire. |
+| 📇 Contacts | Eight people with relationships from 0 to 100. Call, text, send gifts, and ask close friends for help once a week. |
+| 🎁 Rewards | Daily login reward: ₦1,000 → ₦10,000 over 7 days, then it starts again. One missed day is forgiven. |
+| 🏆 Leaderboard | Global, Wealth, Status and This week, with medals, search, your own position and player profiles. |
+| 💼 Jobs · 🛵 Quick | The jobs list, and everything you can do on your phone anywhere. |
+
+**Progress** (worked out from the save, never stored twice): level, net worth, reputation, social status (JJC → Eko royalty), 18 achievements and a score. **🎥 View** on the right switches between the overhead camera and first person in your flat and on the streets.
+
 ## How to play (short)
 
 - **Tap furniture** in your flat to use it (bed, burner, bucket, toilet…). Tap the floor to walk, drag to turn, pinch or scroll to zoom.
@@ -37,7 +53,7 @@ Eko Hustle merges **Hustle & Japa** with **Gidi Hustle v0.5**:
 ```powershell
 npm install      # once, or after package.json changes
 npm run dev      # play at http://localhost:5173
-npm test         # 50 tests: game rules, survival modes and translations
+npm test         # 66 tests: game rules, phone, survival modes and translations
 npm run build    # production build in the dist folder
 ```
 
@@ -64,6 +80,7 @@ npm run build    # production build in the dist folder
 - Rent amount and start money: `src/engine/economy.ts`
 - How fast you can die: `src/data/survival.ts`. **Relaxed survival** is on by default (slower clock, slower needs, gentler health loss, accidents and passing out instead of dying). Players can switch to Classic in 👤 Me → Settings. Kill switch: set `RELAXED_SURVIVAL = false` to remove it for everyone.
 - Characters and looks: `src/data/characters.ts`
+- Phone: funds `src/data/invest.ts`, businesses `src/data/business.ts`, contacts `src/data/contacts.ts`, invitations `src/data/invites.ts`, daily rewards `src/data/daily.ts`; rules in `src/engine/phone.ts`; level, status, achievements and score in `src/engine/progress.ts`
 - Text in other languages: `src/i18n/de.ts` and `src/i18n/pcm.ts` (when you add or change English text, add the same key there too)
 
 ## Optional online features
@@ -72,7 +89,7 @@ Copy `.env.example` to `.env` and fill in what you've set up. Anything left empt
 
 | Feature | Needs |
 | --- | --- |
-| Accounts, cloud save, leaderboard, feedback | Supabase project + `supabase/schema.sql` (feedback is section 5) |
+| Accounts, cloud save, feedback, daily rewards (server time), global leaderboard | Supabase project + `supabase/schema.sql`. On an existing project run `supabase/update-2026-10-phone.sql` once in the SQL Editor |
 | Visit statistics | Vercel → your project → Analytics → Enable (the code is already in `src/main.tsx`) |
 | Rewarded ads | Google AdSense approval for H5 Games Ads |
 | Supporter pack | Bachs account + `supabase/functions/bachs-checkout` and `bachs-webhook` |
@@ -80,3 +97,10 @@ Copy `.env.example` to `.env` and fill in what you've set up. Anything left empt
 ## Publish
 
 Push to a new GitHub repo, import it in Vercel (framework Vite, build `npm run build`, output `dist`), and connect Supabase. You can reuse the Hustle & Japa Supabase project: the tables are the same.
+
+
+## Not finished yet
+
+- **Friends rankings**: the tab is there, but it needs a friends system first.
+- **Player-to-player messages**: Messages only has story messages with ready-made replies, so there is nothing to moderate yet. Real chat would need reporting, blocking and a word filter on the server.
+- **Cheating**: the game runs on the player's device. The server checks every leaderboard update for numbers that are impossible by that day of the game and rate-limits updates, and players can't write the tables directly. Someone who carefully edits their own save could still post believable numbers; stopping that fully would need the game rules to run on the server.
