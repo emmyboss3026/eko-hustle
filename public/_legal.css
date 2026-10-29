@@ -1,0 +1,5 @@
+body{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;max-width:680px;margin:0 auto;padding:24px 16px 60px;line-height:1.55;color:#262622;background:#deddd6}
+h1{font-family:"Bungee","Arial Black",sans-serif;font-weight:400;background:#f2c200;margin:-24px -16px 24px;padding:28px 16px 18px;border-bottom:6px solid #262622}
+h2{margin-top:28px;font-size:19px}
+.todo{background:#fff3c2;border:1px solid #d9ad00;padding:10px 12px;border-radius:8px}
+a{color:#262622}

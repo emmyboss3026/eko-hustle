@@ -1,0 +1,58 @@
+:root {
+  --danfo: #f2c200;
+  --danfo-deep: #d9ad00;
+  --asphalt: #262622;
+  --concrete: #deddd6;
+  --sign: #ffffff;
+  --ink: #262622;
+  --ink-soft: #5f5e57;
+  --line: #c9c7bd;
+  --good: #0b7a4b;
+  --bad: #c8341e;
+  --display: "Bungee", "Arial Black", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --receipt: "Courier Prime", "Courier New", monospace;
+
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--concrete);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--concrete);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 3px solid var(--asphalt);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
