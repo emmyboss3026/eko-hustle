@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { newGame, reduce, passTime, shiftPay, mood, earnings, upgrade, type GameState } from "./game";
+import { newGame, reduce, passTime, shiftPay, mood, earnings, upgrade, canRevive, type GameState } from "./game";
 import { actionById } from "../data/actions";
 import { missions } from "../data/missions";
 import { RENT } from "./economy";
@@ -338,5 +338,61 @@ describe("relaxed survival (default) and the classic rules", () => {
     const s = passTime(fresh({ relaxed: false, needs: { ...fresh().needs, bladder: 1 } }), 60);
     expect(s.needs.bladder).toBe(0);
     expect(s.moodlets.some(m => m.id === "accident")).toBe(false);
+  });
+});
+
+describe("coming back after a collapse", () => {
+  const collapsed = () => {
+    const empty = { hunger: 0, energy: 0, fun: 0, social: 0, hygiene: 0, bladder: 0 };
+    return passTime(fresh({ needs: empty, health: 5, money: 10_000 }), 60);
+  };
+
+  it("an ad brings you back with some health and a hospital bill, 3 times per life", async () => {
+    const { REVIVE } = await import("../data/revive");
+    let s = collapsed();
+    expect(canRevive(s, "ad")).toBe(true);
+    const before = s.money;
+    s = reduce(s, { type: "revive", how: "ad" });
+    expect(s.ending).toBeNull();
+    expect(s.health).toBeGreaterThanOrEqual(REVIVE.ad.health);
+    expect(s.money).toBe(before - REVIVE.ad.bill);
+    expect(Object.values(s.needs).every(v => v >= REVIVE.ad.needsAtLeast)).toBe(true);
+    for (let i = 1; i < REVIVE.ad.perLife; i++) {
+      s = reduce({ ...s, ending: { kind: "collapsed", day: 9 } }, { type: "revive", how: "ad" });
+    }
+    const again = { ...s, ending: { kind: "collapsed" as const, day: 9 } };
+    expect(canRevive(again, "ad")).toBe(false);
+    expect(reduce(again, { type: "revive", how: "ad" })).toBe(again);
+  });
+
+  it("a gem gives full health with no bill, and each gem id works once", () => {
+    const s = collapsed();
+    expect(reduce(s, { type: "revive", how: "gem" })).toBe(s); // no gem id, nothing happens
+    const back = reduce(s, { type: "revive", how: "gem", ref: "gem-ref-0001" });
+    expect(back.ending).toBeNull();
+    expect(back.health).toBe(100);
+    expect(back.money).toBe(s.money);
+    const again = { ...back, ending: { kind: "collapsed" as const, day: 9 } };
+    expect(reduce(again, { type: "revive", how: "gem", ref: "gem-ref-0001" })).toBe(again);
+  });
+
+  it("you can't revive from other endings, or after ending the life", () => {
+    const s = collapsed();
+    const ended = reduce(s, { type: "finalize" });
+    expect(ended.ending?.final).toBe(true);
+    expect(canRevive(ended, "gem")).toBe(false);
+    expect(canRevive(fresh({ ending: { kind: "evicted", day: 3 } }), "ad")).toBe(false);
+    expect(canRevive(fresh(), "ad")).toBe(false);
+  });
+});
+
+describe("gem packs", () => {
+  it("prices match the server's product list", async () => {
+    const { GEM_PACKS } = await import("../data/revive");
+    const raw = (await import("../../supabase/functions/_shared/bachs.ts?raw")).default;
+    const server = raw.replace(/(\d)_(\d)/g, "$1$2");
+    for (const p of GEM_PACKS) {
+      expect(server).toMatch(new RegExp(`"${p.id}":\\s*\\{\\s*naira:\\s*${p.price}\\b[^}]*gems:\\s*${p.gems}\\b`));
+    }
   });
 });

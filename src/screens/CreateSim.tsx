@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from "react";
+import LegalLinks from "../components/LegalLinks";
 import { avatars, supporterAvatars, traits, type Sim, type TraitId } from "../data/traits";
 import { bottomColors, hairColors, hairStyles, outfitColors, presets, skinTones, type Look } from "../data/characters";
 import { useAccount } from "../lib/account";
@@ -149,10 +150,7 @@ export default function CreateSim({ onDone }: { onDone: (sim: Sim) => void }) {
             </div>
           </>
         )}
-
-        <p className="note footer-links">
-          <a href="/privacy.html">{t("me.privacy")}</a> · <a href="/terms.html">{t("me.terms")}</a>
-        </p>
+      <LegalLinks />
       </div>
     </main>
   );

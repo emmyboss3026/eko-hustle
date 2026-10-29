@@ -13,11 +13,19 @@ export const SUPPORTER_PRICE_NAIRA = 1_500; // keep in sync with PRICE_NAIRA in 
 // Turn on with VITE_PAYMENTS_ENABLED=true once the two server functions are deployed (see the launch guide).
 export const paymentsEnabled = Boolean(supabase) && import.meta.env.VITE_PAYMENTS_ENABLED === "true";
 
+export type Consent = { terms: boolean; immediate: boolean };
+
 // Sends the player to Bachs's checkout page. Only returns if something went wrong.
-export async function buySupporterPack(): Promise<{ ok: false; message: string }> {
+// `consent`: the two boxes the player ticked (terms, and immediate delivery so the EU withdrawal right ends).
+export async function buySupporterPack(consent: Consent = { terms: true, immediate: true }): Promise<{ ok: false; message: string }> {
+  return buyProduct("supporter-pack", consent);
+}
+
+export async function buyProduct(product: string, consent: Consent): Promise<{ ok: false; message: string }> {
   if (!paymentsEnabled || !supabase) return { ok: false, message: "pay.notSetUp" };
+  if (!consent.terms || !consent.immediate) return { ok: false, message: "pay.needConsent" };
   const { data, error } = await supabase.functions.invoke("bachs-checkout", {
-    body: { returnTo: window.location.origin + "/" },
+    body: { returnTo: window.location.origin + "/", product, consent },
   });
   if (error || !data?.ok || typeof data.url !== "string" || !data.url.startsWith("https://")) {
     return { ok: false, message: data?.error ?? "pay.startFailed" };
@@ -27,15 +35,17 @@ export async function buySupporterPack(): Promise<{ ok: false; message: string }
 }
 
 // After Bachs sends the player back: read ?supporter=success|cancel once, then clean the address bar.
-export function takeReturnStatus(): "success" | "cancel" | null {
+export function takeReturnStatus(): "success" | "cancel" | "gems-success" | "gems-cancel" | null {
   try {
     const url = new URL(window.location.href);
-    const value = url.searchParams.get("supporter");
+    const gems = url.searchParams.get("gems");
+    const value = url.searchParams.get("supporter") ?? gems;
     if (value !== "success" && value !== "cancel") return null;
     url.searchParams.delete("supporter");
+    url.searchParams.delete("gems");
     url.searchParams.delete("checkout_id");
     window.history.replaceState(null, "", url.pathname + url.search + url.hash);
-    return value;
+    return gems ? (`gems-${value}` as const) : value;
   } catch {
     return null;
   }

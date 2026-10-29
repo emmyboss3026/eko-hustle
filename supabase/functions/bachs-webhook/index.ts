@@ -4,7 +4,7 @@
 // Then add this URL as a webhook in Bachs: https://<project-ref>.supabase.co/functions/v1/bachs-webhook
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { bachs, json, PRICE_NAIRA, PRODUCT, supabaseKey } from "../_shared/bachs.ts";
+import { bachs, json, PRODUCTS, supabaseKey } from "../_shared/bachs.ts";
 
 const TOLERANCE_SECONDS = 300;
 
@@ -68,21 +68,29 @@ Deno.serve(async req => {
     if (!s.ok) return json({ ok: false, error: "Couldn't read checkout" }, 502); // 5xx → Bachs retries
     metadata = s.body?.metadata;
   }
-  if (metadata?.product !== PRODUCT || !metadata.user_id) return json({ ok: true, ignored: "other product" });
+  const product = metadata?.product ? PRODUCTS[metadata.product] : undefined;
+  if (!product || !metadata?.user_id) return json({ ok: true, ignored: "other product" });
 
-  const amount = Number(event.data?.amount ?? PRICE_NAIRA);
+  const amount = Number(event.data?.amount ?? product.naira);
+  // Paid less than the price? Don't deliver (and log it for a look).
+  if (Number.isFinite(amount) && amount + 0.01 < product.naira) {
+    console.error("Underpaid", checkoutId, amount, product.naira);
+    return json({ ok: true, ignored: "amount" });
+  }
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, supabaseKey("secret"));
 
-  // Record once (checkout id is the primary key), then unlock. Both are safe to repeat.
+  // Record once (checkout id is the primary key), then deliver. Both are safe to repeat.
   const { error: payErr } = await admin
     .from("payments")
     .upsert(
-      { reference: checkoutId, user_id: metadata.user_id, amount_kobo: Math.round(amount * 100) },
+      { reference: checkoutId, user_id: metadata.user_id, amount_kobo: Math.round(amount * 100), product: metadata.product },
       { onConflict: "reference", ignoreDuplicates: true },
     );
-  const { error: profErr } = await admin.from("profiles").update({ supporter: true }).eq("id", metadata.user_id);
-  if (payErr || profErr) {
-    console.error("Unlock failed", payErr?.message, profErr?.message);
+  const { error: deliverErr } = product.gems
+    ? await admin.rpc("grant_gems", { p_user: metadata.user_id, p_amount: product.gems, p_reference: checkoutId })
+    : await admin.from("profiles").update({ supporter: true }).eq("id", metadata.user_id);
+  if (payErr || deliverErr) {
+    console.error("Delivery failed", payErr?.message, deliverErr?.message);
     return json({ ok: false }, 500); // Bachs retries
   }
   return json({ ok: true });

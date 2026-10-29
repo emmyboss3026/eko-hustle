@@ -31,9 +31,10 @@ import {
 import type { FundId } from "../data/invest";
 import type { OwnedBiz } from "../data/business";
 import type { ContactId } from "../data/contacts";
+import { REVIVE, type ReviveHow } from "../data/revive";
 
 export type EndingKind = "japa" | "landlord" | "evicted" | "collapsed";
-export type Ending = { kind: EndingKind; day: number };
+export type Ending = { kind: EndingKind; day: number; final?: boolean }; // final: no more revive offer
 
 export type Stats = {
   earned: number;
@@ -93,6 +94,7 @@ export type GameState = {
   messages?: PhoneMsg[];
   daily?: DailyClaim[];     // daily login rewards credited to this life
   camera?: "top" | "first"; // overhead or first-person view
+  revives?: { ad: number; gem: number; refs: string[] }; // times you came back after collapsing (refs: gems used)
 };
 
 export type DiaryEntry = { t: number; line: string };
@@ -116,6 +118,8 @@ export type Command =
   | { type: "goal"; id: GoalStepId; roll: number }
   | { type: "reward" }    // the player finished watching a rewarded ad
   | { type: "greet" }     // you answered a passer-by in the streets
+  | { type: "revive"; how: ReviveHow; ref?: string } // back from hospital (ref: the server's id for the gem used)
+  | { type: "finalize" }  // the player chose to end this life instead of reviving
   | PhoneCommand;
 
 export const AD_REWARD = 3_000;
@@ -474,7 +478,40 @@ export function canClaimReward(s: GameState): boolean {
 
 // ---------- the reducer ----------
 
+/** Can you be brought back from this ending, and how? */
+export function canRevive(s: GameState, how: ReviveHow): boolean {
+  if (s.ending?.kind !== "collapsed" || s.ending.final) return false;
+  return (s.revives?.[how] ?? 0) < REVIVE[how].perLife;
+}
+
+/** Wake up in hospital after collapsing. */
+function revive(s: GameState, how: ReviveHow, ref?: string): GameState {
+  if (!canRevive(s, how)) return s;
+  if (how === "gem" && (!ref || s.revives?.refs.includes(ref))) return s; // each gem works once
+  const r = REVIVE[how];
+  const lift = (v: number) => Math.max(v, r.needsAtLeast);
+  const n = s.needs;
+  let next: GameState = {
+    ...s,
+    ending: null,
+    eventId: null,
+    health: r.health,
+    needs: { hunger: lift(n.hunger), energy: lift(n.energy), fun: lift(n.fun), social: lift(n.social), hygiene: lift(n.hygiene), bladder: Math.max(n.bladder, 80) },
+    revives: { ad: (s.revives?.ad ?? 0) + (how === "ad" ? 1 : 0), gem: (s.revives?.gem ?? 0) + (how === "gem" ? 1 : 0), refs: [...(s.revives?.refs ?? []), ...(ref ? [ref] : [])].slice(-50) },
+  };
+  // Hospital time passes like any other time (rent day still comes), then you leave patched up
+  next = passTime(next, r.hospitalHours * 60, undefined, true);
+  if (next.ending?.kind === "collapsed") next = { ...next, ending: null };
+  const m = next.needs;
+  next = { ...next, health: Math.max(next.health, r.health), needs: { hunger: lift(m.hunger), energy: lift(m.energy), fun: lift(m.fun), social: lift(m.social), hygiene: lift(m.hygiene), bladder: Math.max(m.bladder, 80) } };
+  const bill = Math.min(r.bill, Math.max(0, next.money));
+  if (bill > 0) next = charge(next, bill, "other", msg(s, "bank.hospital"));
+  return say(bump(next, "revive"), msg(s, how === "gem" ? "log.reviveGem" : "log.reviveAd", { money: naira(bill) }));
+}
+
 export function reduce(s: GameState, cmd: Command): GameState {
+  if (cmd.type === "revive") return revive(s, cmd.how, cmd.ref);
+  if (cmd.type === "finalize") return s.ending ? { ...s, ending: { ...s.ending, final: true } } : s;
   const next = step(s, cmd);
   return next === s ? s : checkMissions(next);
 }
@@ -723,6 +760,10 @@ function step(s: GameState, cmd: Command): GameState {
       if (cmd.id === "house") return end(say(next, msg(s, "log.landlord")), "landlord");
       return next;
     }
+
+    case "revive":
+    case "finalize":
+      return s; // handled in reduce(), since they work on an ended life
 
     default:
       // Everything on the phone (bank, invest, business, contacts, invites, messages, daily rewards, camera)

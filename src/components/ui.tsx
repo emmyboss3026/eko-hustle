@@ -51,10 +51,10 @@ export function Price({ cost, pay }: { cost?: number; pay?: number }) {
   return <span className="row-price">{t("ui.free")}</span>;
 }
 
-export function Progress({ value, max }: { value: number; max: number }) {
+export function Progress({ value, max, label }: { value: number; max: number; label: string }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   return (
-    <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={max} aria-valuenow={Math.round(value)}>
+    <div className="progress" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={Math.round(value)}>
       <span style={{ width: `${pct}%` }} />
     </div>
   );

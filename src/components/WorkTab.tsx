@@ -30,7 +30,7 @@ export default function WorkTab({ state, dispatch, goTo }: Props) {
           </div>
           {next ? (
             <>
-              <Progress value={current.shiftsToPromote - shiftsLeft} max={current.shiftsToPromote} />
+              <Progress value={current.shiftsToPromote - shiftsLeft} max={current.shiftsToPromote} label={tx.title(current.id, state.career.level + 1)} />
               <div className="note">
                 {t("jobs.next", { title: tx.title(current.id, state.career.level + 1) })}{" "}
                 {shiftsLeft > 0 ? t(shiftsLeft > 1 ? "jobs.shiftsLeft" : "jobs.shiftLeft", { n: shiftsLeft }) : t("jobs.shiftsDone")}{" "}

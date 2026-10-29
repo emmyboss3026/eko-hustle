@@ -3,3 +3,15 @@ h1{font-family:"Bungee","Arial Black",sans-serif;font-weight:400;background:#f2c
 h2{margin-top:28px;font-size:19px}
 .todo{background:#fff3c2;border:1px solid #d9ad00;padding:10px 12px;border-radius:8px}
 a{color:#262622}
+
+.legal-nav{display:flex;flex-wrap:wrap;gap:6px 14px;margin:-24px -16px 0;padding:10px 16px;background:#262622;font-size:14px}
+.legal-nav a{color:#f2c200;text-decoration:none}
+.legal-nav a[aria-current]{color:#fff;font-weight:700;text-decoration:underline}
+h1{margin-top:0}
+.todo-field{background:#ffe3dc;color:#a8200d;font-weight:700;padding:0 3px;border-radius:3px}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:8px 0 16px;background:#fff}
+th,td{border:1px solid #c9c7bd;padding:6px 8px;text-align:left;vertical-align:top}
+th{background:#f0efe9}
+.box{background:#fff;border-left:5px solid #f2c200;padding:10px 14px;margin:12px 0}
+a{color:#1f4fa3}
+@media (max-width:600px){table{display:block;overflow-x:auto;font-size:13px}td,th{min-width:110px}}

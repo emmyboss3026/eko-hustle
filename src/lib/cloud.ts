@@ -131,3 +131,19 @@ async function postFeedback(f: Feedback): Promise<boolean> {
   });
   return !error;
 }
+
+/** Everything the server keeps about you (the "download my data" button). */
+export async function exportMyData(): Promise<unknown | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("export_my_data");
+  return error ? null : data;
+}
+
+/** Deletes your account and its online data (payment records stay, without your id, for tax law). */
+export async function deleteMyAccount(): Promise<boolean> {
+  if (!supabase) return false;
+  const { data, error } = await supabase.rpc("delete_my_account");
+  if (error || !(data as { ok?: boolean } | null)?.ok) return false;
+  await supabase.auth.signOut().catch(() => {});
+  return true;
+}

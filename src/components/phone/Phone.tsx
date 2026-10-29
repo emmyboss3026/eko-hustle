@@ -58,6 +58,7 @@ export default function Phone({ state, dispatch, app, onApp, onClose, onTravel, 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      e.preventDefault(); // the panel around the phone shouldn't close too
       if (app) onApp(null);
       else onClose();
     };

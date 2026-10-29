@@ -101,6 +101,41 @@ Copy `.env.example` to `.env` and fill in what you've set up. Anything left empt
 Push to a new GitHub repo, import it in Vercel (framework Vite, build `npm run build`, output `dist`), and connect Supabase. You can reuse the Hustle & Japa Supabase project: the tables are the same.
 
 
+## Revive, Power Gems and the legal checklist
+
+When a Sim collapses, the player can **watch an ad** (3 times per life, back with 45 health and a ₦3,000 hospital bill), **use a Power Gem** (full health, no bill), or **end the life**. Gems are sold in packs (1 for ₦300, 5 for ₦1,200, 12 for ₦2,500) through Bachs. The server holds the balance (`gem_wallets`, `gem_ledger`), so gems can't be faked or spent twice. Tuning: `src/data/revive.ts`. Server prices: `supabase/functions/_shared/bachs.ts` (a test checks they match).
+
+To switch it on:
+1. Run `supabase/update-2026-10-gems-privacy.sql` in the Supabase SQL Editor.
+2. Deploy the functions: `npx supabase functions deploy bachs-checkout` and `npx supabase functions deploy bachs-webhook --no-verify-jwt`.
+3. On Vercel set `VITE_PAYMENTS_ENABLED=true` and `VITE_ADSENSE_CLIENT=ca-pub-…`, then redeploy.
+4. Fill in your details at the top of `public/legal.js`. Red boxes on the legal pages show what's missing.
+
+| # | Item | Where |
+|---|------|-------|
+| 1 | Privacy policy | `public/privacy.html` |
+| 2 | Terms of use | `public/terms.html` |
+| 3 | Refund policy | `public/refunds.html` |
+| 4 | Cookie policy | `public/cookies.html` |
+| 5 | Cookie consent banner | `ConsentBanner.tsx`: age group first, equal buttons, nothing pre-ticked, changeable in 👤 Me |
+| 6 | Form consents | Sign-in: terms and privacy box (plus a parent box for 13–15). Checkout: terms and refunds box plus an immediate-delivery waiver; both are checked again on the server and stored with the payment |
+| 7 | No unnecessary data | No real names, birthdays or phone numbers; age group only, kept on the device |
+| 8 | Third-party SDKs | Supabase (EU), Vercel Analytics (only with consent), Google AdSense (non-personalised unless the player is 16+ and says yes), Bachs (on its own page). Google Fonts removed; fonts are self-hosted |
+| 9 | Dark patterns | No timers or countdowns on the revive screen, free option shown first, "End this life" always there, equal consent buttons |
+| 10 | Hidden fees | Final naira price on the buy button; "no extra fees from us" |
+| 11 | Fake reviews | None in the game or store text |
+| 12 | Unsupported claims | Supporter pack "8 extra looks" matches `supporterAvatars`; "no cookies" for Vercel Analytics is accurate |
+| 13 | Alt text | Emoji decorations are `aria-hidden`; 3D views have labels; progress bars named |
+| 14 | Colour contrast | axe-core clean on the consent, revive, ending, Me and legal pages |
+| 15 | Keyboard | Esc closes panels and the phone; focus moves into a panel and back |
+| 16 | Business details | `public/imprint.html`, filled from `public/legal.js` |
+| 17 | Kids' data | Under 13: no account or purchases. 13–15: parent box, child-directed ad tags. Under 18: parent box for purchases |
+| 18 | Unsubscribe link | The game sends only sign-in emails (transactional). Any future newsletter must be opt-in, with an unsubscribe link |
+| 19 | Fonts and images licensed | OFL fonts, MIT/MPL libraries, original code-made art and sound: `public/credits.html` |
+| 20 | Data deletion | 👤 Me → Privacy & your data: download, delete on this device, delete account (`delete_my_account()`) |
+
+These texts are a careful starting point, not legal advice. Have a lawyer check them before you sell gems in the EU or UK.
+
 ## Not finished yet
 
 - **Friends rankings**: the tab is there, but it needs a friends system first.

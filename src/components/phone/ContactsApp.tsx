@@ -30,7 +30,7 @@ export default function ContactsApp({ state, dispatch, onMessages }: { state: Ga
                 <span className="row-main">
                   <b>{t(`contact.${c.id}.name`)}</b>
                   <small>{t(`contact.${c.id}.role`)} · {t(bondKey(c, cs.rel))}</small>
-                  <Progress value={cs.rel} max={100} />
+                  <Progress value={cs.rel} max={100} label={t(`contact.${c.id}.name`)} />
                 </span>
                 <span className="contact-rel">{Math.round(cs.rel)}</span>
               </button>

@@ -2673,3 +2673,96 @@ form .field + .note {
 .chat-bubble small { font-weight: 800; color: var(--ink-soft); }
 .chat-bubble .chip-btn { justify-self: start; padding: 2px 8px; font-size: 12px; }
 .chat-me { font-style: italic; color: var(--good); }
+
+/* ---------- consent, privacy, revive, gems ---------- */
+.seg button[aria-pressed="true"] { background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15); }
+.seg.small { margin: 6px 0 0; flex-wrap: wrap; }
+.seg.small button { flex: 1 1 auto; padding: 6px 8px; }
+
+.consent-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(38, 38, 34, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+.consent {
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--sign);
+  border: 2px solid var(--asphalt);
+  border-radius: 12px;
+  padding: 18px 16px;
+}
+.consent h2 { font-family: var(--display); font-size: 22px; margin: 0 0 6px; }
+.consent p { margin: 6px 0; }
+.consent-age { border: 0; padding: 0; margin: 12px 0; }
+.consent-age legend { font-weight: 700; margin-bottom: 6px; }
+.consent-choices { display: grid; gap: 8px; margin: 10px 0; }
+.consent-row, .check { display: flex; gap: 10px; align-items: flex-start; }
+.consent-row input, .check input { width: 22px; height: 22px; flex: none; margin: 1px 0 0; accent-color: var(--asphalt); }
+.consent-row span { display: grid; }
+.consent-row small { color: var(--ink-soft); font-size: 14px; }
+.consent-buttons { display: grid; gap: 8px; margin-top: 12px; }
+.consent-buttons .btn { text-align: center; width: 100%; }
+.consent-links { text-align: center; margin-top: 12px; }
+.check { margin: 10px 0; font-size: 15px; }
+.check a, .consent-links a { color: var(--ink); }
+
+.revive { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px 40px; }
+.revive-card { width: 100%; max-width: 480px; }
+.revive-card h1 { font-family: var(--display); font-size: 32px; line-height: 1.05; margin: 6px 0; }
+.revive-emoji { font-size: 52px; line-height: 1; }
+.revive-options { display: grid; gap: 10px; margin: 16px 0 8px; }
+.revive-option {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  column-gap: 10px;
+  align-items: center;
+  text-align: left;
+  border: 2px solid var(--asphalt);
+  border-radius: 10px;
+  background: var(--sign);
+  padding: 12px;
+}
+.revive-option.gem { background: #e9f1fb; }
+.revive-option:hover:not(:disabled) { background: #fbf6dd; }
+.revive-option:disabled { opacity: 0.6; }
+.revive-icon { grid-row: span 2; font-size: 30px; text-align: center; }
+.revive-option b { font-size: 17px; }
+.revive-option small { color: var(--ink-soft); font-size: 14px; }
+.end-life { text-align: center; margin-top: 14px; }
+
+.gem-shop { margin: 12px 0; }
+.gem-balance { font-weight: 700; margin: 6px 0; }
+.gem-packs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+.gem-pack {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--sign);
+  padding: 10px 6px;
+}
+.gem-pack[aria-checked="true"] { border-color: var(--asphalt); background: #fbf6dd; box-shadow: inset 0 0 0 1px var(--asphalt); }
+.gem-pack small { color: var(--ink-soft); font-size: 12px; }
+.gem-icon { font-size: 20px; }
+
+.row.static { cursor: default; }
+.row.static:hover { background: none; }
+.row.danger .row-title { color: var(--bad); }
+.btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn.danger:hover:not(:disabled) { background: #a92a17; }
+.confirm-box { margin: 10px 0; padding: 12px; border: 2px solid var(--bad); border-radius: 10px; background: #fdf1ee; }
+.confirm-box .field { margin-top: 8px; }
+.confirm-box .btn-row .btn { text-align: center; }
+a.row { color: inherit; text-decoration: none; }
+
+.panel-sheet:focus { outline: none; }

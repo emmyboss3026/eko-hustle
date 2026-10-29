@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { supabase, cloudEnabled } from "./supabase";
 import { fetchProfile, type Profile } from "./cloud";
 import { takeReturnStatus } from "./payments";
+import { gemBalance } from "./gems";
 
 type AccountState = {
   enabled: boolean;          // is Supabase set up at all?
@@ -43,9 +44,32 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   // Back from Bachs: the unlock arrives by webhook a few seconds later, so check a few times.
   useEffect(() => {
-    if (returnStatus === "cancel") {
+    if (returnStatus === "cancel" || returnStatus === "gems-cancel") {
       setNotice("pay.cancelled");
       return;
+    }
+    if (returnStatus === "gems-success" && supabase) {
+      // Gems arrive by webhook a few seconds later: watch the balance go up
+      setNotice("gems.arriving");
+      let tries = 0;
+      let stopped = false;
+      let before = NaN; // the balance just before the player went to pay (saved by the gem shop)
+      try {
+        before = Number(sessionStorage.getItem("eko-hustle-gems-before") ?? "NaN");
+      } catch {
+        // ignore
+      }
+      const tick = async () => {
+        if (stopped) return;
+        const now = await gemBalance();
+        if (now !== null && (Number.isNaN(before) ? now > 0 : now > before)) return setNotice("gems.arrived");
+        if (++tries < 12) window.setTimeout(tick, 5000);
+        else setNotice("gems.pending");
+      };
+      window.setTimeout(tick, 3000);
+      return () => {
+        stopped = true;
+      };
     }
     if (returnStatus !== "success" || !supabase) return;
     setNotice("pay.received");

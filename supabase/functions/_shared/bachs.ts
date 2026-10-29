@@ -4,8 +4,18 @@
 //   BACHS_WEBHOOK_SECRET  the signing secret of your webhook endpoint (Bachs dashboard → Developer Portal → Webhooks)
 //   BACHS_API_BASE        optional; https://sandbox-api.bachs.io (default) or https://api.bachs.io for live
 
+// Everything the game sells. The SERVER's prices are the ones that count: the game only says which
+// product the player picked. Keep in step with src/lib/payments.ts and src/data/revive.ts.
+export const PRODUCTS: Record<string, { naira: number; gems?: number; label: string }> = {
+  "supporter-pack": { naira: 1_500, label: "Eko Hustle supporter pack" },
+  "gems-1": { naira: 300, gems: 1, label: "1 Power Gem" },
+  "gems-5": { naira: 1_200, gems: 5, label: "5 Power Gems" },
+  "gems-12": { naira: 2_500, gems: 12, label: "12 Power Gems" },
+};
+
+// Older name, still used by the supporter pack code
 export const PRODUCT = "supporter-pack";
-export const PRICE_NAIRA = 1_500; // keep in sync with SUPPORTER_PRICE_NAIRA in src/lib/payments.ts
+export const PRICE_NAIRA = PRODUCTS[PRODUCT].naira;
 
 export const apiBase = () => (Deno.env.get("BACHS_API_BASE") ?? "https://sandbox-api.bachs.io").replace(/\/+$/, "");
 

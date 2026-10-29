@@ -52,7 +52,7 @@ export default function GoalsTab({ state, dispatch }: Props) {
 
       <h3>✈️ {t("goals.japa")}</h3>
       <div className="note">{t("goals.japaSavings", { money: naira(state.money), target: naira(japaTarget) })}</div>
-      <Progress value={state.money} max={japaTarget} />
+      <Progress value={state.money} max={japaTarget} label={t("goals.japa")} />
       <div className="group" style={{ marginTop: 8 }}>
         <Step id="ielts" n={1} state={state} dispatch={dispatch} />
         <Step id="visa" n={2} state={state} dispatch={dispatch} />
@@ -61,7 +61,7 @@ export default function GoalsTab({ state, dispatch }: Props) {
 
       <h3>🏡 {t("goals.home")}</h3>
       <div className="note">{t("goals.homeSavings", { money: naira(state.money), target: naira(goalSteps.house.cost) })}</div>
-      <Progress value={state.money} max={goalSteps.house.cost} />
+      <Progress value={state.money} max={goalSteps.house.cost} label={t("goals.home")} />
       <div className="group" style={{ marginTop: 8 }}>
         <Step id="house" n={1} state={state} dispatch={dispatch} />
       </div>

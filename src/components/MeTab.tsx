@@ -1,4 +1,5 @@
 import { useState } from "react";
+import LegalLinks from "./LegalLinks";
 import { dayOf, mood, moodPay, type GameState } from "../engine/game";
 import { moodlets } from "../data/moodlets";
 import { skillInfo, MAX_SKILL, type SkillId } from "../data/skills";
@@ -6,6 +7,8 @@ import { traits } from "../data/traits";
 import { naira } from "../engine/economy";
 import { Progress } from "./ui";
 import AccountPanel from "./AccountPanel";
+import GemsSection from "./GemsSection";
+import PrivacySettings from "./PrivacySettings";
 import LangPicker from "./LangPicker";
 import SoundSettings from "./SoundSettings";
 import { exportSave, importSave } from "../engine/save";
@@ -69,7 +72,7 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
         {(Object.keys(skillInfo) as SkillId[]).map(id => (
           <div key={id} className="skill" title={tx.skillDesc(id)}>
             <span>{skillInfo[id].emoji} {tx.skill(id)}</span>
-            <Progress value={state.skills[id]} max={MAX_SKILL} />
+            <Progress value={state.skills[id]} max={MAX_SKILL} label={tx.skill(id)} />
             <b>{state.skills[id].toFixed(1)}</b>
           </div>
         ))}
@@ -110,6 +113,7 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
 
       <h3>{t("me.account")}</h3>
       <AccountPanel synced={synced} />
+      <GemsSection />
 
       <h3>{t("me.settings")}</h3>
       <div className="group">
@@ -142,9 +146,9 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
         </label>
       </div>
       {fileMsg && <p className="note" role="status">{t(fileMsg)}</p>}
-      <p className="note footer-links">
-        <a href="/privacy.html">{t("me.privacy")}</a> · <a href="/terms.html">{t("me.terms")}</a>
-      </p>
+
+      <PrivacySettings state={state} />
+      <LegalLinks />
 
       <div className="confirm">
         {confirming ? (

@@ -15,6 +15,8 @@ unlockAudio(); // sound starts after the first tap or key (browsers require it)
 import CreateSim from "./screens/CreateSim";
 import Ending from "./screens/Ending";
 import Game from "./screens/Game";
+import ReviveScreen from "./components/ReviveScreen";
+import ConsentBanner from "./components/ConsentBanner";
 
 // Everything that can happen: a game command, starting a new life, loading a cloud save, or resetting.
 type Msg = Command | { type: "start"; sim: Sim; lang: Lang; seed: number } | { type: "load"; state: GameState } | { type: "reset" };
@@ -101,14 +103,17 @@ function Root() {
     };
   }, [userId]);
 
+  // A collapse isn't the end until the player turns down the revive offer
+  const over = !!state?.ending && (state.ending.kind !== "collapsed" || !!state.ending.final);
+
   // Remember a finished life on this device
   useEffect(() => {
-    if (state?.ending) recordLife(state);
-  }, [state]);
+    if (state && over) recordLife(state);
+  }, [state, over]);
 
   // Post a finished life to the leaderboard once
   useEffect(() => {
-    if (!userId || !state?.ending) return;
+    if (!userId || !state?.ending || !over) return;
     const id = `${state.sim.name}|${state.ending.day}|${state.stats.earned}`;
     try {
       if (localStorage.getItem(SUBMITTED_KEY) === id) return;
@@ -125,6 +130,7 @@ function Root() {
   }
 
   if (!state) return <CreateSim onDone={sim => dispatch({ type: "start", sim, lang, seed: Math.floor(Math.random() * 2 ** 31) })} />;
+  if (state.ending && !over) return <ReviveScreen state={state} dispatch={dispatch} />;
   if (state.ending) return <Ending state={state} onRestart={restart} />;
   return <Game state={state} dispatch={dispatch} onRestart={restart} onLoad={s => dispatch({ type: "load", state: s })} synced={synced} userId={userId} />;
 }
@@ -134,6 +140,7 @@ export default function App() {
     <LangProvider>
       <AccountProvider>
         <Root />
+        <ConsentBanner />
       </AccountProvider>
     </LangProvider>
   );
