@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { CLASSIC, RELAXED, isRelaxed } from "../data/survival";
 import { clockOf, dayOf, generatorOn, mood, type Command, type GameState } from "../engine/game";
 import { naira, RENT, RENT_EVERY_DAYS } from "../engine/economy";
 import { isRushHour } from "../data/places";
@@ -53,7 +54,6 @@ const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 // What you see when you're out (and not walking): the main place of that part of Lagos
 const DISTRICT_VIEW: Record<string, SpotId | null> = { yaba: "hub", island: "beach", ikeja: null, mushin: null };
 
-const MINUTES_PER_TICK = 10;
 const moodFace = (m: number) => (m >= 70 ? "😄" : m >= 35 ? "🙂" : "😣");
 
 /** Which dock button a mission points at (for its 🎯 tag). */
@@ -96,21 +96,22 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
   const showRoom = atHome && !walking;
   const showStreet = walking || (!atHome && focus !== null);
 
-  // The clock: 10 game minutes per tick. It waits while a panel, event, the guide or a ride is open,
+  // The clock: game minutes per real second (slower with relaxed survival, see data/survival.ts). It waits while a panel, event, the guide or a ride is open,
   // so you can read in peace.
   const eventOpen = state.eventId !== null;
   const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null;
+  const minutesPerTick = isRelaxed(state) ? RELAXED.minutesPerTick : CLASSIC.minutesPerTick;
   useEffect(() => {
     if (stopped) return;
     const id = setInterval(() => {
       if (document.hidden) return;
       dispatch({
-        type: "tick", minutes: MINUTES_PER_TICK, roll: Math.random(), pick: Math.random(),
+        type: "tick", minutes: minutesPerTick, roll: Math.random(), pick: Math.random(),
         power: Math.random(), powerPick: Math.random(),
       });
     }, 1000 / speed);
     return () => clearInterval(id);
-  }, [stopped, speed, dispatch]);
+  }, [stopped, speed, dispatch, minutesPerTick]);
 
   // Sounds, and a short message for each new thing that happens
   const lastLine = useRef(state.log[0]);
@@ -387,6 +388,7 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced }: Pro
               onGuide={() => setGuide(true)}
               onDiary={() => openPanel("diary")}
               onFeedback={() => openPanel("feedback")}
+              onRelaxed={on => dispatch({ type: "relaxed", on })}
               synced={synced}
             />
           )}

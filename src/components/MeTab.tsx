@@ -10,6 +10,7 @@ import LangPicker from "./LangPicker";
 import { isMuted, setMuted } from "../lib/sound";
 import { exportSave, importSave } from "../engine/save";
 import { useLang } from "../i18n/react";
+import { RELAXED_SURVIVAL, isRelaxed } from "../data/survival";
 
 type Props = {
   state: GameState;
@@ -18,10 +19,11 @@ type Props = {
   onGuide: () => void;
   onDiary: () => void;
   onFeedback: () => void;
+  onRelaxed: (on: boolean) => void;
   synced: "off" | "syncing" | "saved" | "error";
 };
 
-export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFeedback, synced }: Props) {
+export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFeedback, onRelaxed, synced }: Props) {
   const { t, tx } = useLang();
   const [confirming, setConfirming] = useState(false);
   const [fileMsg, setFileMsg] = useState<string | null>(null);
@@ -118,6 +120,16 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
           <span className="row-emoji" aria-hidden>💬</span>
           <span className="row-main"><span className="row-title">{t("me.feedback")}</span><span className="note">{t("me.feedbackInfo")}</span></span>
         </button>
+        {RELAXED_SURVIVAL && (
+          <button className="row" aria-pressed={isRelaxed(state)} onClick={() => onRelaxed(!isRelaxed(state))}>
+            <span className="row-emoji" aria-hidden>{isRelaxed(state) ? "🛟" : "💀"}</span>
+            <span className="row-main">
+              <span className="row-title">{t("me.survival")}</span>
+              <span className="note">{t(isRelaxed(state) ? "me.survivalRelaxedInfo" : "me.survivalClassicInfo")}</span>
+            </span>
+            <span className="row-price">{t(isRelaxed(state) ? "me.survivalRelaxed" : "me.survivalClassic")}</span>
+          </button>
+        )}
         <button
           className="row"
           aria-pressed={!muted}

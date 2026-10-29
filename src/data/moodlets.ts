@@ -5,7 +5,7 @@
 export type MoodletId =
   | "fullTummy" | "squeaky" | "wellRested" | "floorSleeper" | "lightBack" | "sweatyNight"
   | "rentPressure" | "promoted" | "payday" | "goSlow" | "okadaRush" | "longWalk" | "gymGlow"
-  | "goodGist" | "lonely" | "beachDay" | "bigNight" | "learned" | "mummyLove" | "hustleWin" | "mission";
+  | "goodGist" | "lonely" | "beachDay" | "bigNight" | "learned" | "mummyLove" | "hustleWin" | "mission" | "accident";
 
 export type Moodlet = { label: string; emoji: string; value: number; hours: number; desc: string };
 
@@ -14,6 +14,7 @@ export const moodlets: Record<MoodletId, Moodlet> = {
   squeaky:      { label: "Squeaky clean",    emoji: "🛁", value: 6,   hours: 3,  desc: "Fresh from head to toe." },
   wellRested:   { label: "Well rested",      emoji: "😌", value: 10,  hours: 6,  desc: "A proper night's sleep." },
   floorSleeper: { label: "Stiff back",       emoji: "🥴", value: -10, hours: 6,  desc: "Slept on the hard floor." },
+  accident:     { label: "So embarrassing",  emoji: "😳", value: -12, hours: 4,  desc: "Couldn't hold it. Use the toilet sooner next time." },
   lightBack:    { label: "Light is back!",   emoji: "💡", value: 6,   hours: 2,  desc: "The whole street cheered." },
   sweatyNight:  { label: "Sweaty night",     emoji: "🥵", value: -8,  hours: 4,  desc: "No light, no fan, no breeze." },
   rentPressure: { label: "Landlord wahala",  emoji: "😬", value: -15, hours: 24, desc: "Rent is owed and everyone knows." },

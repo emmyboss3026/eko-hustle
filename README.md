@@ -37,7 +37,7 @@ Eko Hustle merges **Hustle & Japa** with **Gidi Hustle v0.5**:
 ```powershell
 npm install      # once, or after package.json changes
 npm run dev      # play at http://localhost:5173
-npm test         # 44 tests: game rules and translations
+npm test         # 50 tests: game rules, survival modes and translations
 npm run build    # production build in the dist folder
 ```
 
@@ -62,6 +62,7 @@ npm run build    # production build in the dist folder
 - Places and opening hours: `src/data/spots.ts` · moods: `src/data/moodlets.ts`
 - Missions, their steps and rewards: `src/data/missions.ts` · tips: `src/data/tips.ts` · help answers: `src/components/HelpSheet.tsx`
 - Rent amount and start money: `src/engine/economy.ts`
+- How fast you can die: `src/data/survival.ts`. **Relaxed survival** is on by default (slower clock, slower needs, gentler health loss, accidents and passing out instead of dying). Players can switch to Classic in 👤 Me → Settings. Kill switch: set `RELAXED_SURVIVAL = false` to remove it for everyone.
 - Characters and looks: `src/data/characters.ts`
 - Text in other languages: `src/i18n/de.ts` and `src/i18n/pcm.ts` (when you add or change English text, add the same key there too)
 
@@ -72,6 +73,7 @@ Copy `.env.example` to `.env` and fill in what you've set up. Anything left empt
 | Feature | Needs |
 | --- | --- |
 | Accounts, cloud save, leaderboard, feedback | Supabase project + `supabase/schema.sql` (feedback is section 5) |
+| Visit statistics | Vercel → your project → Analytics → Enable (the code is already in `src/main.tsx`) |
 | Rewarded ads | Google AdSense approval for H5 Games Ads |
 | Supporter pack | Bachs account + `supabase/functions/bachs-checkout` and `bachs-webhook` |
 

@@ -4,6 +4,7 @@
 
 import { type Needs, startNeeds, decay, apply } from "./needs";
 import { updateHealth } from "./health";
+import { CLASSIC, RELAXED, isRelaxed } from "../data/survival";
 import { RENT, START_MONEY, rentDue, naira } from "./economy";
 import { actionById, type Action } from "../data/actions";
 import { distanceKm, modes, trip, type DistrictId } from "../data/places";
@@ -70,6 +71,7 @@ export type GameState = {
   lang?: Lang;              // language for game messages
   diary?: DiaryEntry[];     // everything that has happened, oldest first (the life story)
   dayStart?: { earned: number; spent: number }; // money at the start of today (for the day summary)
+  relaxed?: boolean;        // relaxed survival (default on; false = classic rules). See data/survival.ts
 };
 
 export type DiaryEntry = { t: number; line: string };
@@ -88,6 +90,7 @@ export type Command =
   | { type: "travel"; to: DistrictId; mode: string }
   | { type: "walk"; to: DistrictId; spot: SpotId }   // walked in through a door in the 3D streets
   | { type: "lang"; lang: Lang }
+  | { type: "relaxed"; on: boolean }
   | { type: "choose"; index: number; roll: number }
   | { type: "goal"; id: GoalStepId; roll: number }
   | { type: "reward" };   // the player finished watching a rewarded ad
@@ -269,9 +272,16 @@ export function earnings(s: GameState, a: Action): number {
 export function passTime(s: GameState, minutes: number, effect?: Partial<Needs>, asleep = false): GameState {
   if (s.ending) return s;
   const time = s.time + minutes;
-  const drained = decay(s.needs, minutes, asleep ? 0.35 : 1);
-  const needs = effect ? apply(drained, effect) : drained;
-  const health = updateHealth(s.health, s.needs, minutes, needs);
+  const rules = isRelaxed(s) ? RELAXED : CLASSIC;
+  const drained = decay(s.needs, minutes, (asleep ? 0.35 : 1) * rules.needDrain);
+  let needs = effect ? apply(drained, effect) : drained;
+  // Relaxed survival (from Gidi Hustle): an empty bladder means an accident, not a slow death.
+  let accident = false;
+  if (isRelaxed(s) && needs.bladder <= 0) {
+    needs = { ...needs, bladder: 100, hygiene: Math.max(0, needs.hygiene - RELAXED.accidentHygiene) };
+    accident = true;
+  }
+  const health = updateHealth(s.health, s.needs, minutes, needs, rules);
   let next: GameState = runPower({ ...s, time, needs, health }, s.time, time);
   // A new day: write yesterday's summary in the diary
   if (dayOf(time) > dayOf(s.time)) {
@@ -304,9 +314,16 @@ export function passTime(s: GameState, minutes: number, effect?: Partial<Needs>,
       next = say(next, msg(next, "log.rentShort", { money: naira(left) }));
     }
   }
+  if (accident) next = addMood(say(next, msg(next, "log.accident")), "accident");
   if (next.health <= 0) {
     next = say(next, msg(next, "log.collapsed"));
     return end(next, "collapsed");
+  }
+  // Relaxed survival: run out of energy and you fall asleep where you are.
+  if (isRelaxed(next) && !asleep && next.needs.energy <= 0) {
+    next = say(next, msg(next, "log.passedOut"));
+    next = passTime(next, RELAXED.passOutHours * 60, { energy: RELAXED.passOutEnergy }, true);
+    if (!next.ending) next = addMood(next, "floorSleeper");
   }
   return next;
 }
@@ -441,7 +458,7 @@ function step(s: GameState, cmd: Command): GameState {
         next = { ...next, power: { grid: false, outageEnds: next.time + hours * 60 } };
         next = say(next, msg(next, generatorOn(next) && next.location === "mushin" ? "log.nepaGen" : "log.nepa"));
       }
-      if (!next.ending && next.time - next.lastEventAt >= EVENT_COOLDOWN && cmd.roll < EVENT_CHANCE) {
+      if (!next.ending && next.time - next.lastEventAt >= EVENT_COOLDOWN && cmd.roll < EVENT_CHANCE * (cmd.minutes / 10)) {
         const e = pickEvent(next.location, cmd.pick);
         next = { ...next, eventId: e.id, lastEventAt: next.time, stats: { ...next.stats, events: next.stats.events + 1 } };
       }
@@ -552,6 +569,10 @@ function step(s: GameState, cmd: Command): GameState {
 
     case "lang": {
       return { ...s, lang: cmd.lang };
+    }
+
+    case "relaxed": {
+      return { ...s, relaxed: cmd.on };
     }
 
     case "choose": {

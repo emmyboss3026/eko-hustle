@@ -295,3 +295,48 @@ describe("Eko Hustle 2: places, moods and missions", () => {
     expect(s.home.food).toBe(2);
   });
 });
+
+describe("relaxed survival (default) and the classic rules", () => {
+  const allEmpty = { hunger: 0, energy: 50, fun: 0, social: 0, hygiene: 0, bladder: 40 };
+
+  it("is on for new games and can be switched off", () => {
+    const s = fresh();
+    expect(s.relaxed).toBeUndefined(); // undefined = relaxed
+    expect(reduce(s, { type: "relaxed", on: false }).relaxed).toBe(false);
+  });
+
+  it("empty needs hurt far less when relaxed", () => {
+    const relaxed = passTime(fresh({ needs: allEmpty, health: 100 }), 600);
+    const classic = passTime(fresh({ needs: allEmpty, health: 100, relaxed: false }), 600);
+    expect(relaxed.health).toBeGreaterThanOrEqual(80);  // at most -2 an hour
+    expect(classic.health).toBeLessThan(relaxed.health - 50);
+  });
+
+  it("needs drain slower when relaxed", () => {
+    const relaxed = passTime(fresh(), 120);
+    const classic = passTime(fresh({ relaxed: false }), 120);
+    expect(relaxed.needs.hunger).toBeGreaterThan(classic.needs.hunger);
+  });
+
+  it("an empty bladder is an accident, not damage", () => {
+    const s = passTime(fresh({ needs: { ...fresh().needs, bladder: 1, hygiene: 80 } }), 60);
+    expect(s.needs.bladder).toBe(100);
+    expect(s.needs.hygiene).toBeLessThan(40);
+    expect(s.moodlets.some(m => m.id === "accident")).toBe(true);
+    expect(s.ending).toBeNull();
+  });
+
+  it("running out of energy makes you pass out and wake with some energy", () => {
+    const start = fresh({ needs: { ...fresh().needs, energy: 1 } });
+    const s = passTime(start, 60);
+    expect(s.needs.energy).toBeGreaterThan(15);
+    expect(s.time).toBe(start.time + 60 + 120);
+    expect(s.moodlets.some(m => m.id === "floorSleeper")).toBe(true);
+  });
+
+  it("classic rules keep the old behaviour", () => {
+    const s = passTime(fresh({ relaxed: false, needs: { ...fresh().needs, bladder: 1 } }), 60);
+    expect(s.needs.bladder).toBe(0);
+    expect(s.moodlets.some(m => m.id === "accident")).toBe(false);
+  });
+});
