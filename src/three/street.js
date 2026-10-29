@@ -8,6 +8,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { spots } from '../data/spots';
 import { buildSim, daylight } from './pieces';
+import { PERSONAS } from '../data/chatter';
 import {
   BUILDINGS, DOORS, ENTER_RADIUS, LAND_HALF, LOT_CENTERS, LOT_HALF, PLACE_LOTS, PLACE_SOLIDS,
   ROAD_HALF, ROAD_LINES, RUN_SPEED, WALK_SPEED, doorNear, faceYaw, resolve, roadPath,
@@ -600,7 +601,11 @@ export class StreetView {
       const axis = i % 2 ? 'x' : 'z';
       const side = i % 4 < 2 ? 1 : -1;
       const seg = -150 + ((i * 7) % 6) * 60;
-      this.people.push({ ...p, axis, line: r + side * (ROAD_HALF + 1.1), from: seg - 22, to: seg + 22, t: seg + ((i * 13) % 40) - 20, dir: i % 3 ? 1 : -1, speed: 1.6 + (i % 4) * 0.3 });
+      this.people.push({
+        ...p, axis, line: r + side * (ROAD_HALF + 1.1), from: seg - 22, to: seg + 22, t: seg + ((i * 13) % 40) - 20,
+        dir: i % 3 ? 1 : -1, speed: 1.6 + (i % 4) * 0.3,
+        persona: PERSONAS[(i * 3) % PERSONAS.length].id, lastChat: -999, wasNear: false,
+      });
       this.scene.add(p.root);
     }
   }
@@ -759,6 +764,7 @@ export class StreetView {
 
     // The Sim.
     const moving = this.mode === 'street' && !paused ? this.step(dt) : false;
+    this.moving = moving;
     const firstPerson = this.fp && this.mode === 'street';
     this.sim.root.visible = this.mode === 'street' && !firstPerson;
     this.sim.root.position.copy(this.player);
@@ -790,8 +796,19 @@ export class StreetView {
       c.g.rotation.y = axis === 'x' ? (dir > 0 ? Math.PI / 2 : -Math.PI / 2) : (dir > 0 ? 0 : Math.PI);
     }
 
+    // Someone nearby might say something as you pass (see data/chatter.ts).
+    this.chatter(t, paused);
+
     // People on the pavements.
     for (const p of this.people) {
+      const talking = this.bubble?.p === p && this.bubble.until > t;
+      if (talking) {
+        // stop and face you while talking
+        p.root.rotation.y = Math.atan2(this.player.x - p.root.position.x, this.player.z - p.root.position.z);
+        p.legL.rotation.x = 0;
+        p.legR.rotation.x = 0;
+        continue;
+      }
       if (!paused) {
         p.t += p.dir * p.speed * dt;
         if (p.t > p.to) { p.t = p.to; p.dir = -1; }
@@ -897,6 +914,45 @@ export class StreetView {
     this.player.set(nx, 0, nz);
     this.hooks.onMove?.(nx, nz, this.yaw, moved);
     return moved;
+  }
+
+  /** Maybe start a short chat with a passer-by close to you, and keep its bubble's screen spot up to date. */
+  chatter(t, paused) {
+    if (this.bubble && this.bubble.until <= t) this.bubble = null;
+    if (this.mode === 'street' && !paused && !this.bubble && t - (this.lastChat ?? -999) > 6) {
+      for (const p of this.people) {
+        const d = Math.hypot(p.root.position.x - this.player.x, p.root.position.z - this.player.z);
+        let near = d < 5;
+        if (near) {
+          // only people you can actually see on screen
+          const v = p.root.position.clone();
+          v.y += 2;
+          v.project(this.camera);
+          near = v.z < 1 && Math.abs(v.x) < 0.8 && v.y > -0.6 && v.y < 0.8;
+        }
+        // Only when someone comes close (not every frame you stand next to them), and not too often
+        if (near && !p.wasNear && t - p.lastChat > 40 && Math.random() < 0.65) {
+          const text = this.hooks.onChatter?.(p.persona);
+          if (text) {
+            this.bubble = { p, id: (this.bubble?.id ?? 0) + Math.random(), until: t + 4.5, ...text };
+            p.lastChat = t;
+            this.lastChat = t;
+          }
+        }
+        p.wasNear = near;
+        if (this.bubble) break;
+      }
+    }
+    // Where the bubble goes on screen (above the person's head)
+    if (this.bubble && this.size) {
+      const v = this.bubble.p.root.position.clone();
+      v.y += 2.6;
+      v.project(this.camera);
+      // Kept on screen even if the person walks towards the edge
+      const x = Math.max(130, Math.min(this.size.w - 130, (v.x * 0.5 + 0.5) * this.size.w));
+      const y = Math.max(190, Math.min(this.size.h - 160, (-v.y * 0.5 + 0.5) * this.size.h));
+      this.bubble.screen = { x, y, visible: v.z < 1 };
+    }
   }
 
   animate(figure, rate, t, moving) {

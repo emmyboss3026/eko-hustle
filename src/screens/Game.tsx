@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { CLASSIC, RELAXED, isRelaxed } from "../data/survival";
-import { clockOf, dayOf, generatorOn, mood, type Command, type GameState } from "../engine/game";
+import { canDo, clockOf, dayOf, generatorOn, mood, type Command, type GameState } from "../engine/game";
 import { naira, RENT, RENT_EVERY_DAYS } from "../engine/economy";
 import { isRushHour } from "../data/places";
 import { careers } from "../data/careers";
@@ -21,7 +21,10 @@ import Guide, { guideSeen } from "../components/Guide";
 import Cutscene, { type Ride } from "../components/Cutscene";
 import Loading from "../components/Loading";
 import { placingValid, type Placing } from "../components/RoomScene";
-import { play, soundForLog } from "../lib/sound";
+import { soundForLog } from "../lib/sound";
+import { play, setScene, startAmbience, stopAmbience, type Sfx } from "../lib/audio";
+import { soundForAction } from "../data/sounds";
+import { actionById } from "../data/actions";
 import { initAds } from "../lib/ads";
 import PaymentNotice from "../components/PaymentNotice";
 import { currentMission, type Mission } from "../data/missions";
@@ -80,7 +83,15 @@ type Props = {
 const DAILY_SEEN_KEY = "eko-hustle-daily-seen";
 
 /** The whole game on one screen: the 3D world fills it, and everything else sits around it. */
-export default function Game({ state, dispatch, onRestart, onLoad, synced, userId }: Props) {
+export default function Game({ state, dispatch: send, onRestart, onLoad, synced, userId }: Props) {
+  // Every command goes through here, so it can make the right sound (cooking sizzles, toilets flush…)
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const dispatch = useCallback((c: Command) => {
+    const sfx = soundForCommand(stateRef.current, c);
+    if (sfx) play(sfx);
+    send(c);
+  }, [send]);
   const { t, tx, lang } = useLang();
   const [panel, setPanel] = useState<Panel | null>(null);
   const [paused, setPaused] = useState(false);
@@ -144,6 +155,24 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced, userI
   useEffect(() => {
     if (eventOpen) play("event");
   }, [eventOpen]);
+  // Background sound: the city outside, birds, crickets, your generator
+  useEffect(() => {
+    startAmbience();
+    return () => stopAmbience();
+  }, []);
+  const hourNow = Math.floor((state.time % 1440) / 60);
+  const genOn = generatorOn(state) && state.location === "mushin";
+  useEffect(() => {
+    setScene({ hour: hourNow, outdoors: walking || state.location !== "mushin", generator: genOn, place: state.location });
+  }, [hourNow, walking, state.location, genOn]);
+  // A ping when a new message or invitation arrives
+  const unreadNow = unreadCount(state) + openInvites(state).length;
+  const lastUnread = useRef(unreadNow);
+  useEffect(() => {
+    if (unreadNow > lastUnread.current) play("ping");
+    lastUnread.current = unreadNow;
+  }, [unreadNow]);
+
   useEffect(() => {
     initAds();
     void flushFeedback(); // send any feedback written while offline
@@ -166,7 +195,6 @@ export default function Game({ state, dispatch, onRestart, onLoad, synced, userI
     } else if (r.claimed) {
       dispatch({ type: "daily", id: r.id, streakDay: r.day, amount: r.amount, server: r.server });
       setClaimed({ amount: r.amount, day: r.day });
-      play("cash");
     }
     await refreshDaily();
   }
@@ -526,3 +554,20 @@ function CityBackdrop({ time, name }: { time: number; name: string }) {
     </div>
   );
 }
+
+/** The sound for something you do (only if it can actually happen). */
+function soundForCommand(s: GameState, c: Command): Sfx | null {
+  switch (c.type) {
+    case "act": {
+      const a = actionById(c.id);
+      return a && !canDo(s, a) ? soundForAction(a) : null;
+    }
+    case "walk": return "door";
+    case "buy": case "sell": case "payRent": case "invest": case "sellFund": case "buyBiz": case "upgradeBiz": case "sellBiz": case "daily": return "coin";
+    case "contact": return c.how === "call" ? "ring" : c.how === "text" ? "type" : c.how === "gift" ? "coin" : "chime";
+    case "invite": return c.accept ? "beat" : "pop";
+    case "reply": case "choose": case "camera": case "staff": return "pop";
+    default: return null;
+  }
+}
+

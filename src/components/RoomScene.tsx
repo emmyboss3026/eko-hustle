@@ -4,6 +4,7 @@ import { CATALOG, HOME, type FurnitureType } from "../data/home";
 import { canPlace } from "../engine/path";
 import { HouseView } from "../three/HouseView";
 import { useLang } from "../i18n/react";
+import { footstep } from "../lib/audio";
 
 export type Placing = { type: FurnitureType; uid: number | null; x: number | null; y: number | null; rot: number };
 
@@ -42,6 +43,7 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
     if (!box.current) return;
     try {
       viewRef.current = new HouseView(box.current, state.sim.look ?? { outfit: shirts[state.sim.trait] });
+      viewRef.current.onStep = footstep;
     } catch {
       setNoGl(true); // no WebGL on this device: the menus still work
     }

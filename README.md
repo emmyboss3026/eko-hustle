@@ -35,7 +35,7 @@ Eko Hustle merges **Hustle & Japa** with **Gidi Hustle v0.5**:
 | 🏆 Leaderboard | Global, Wealth, Status and This week, with medals, search, your own position and player profiles. |
 | 💼 Jobs · 🛵 Quick | The jobs list, and everything you can do on your phone anywhere. |
 
-**Progress** (worked out from the save, never stored twice): level, net worth, reputation, social status (JJC → Eko royalty), 18 achievements and a score. **🎥 View** on the right switches between the overhead camera and first person in your flat and on the streets.
+**Progress** (worked out from the save, never stored twice): level, net worth, reputation, social status (JJC → Eko royalty), 18 achievements and a score. **Sound** (👤 Me → Sound, all made live in the browser, no sound files): effects for cooking, eating, sleeping, bathing, flushing, footsteps, calls and coins; background sounds (traffic, okadas, birds in the morning, crickets at night, your generator); and optional music, either matched to the language (🇬🇧 Eko Highlife, 🇳🇬 Naija Groove, 🇩🇪 Biergarten Waltz) or picked by hand (plus Lagos Lo-fi). **Passers-by** on the streets sometimes say something as you walk past (about the time of day, or if you look hungry, tired or broke); tap 👋 Reply for a little social boost. **🎥 View** on the right switches between the overhead camera and first person in your flat and on the streets.
 
 ## How to play (short)
 
@@ -53,7 +53,7 @@ Eko Hustle merges **Hustle & Japa** with **Gidi Hustle v0.5**:
 ```powershell
 npm install      # once, or after package.json changes
 npm run dev      # play at http://localhost:5173
-npm test         # 66 tests: game rules, phone, survival modes and translations
+npm test         # 69 tests: game rules, phone, sound, survival modes and translations
 npm run build    # production build in the dist folder
 ```
 
@@ -80,6 +80,8 @@ npm run build    # production build in the dist folder
 - Rent amount and start money: `src/engine/economy.ts`
 - How fast you can die: `src/data/survival.ts`. **Relaxed survival** is on by default (slower clock, slower needs, gentler health loss, accidents and passing out instead of dying). Players can switch to Classic in 👤 Me → Settings. Kill switch: set `RELAXED_SURVIVAL = false` to remove it for everyone.
 - Characters and looks: `src/data/characters.ts`
+- Sounds for each action: `src/data/sounds.ts` · sound engine: `src/lib/audio.ts` · music loops: `src/lib/music.ts`
+- What passers-by say: `src/data/chatter.ts` (personas and lines; the words are in the translation files as `chat.*`)
 - Phone: funds `src/data/invest.ts`, businesses `src/data/business.ts`, contacts `src/data/contacts.ts`, invitations `src/data/invites.ts`, daily rewards `src/data/daily.ts`; rules in `src/engine/phone.ts`; level, status, achievements and score in `src/engine/progress.ts`
 - Text in other languages: `src/i18n/de.ts` and `src/i18n/pcm.ts` (when you add or change English text, add the same key there too)
 

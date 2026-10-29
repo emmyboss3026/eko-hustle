@@ -9,6 +9,9 @@ import { recordLife } from "./lib/lives";
 import type { Lang } from "./i18n/core";
 import { loadCloudSave, pushCloudSave, submitRun } from "./lib/cloud";
 import { submitStats } from "./lib/board";
+import { getPrefs, onPrefs, setMusic, trackFor, unlockAudio } from "./lib/audio";
+
+unlockAudio(); // sound starts after the first tap or key (browsers require it)
 import CreateSim from "./screens/CreateSim";
 import Ending from "./screens/Ending";
 import Game from "./screens/Game";
@@ -73,6 +76,16 @@ function Root() {
     }, 4000);
     return () => window.clearTimeout(t);
   }, [state, userId]);
+
+  // Music: the player's choice, or the tune that matches their language
+  const [music, setMusicChoice] = useState(() => getPrefs().music);
+  useEffect(() => {
+    const off = onPrefs(p => setMusicChoice(p.music));
+    return () => { off(); };
+  }, []);
+  useEffect(() => {
+    setMusic(trackFor(music, lang));
+  }, [music, lang]);
 
   // Keep the global leaderboard up to date: soon after signing in, then once a minute while playing
   const latest = useRef(state);

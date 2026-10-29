@@ -77,3 +77,30 @@ describe("phone text", () => {
     expect(keys.filter(k => !(k in en))).toEqual([]);
   });
 });
+
+describe("sound and street chatter", () => {
+  it("every passer-by line exists, and every action has a sound", async () => {
+    const { chatterKeys, chatterKey, PERSONAS } = await import("../data/chatter");
+    const { soundForAction } = await import("../data/sounds");
+    expect(chatterKeys().filter(k => !(k in en))).toEqual([]);
+    const s = newGame({ name: "Ada", trait: "hustler", avatar: "👩🏾" });
+    for (const p of PERSONAS) for (const r of [0, 0.5, 0.99]) expect(chatterKeys()).toContain(chatterKey(s, p.id, r, r));
+    for (const a of actions) expect(typeof soundForAction(a)).toBe("string");
+  });
+
+  it("music matches the language unless the player picks a tune", async () => {
+    const { trackFor } = await import("../lib/audio");
+    expect(trackFor("auto", "pcm")).toBe("afrobeat");
+    expect(trackFor("auto", "de")).toBe("waltz");
+    expect(trackFor("auto", "en")).toBe("highlife");
+    expect(trackFor("lofi", "de")).toBe("lofi");
+    expect(trackFor("off", "en")).toBeNull();
+  });
+
+  it("answering a passer-by is a small social boost", () => {
+    const s = newGame({ name: "Ada", trait: "hustler", avatar: "👩🏾" });
+    const n = reduce(s, { type: "greet" });
+    expect(n.needs.social).toBeGreaterThan(s.needs.social - 1);
+    expect(n.counts.greet).toBe(1);
+  });
+});

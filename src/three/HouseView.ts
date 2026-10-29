@@ -51,6 +51,9 @@ export class HouseView {
   private windowMat!: THREE.MeshStandardMaterial;
   private backWall = new THREE.Group();
   private fpWalls = new THREE.Group(); // full-height walls and a ceiling, only in first person
+  /** Called on each footstep while the Sim walks (for the sound). */
+  onStep: (() => void) | null = null;
+  private stepClock = 0;
   private leftWall = new THREE.Group();
   private compound!: ReturnType<typeof buildCompound>;
   private objects: Placed[] = [];
@@ -457,6 +460,13 @@ export class HouseView {
         }
       }
       const moving = dist > 0.02;
+      if (moving && pose === "walk") {
+        this.stepClock -= dt;
+        if (this.stepClock <= 0) {
+          this.onStep?.();
+          this.stepClock = 0.36;
+        }
+      } else this.stepClock = 0;
       const targetYaw = moving && dist > 0.15 ? Math.atan2(delta.x, delta.z) : yaw;
       let dy = targetYaw - this.simYaw;
       dy = Math.atan2(Math.sin(dy), Math.cos(dy));

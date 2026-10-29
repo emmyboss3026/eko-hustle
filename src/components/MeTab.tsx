@@ -7,7 +7,7 @@ import { naira } from "../engine/economy";
 import { Progress } from "./ui";
 import AccountPanel from "./AccountPanel";
 import LangPicker from "./LangPicker";
-import { isMuted, setMuted } from "../lib/sound";
+import SoundSettings from "./SoundSettings";
 import { exportSave, importSave } from "../engine/save";
 import { useLang } from "../i18n/react";
 import { RELAXED_SURVIVAL, isRelaxed } from "../data/survival";
@@ -27,7 +27,6 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
   const { t, tx } = useLang();
   const [confirming, setConfirming] = useState(false);
   const [fileMsg, setFileMsg] = useState<string | null>(null);
-  const [muted, setMutedState] = useState(isMuted());
   const s = state.stats;
   const tr = tx.trait(state.sim.trait);
 
@@ -62,6 +61,8 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
 
       <h3>🌍 {t("me.language")}</h3>
       <LangPicker />
+
+      <SoundSettings />
 
       <h3>{t("me.skills")}</h3>
       <div className="group">
@@ -130,18 +131,6 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
             <span className="row-price">{t(isRelaxed(state) ? "me.survivalRelaxed" : "me.survivalClassic")}</span>
           </button>
         )}
-        <button
-          className="row"
-          aria-pressed={!muted}
-          onClick={() => {
-            setMuted(!muted);
-            setMutedState(!muted);
-          }}
-        >
-          <span className="row-emoji" aria-hidden>{muted ? "🔇" : "🔊"}</span>
-          <span className="row-main"><span className="row-title">{t("me.sound")}</span></span>
-          <span className="row-price">{muted ? t("me.off") : t("me.on")}</span>
-        </button>
         <button className="row" onClick={download}>
           <span className="row-emoji" aria-hidden>💾</span>
           <span className="row-main"><span className="row-title">{t("me.download")}</span></span>

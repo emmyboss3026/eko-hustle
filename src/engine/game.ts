@@ -115,6 +115,7 @@ export type Command =
   | { type: "choose"; index: number; roll: number }
   | { type: "goal"; id: GoalStepId; roll: number }
   | { type: "reward" }    // the player finished watching a rewarded ad
+  | { type: "greet" }     // you answered a passer-by in the streets
   | PhoneCommand;
 
 export const AD_REWARD = 3_000;
@@ -625,6 +626,13 @@ function step(s: GameState, cmd: Command): GameState {
 
     case "relaxed": {
       return { ...s, relaxed: cmd.on };
+    }
+
+    case "greet": {
+      // A quick chat with a passer-by: a little social, sometimes a bit of reputation
+      const next = bump(passTime(s, 2, { social: 4, fun: 1 }), "greet");
+      if (next.ending) return next;
+      return say((next.counts.greet ?? 0) % 5 === 0 ? addRep(next, 1) : next, msg(s, "log.greet"));
     }
 
     case "choose": {

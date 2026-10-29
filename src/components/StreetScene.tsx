@@ -6,6 +6,8 @@ import { spotOpen, spots, type SpotId } from "../data/spots";
 import { StreetView } from "../three/street.js";
 import { DOORS } from "../three/world.js";
 import { useLang } from "../i18n/react";
+import { chatterKey, PERSONAS, type Persona } from "../data/chatter";
+import { footstep, play } from "../lib/audio";
 
 type Props = {
   state: GameState;
@@ -26,6 +28,12 @@ const DOOR_IDS = Object.keys(DOORS) as SpotId[];
 export default function StreetScene({ state, dispatch, walking, focus, onEnter, onStop, firstPerson }: Props) {
   const { t, tx } = useLang();
   const box = useRef<HTMLDivElement>(null);
+  const bubbleEl = useRef<HTMLDivElement>(null);
+  const [chat, setChat] = useState<{ id: number; emoji: string; who: string; text: string } | null>(null);
+  const [replied, setReplied] = useState<string | null>(null);
+  // The newest state and words, for the 3D view's callbacks (which are set up once)
+  const live = useRef({ state, t });
+  live.current = { state, t };
   const view = useRef<StreetView | null>(null);
   const info = useRef({ hour: 12, grid: true });
   const [near, setNear] = useState<SpotId | null>(null);
@@ -82,6 +90,13 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       onArrive: (id: string) => enterRef.current(id as SpotId),
       look: state.sim.look ?? {},
       labelFor: (id: string) => `${spots[id as SpotId]?.emoji ?? "🏠"} ${tx.spot(id as SpotId)}`,
+      // A passer-by says something (only while you're walking about)
+      onChatter: (persona: Persona) => {
+        if (!walkingRef.current || blocked.current) return null;
+        const { state: st, t: tt } = live.current;
+        const p = PERSONAS.find(x => x.id === persona)!;
+        return { emoji: p.emoji, who: tt(`chat.who.${persona}`), text: tt(chatterKey(st, persona, Math.random(), Math.random())) };
+      },
     });
     view.current = sv;
 
@@ -97,6 +112,8 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
     let last = performance.now();
     let raf = 0;
     let lastNear: string | null = null;
+    let stepClock = 0;
+    let shownBubble: number | null = null;
     const frame = (now: number) => {
       const dt = Math.min(0.25, (now - last) / 1000);
       last = now;
@@ -104,6 +121,27 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       sv.controls.enabled = !sv.fp; // you can always turn the camera (in first person, dragging looks around)
       sv.setState(scene.current, info.current);
       sv.update(dt, { paused: blocked.current || !walkingRef.current });
+      // Footsteps while you walk
+      if (sv.moving) {
+        stepClock -= dt;
+        if (stepClock <= 0) {
+          footstep();
+          stepClock = sv.running ? 0.27 : 0.38;
+        }
+      } else stepClock = 0;
+      // The speech bubble follows the person who is talking
+      const b = sv.bubble;
+      if (b?.id !== shownBubble) {
+        shownBubble = b?.id ?? null;
+        setChat(b ? { id: b.id, emoji: b.emoji, who: b.who, text: b.text } : null);
+        setReplied(null);
+        if (b) play("chat");
+      }
+      const el = bubbleEl.current;
+      if (el && b?.screen) {
+        el.style.transform = `translate(${Math.round(b.screen.x)}px, ${Math.round(b.screen.y)}px) translate(-50%, -100%)`;
+        el.style.visibility = b.screen.visible ? "visible" : "hidden";
+      }
       const n = sv.near?.id ?? null;
       if (n !== lastNear) {
         lastNear = n;
@@ -224,6 +262,27 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
         aria-label={walking ? t("street.aria") : t("street.ariaPlace")}
       />
       {noGl && <div className="scene-msg">{t("street.noGl")}</div>}
+      {walking && chat && (
+        <div ref={bubbleEl} className="chat-bubble" role="status" style={{ visibility: "hidden" }}>
+          <small>{chat.emoji} {chat.who}</small>
+          <span>{chat.text}</span>
+          {replied ? (
+            <span className="chat-me">{t("chat.you")}: {replied}</span>
+          ) : (
+            <button
+              className="chip-btn"
+              onClick={() => {
+                const line = t(`chat.youSay.${Math.floor(Math.random() * 3)}`);
+                setReplied(line);
+                dispatch({ type: "greet" });
+                if (view.current?.bubble) view.current.bubble.until = view.current.time + 3; // a moment to read it
+              }}
+            >
+              {t("chat.reply")}
+            </button>
+          )}
+        </div>
+      )}
 
       {walking && (
         <>

@@ -22,6 +22,7 @@ const howTos = [
   { id: "rewards", emoji: "🎁", steps: 2 },
   { id: "board", emoji: "🏆", steps: 2 },
   { id: "camera", emoji: "🎥", steps: 2 },
+  { id: "sound", emoji: "🔊", steps: 2 },
   { id: "feedback", emoji: "💬", steps: 3 },
 ];
 
