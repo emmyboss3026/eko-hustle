@@ -2766,3 +2766,57 @@ form .field + .note {
 a.row { color: inherit; text-decoration: none; }
 
 .panel-sheet:focus { outline: none; }
+
+/* ---------- the story: mission card, scene, phone app ---------- */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+.mission-chip.ready { border-color: var(--good); box-shadow: 0 3px 0 rgba(11, 122, 75, 0.45); }
+.mission-chip.ready .mission-line { background: #e8f6ee; }
+.mission-finish { display: block; width: calc(100% - 16px); margin: 0 8px 8px; padding: 6px 10px; text-align: center; animation: pulse-ready 1.6s ease-in-out infinite; }
+@keyframes pulse-ready { 50% { transform: scale(1.02); } }
+.mission-chip .btn-row { margin-top: 6px; }
+.mission-chip .btn-row .btn { text-align: center; padding: 6px 8px; }
+.mission-steps { font-size: 12.5px; color: var(--ink-soft); }
+
+.story-tasks { list-style: none; margin: 6px 0 8px; padding: 0; display: grid; gap: 6px; }
+.story-tasks li { display: flex; align-items: center; gap: 8px; background: #f6f5f0; border-radius: 8px; padding: 6px 8px; font-weight: 400; }
+.story-tasks li.done { background: #e8f6ee; }
+.story-tasks li.done .story-task-text > span { text-decoration: line-through; text-decoration-color: rgba(11, 122, 75, 0.5); }
+.story-check { flex: none; font-size: 15px; }
+.story-task-text { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.story-task-text small { color: var(--ink-soft); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.story-bar { flex: 1; height: 5px; background: #e2e1db; border-radius: 3px; overflow: hidden; max-width: 120px; }
+.story-bar i { display: block; height: 100%; background: var(--danfo-deep); }
+
+.story { display: grid; gap: 8px; }
+.story-badge { justify-self: start; background: var(--asphalt); color: #fff; border-radius: 99px; padding: 3px 10px; font-size: 12px; font-weight: 700; }
+.story-title { font-family: var(--display); font-size: 21px; line-height: 1.1; margin: 2px 0 0; }
+.story-where { margin: 0; color: var(--ink-soft); font-size: 14px; }
+.story-cast { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.story-cast li { background: #f6f5f0; border: 1px solid var(--line); border-radius: 10px; padding: 4px 8px; font-size: 13.5px; font-weight: 700; display: grid; }
+.story-cast li small { font-weight: 400; color: var(--ink-soft); font-size: 11.5px; }
+.story-intro { margin: 4px 0; font-size: 16px; line-height: 1.5; }
+.story-goal { margin: 0; font-weight: 700; }
+.story-reward { margin: 0; font-size: 14px; color: var(--good); font-weight: 700; }
+.story-scene { display: grid; gap: 8px; margin: 4px 0; }
+.story-line { margin: 0; background: #f6f5f0; border-radius: 12px 12px 12px 3px; padding: 8px 11px; max-width: 92%; justify-self: start; line-height: 1.45; }
+.story-line b { display: block; font-size: 12.5px; margin-bottom: 2px; }
+.story-line.me { justify-self: end; background: #fff5c2; border-radius: 12px 12px 3px 12px; }
+.story-decide { margin: 8px 0 0; font-family: var(--display); font-size: 16px; }
+.story-choices { display: grid; gap: 8px; }
+.story-choice { display: grid; gap: 2px; text-align: left; background: var(--sign); padding: 10px 12px; }
+.story-choice:hover:not(:disabled) { background: #fbf6dd; }
+.story-choice small { font-weight: 400; color: var(--ink-soft); font-size: 12.5px; }
+.story-picked { margin: 0; font-style: italic; color: var(--ink-soft); }
+.story-result .btn-row .btn { text-align: center; }
+
+.story-row .row-main { display: grid; gap: 2px; }
+.story-map details { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin: 6px 0; background: var(--sign); }
+.story-map summary { font-weight: 700; cursor: pointer; }
+.story-map ol { margin: 6px 0; padding-left: 22px; font-size: 14px; }
+.story-map li { margin: 3px 0; }
+.story-map li small { color: var(--ink-soft); }
+.story-map li.now { font-weight: 700; }
+.week-card { margin-top: 12px; background: #fff8e1; border: 2px solid var(--danfo); border-radius: 12px; padding: 10px 12px; }
+.week-card h3 { margin: 0 0 4px; }
+.week-card p { margin: 4px 0; }

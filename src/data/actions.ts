@@ -28,6 +28,7 @@ export type Action = {
   food?: number;            // meal packs it uses up from your groceries
   stock?: { food?: number; fuel?: number }; // supplies it adds at home
   mood?: MoodletId;         // a mood you get afterwards
+  flag?: string;            // only once this has happened in the story (e.g. "medstudent")
 };
 
 export const categoryInfo: Record<Category, { name: string; emoji: string }> = {
@@ -151,6 +152,31 @@ export const actions: Action[] = [
   { id: "puff-puff", label: "Buy puff-puff from a hawker", emoji: "🍩", minutes: 5, cost: 300, category: "food", where: "any", spot: "phone", effect: { hunger: 15 } },
   { id: "pure-water", label: "Buy pure water", emoji: "💧", minutes: 2, cost: 50, category: "food", where: "any", spot: "phone", effect: { hunger: 3, bladder: -5 } },
   { id: "public-toilet", label: "Public toilet", emoji: "🚻", minutes: 5, cost: 100, category: "care", where: "any", spot: "phone", effect: { bladder: 100 } },
+  // ----- story places -----
+  { id: "family-lunch", label: "Sunday lunch with the family", emoji: "🍲", minutes: 120, cost: 0, category: "food", where: "mushin", spot: "family", effect: { hunger: 45, social: 30, fun: 10 } },
+  { id: "help-jide", label: "Help Uncle Jide fix the house", emoji: "🔨", minutes: 120, cost: 0, category: "fun", where: "mushin", spot: "family", effect: { energy: -20, social: 15, hygiene: -10 }, skill: { fitness: 0.2 } },
+  { id: "community-clean", label: "Join the street clean-up", emoji: "🧹", minutes: 120, cost: 0, category: "fun", where: "mushin", spot: "mushin-street", effect: { energy: -20, social: 15, hygiene: -15 }, skill: { fitness: 0.2 } },
+  { id: "lecture", label: "Sit in on a public lecture", emoji: "🎓", minutes: 120, cost: 0, category: "learn", where: "yaba", spot: "campus", effect: { energy: -10, fun: -5 }, skill: { study: 0.4 } },
+  { id: "study-hall", label: "Revise in the study hall", emoji: "📖", minutes: 180, cost: 0, category: "learn", where: "yaba", spot: "campus", effect: { energy: -15, fun: -10 }, skill: { study: 0.6 }, flag: "student" },
+  { id: "campus-gist", label: "Eat and gist at the cafeteria", emoji: "🍛", minutes: 45, cost: 800, category: "food", where: "yaba", spot: "campus", effect: { hunger: 30, social: 20, fun: 5 } },
+  { id: "visit-patient", label: "Visit a patient", emoji: "💐", minutes: 60, cost: 0, category: "fun", where: "yaba", spot: "hospital", effect: { social: 10, fun: -5 } },
+  { id: "volunteer", label: "Volunteer at the outpatient clinic", emoji: "🩹", minutes: 180, cost: 0, category: "learn", where: "yaba", spot: "hospital", effect: { energy: -20, social: 15 }, skill: { charisma: 0.2, study: 0.2 } },
+  { id: "ward-round", label: "Join a ward round", emoji: "🩺", minutes: 180, cost: 0, category: "learn", where: "yaba", spot: "hospital", effect: { energy: -20, fun: -5 }, skill: { study: 0.5, charisma: 0.1 }, flag: "medstudent" },
+  { id: "tower-network", label: "Network at the lobby café", emoji: "☕", minutes: 60, cost: 2_500, category: "fun", where: "island", spot: "tower", effect: { social: 15, energy: -5 }, skill: { charisma: 0.3, hustle: 0.2 } },
+  { id: "biz-class", label: "Business seminar", emoji: "📊", minutes: 120, cost: 5_000, category: "learn", where: "island", spot: "tower", effect: { energy: -10, fun: -5 }, skill: { hustle: 0.6 } },
+  { id: "pitch-deck", label: "Pitch to investors", emoji: "📈", minutes: 120, cost: 0, category: "learn", where: "island", spot: "tower", effect: { energy: -15, fun: 5 }, skill: { hustle: 0.4, charisma: 0.4 }, flag: "founder" },
+  { id: "legal-clinic", label: "Help at the free legal clinic", emoji: "📝", minutes: 120, cost: 0, category: "learn", where: "island", spot: "chambers", effect: { energy: -10, social: 10 }, skill: { charisma: 0.3, study: 0.2 } },
+  { id: "read-cases", label: "Read law reports in the library", emoji: "📚", minutes: 150, cost: 0, category: "learn", where: "island", spot: "chambers", effect: { energy: -10, fun: -8 }, skill: { study: 0.5 }, flag: "lawstudent" },
+  { id: "watch-court", label: "Watch from the public gallery", emoji: "👀", minutes: 120, cost: 0, category: "learn", where: "island", spot: "court", effect: { energy: -5, fun: 5 }, skill: { study: 0.3, charisma: 0.1 } },
+  { id: "moot", label: "Argue a moot case", emoji: "🗣️", minutes: 120, cost: 0, category: "learn", where: "island", spot: "court", effect: { energy: -15, fun: 5 }, skill: { charisma: 0.5, study: 0.2 }, flag: "lawstudent" },
+  { id: "pool", label: "Relax by the pool", emoji: "🏊🏾", minutes: 90, cost: 0, category: "fun", where: "island", spot: "residences", effect: { fun: 35, energy: 10, hygiene: 10 }, mood: "beachDay", flag: "penthouse" },
+  { id: "dinner-party", label: "Host a dinner party", emoji: "🥂", minutes: 180, cost: 20_000, category: "fun", where: "island", spot: "residences", effect: { social: 45, fun: 35, hunger: 30 }, mood: "bigNight", flag: "penthouse" },
+  { id: "shoot-content", label: "Shoot content for your page", emoji: "🤳🏾", minutes: 90, cost: 0, category: "money", where: "ikeja", spot: "studio", effect: { fun: 15, energy: -10 }, earn: { base: 1_500, per: 500, skill: "charisma" }, skill: { charisma: 0.2 } },
+  { id: "record-demo", label: "Record a demo", emoji: "🎙️", minutes: 180, cost: 10_000, category: "learn", where: "ikeja", spot: "studio", effect: { fun: 20, energy: -15 }, skill: { charisma: 0.5 } },
+  { id: "jam", label: "Jam with the band", emoji: "🎸", minutes: 120, cost: 0, category: "fun", where: "ikeja", spot: "studio", effect: { fun: 30, social: 20, energy: -10 }, skill: { charisma: 0.3 }, flag: "artist" },
+  { id: "attend-event", label: "Attend an event", emoji: "🎉", minutes: 180, cost: 3_000, category: "fun", where: "ikeja", spot: "pavilion", effect: { fun: 30, social: 30, energy: -10, hunger: 20 } },
+  { id: "usher", label: "Work as an event usher", emoji: "🎀", minutes: 240, cost: 0, pay: 6_000, category: "money", where: "ikeja", spot: "pavilion", effect: { energy: -30, social: 10, hunger: 10 }, skill: { charisma: 0.1 } },
+  { id: "host-show", label: "Host a show", emoji: "🎤", minutes: 180, cost: 0, category: "money", where: "ikeja", spot: "pavilion", effect: { energy: -30, fun: 20, social: 20 }, earn: { base: 8_000, per: 2_000, skill: "charisma" }, skill: { charisma: 0.3 }, flag: "artist" },
 ];
 
 export const actionById = (id: string) => actions.find(a => a.id === id);

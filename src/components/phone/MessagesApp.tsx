@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { clockOf, dayOf, type Command, type GameState } from "../../engine/game";
 import type { PhoneMsg } from "../../engine/phone";
 import { contactById } from "../../data/contacts";
+import { castById } from "../../data/story/cast";
 import { useLang } from "../../i18n/react";
 import type { AppId } from "./Phone";
 
@@ -16,11 +17,17 @@ const SENDER: Record<string, { emoji: string; key: string }> = {
 /** Where a message's "open the app" link goes. */
 const LINK: Record<string, AppId> = {
   "msg.invite": "invites", "msg.biz.profit": "business", "msg.biz.loss": "business", "msg.tunde.invest": "invest",
-  "msg.funke.business": "business", "msg.bank.daily": "rewards", "msg.bank.welcome": "bank", "msg.landlord.rent": "bank",
+  "msg.funke.business": "business", "msg.story.new": "story", "msg.bank.daily": "rewards", "msg.bank.welcome": "bank", "msg.landlord.rent": "bank",
 };
 
 export function senderName(t: (k: string) => string, from: From) {
   const c = contactById(from);
+  if (from.startsWith("cast:")) {
+    const p = castById(from.slice(5));
+    const key = `cast.${p?.id}.name`;
+    const name = p ? t(key) : t("msgs.system");
+    return { emoji: p?.emoji ?? "📖", name: name === key ? p!.name : name };
+  }
   return c ? { emoji: c.emoji, name: t(`contact.${c.id}.name`) } : { emoji: SENDER[from]?.emoji ?? "📱", name: t(SENDER[from]?.key ?? "msgs.system") };
 }
 

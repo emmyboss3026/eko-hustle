@@ -1,6 +1,7 @@
 import { type Command, type GameState } from "../../engine/game";
 import { naira } from "../../engine/economy";
 import { phoneBlocker } from "../../engine/phone";
+import { storyFlag } from "../../engine/progress";
 import { BIZ_RESALE, BUSINESSES, expectedProfit, MAX_BIZ_LEVEL, bizById } from "../../data/business";
 import { useLang } from "../../i18n/react";
 
@@ -58,7 +59,7 @@ export default function BizApp({ state, dispatch }: { state: GameState; dispatch
 
       <h3>{t("biz.forSale")}</h3>
       <div className="group">
-        {BUSINESSES.filter(b => !owned.some(o => o.id === b.id)).map(b => {
+        {BUSINESSES.filter(b => !owned.some(o => o.id === b.id) && storyFlag(state, b.flag)).map(b => {
           const cmd = { type: "buyBiz", id: b.id } as const;
           const problem = phoneBlocker(state, cmd);
           return (

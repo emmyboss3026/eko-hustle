@@ -7,7 +7,6 @@ import { CATALOG, SELL_BACK } from "../data/home";
 import { FUNDS, priceOn, SELL_KEEP, type FundId } from "../data/invest";
 import { BIZ_RESALE } from "../data/business";
 import { CONTACTS, CLOSE } from "../data/contacts";
-import { missions } from "../data/missions";
 import { careers } from "../data/careers";
 import { hash } from "./rng";
 
@@ -37,13 +36,16 @@ export function netWorth(s: GameState): number {
 
 export const reputation = (s: GameState) => Math.round(s.rep ?? 0);
 
+/** Has this happened in the story? (Qualifications like "mbbs" or "bar" unlock careers, places and businesses.) */
+export const storyFlag = (s: Pick<GameState, "story">, flag: string | undefined) => !flag || (s.story?.flags ?? []).includes(flag);
+
 // ---------- level ----------
 
 export function xp(s: GameState): number {
   const skills = Object.values(s.skills).reduce((a, b) => a + b, 0);
   const bizLevels = (s.businesses ?? []).reduce((a, b) => a + b.level, 0);
   return Math.round(
-    skills * 100 + s.stats.promotions * 150 + s.stats.shifts * 15 + (s.mission ?? 0) * 120
+    skills * 100 + s.stats.promotions * 150 + s.stats.shifts * 15 + (s.mission ?? 0) * 120 + (s.story?.xp ?? 0)
     + bizLevels * 100 + (dayNumber(s) - 1) * 10 + achievements(s).length * 80,
   );
 }
@@ -101,10 +103,30 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "streak7", emoji: "🔥", done: s => (s.daily ?? []).some(d => d.streakDay === 7) },
   { id: "generator", emoji: "⚡", done: s => s.home.objects.some(o => o.type === "generator") },
   { id: "survivor", emoji: "📅", done: s => dayNumber(s) >= 30 },
-  { id: "missions", emoji: "🏆", done: s => (s.mission ?? 0) >= missions.length },
+  { id: "chapter3", emoji: "💪🏾", done: s => (s.mission ?? 0) >= 30 },
+  { id: "routeChosen", emoji: "🛣️", done: s => !!s.story?.route },
+  { id: "chapter6", emoji: "📈", done: s => (s.mission ?? 0) >= 60 },
+  { id: "chapter9", emoji: "👑", done: s => (s.mission ?? 0) >= 90 },
+  { id: "missions", emoji: "🏆", done: s => (s.story?.done ?? []).includes(FINAL_MISSION) },
+  { id: "sides", emoji: "🧩", done: s => (s.counts?.side ?? 0) >= 5 },
+  { id: "challenges", emoji: "✅", done: s => (s.counts?.challenge ?? 0) >= 20 },
+  { id: "qualified", emoji: "🎓", done: s => ["mbbs", "bar", "founder", "registered", "demo"].some(f => (s.story?.flags ?? []).includes(f)) },
 ];
 
 export const achievements = (s: GameState) => ACHIEVEMENTS.filter(a => a.done(s));
+
+/** The last mission of the main story. */
+export const FINAL_MISSION = "c10-legacy";
+
+/** How far up your working life you are, 0–4, the same scale for every route (job or businesses),
+ *  so a doctor, a lawyer and a business owner can compete fairly on the leaderboard. */
+export function careerTier(s: GameState): number {
+  const job = s.career ? Math.round((4 * (s.career.level + 1)) / careers[s.career.id].levels.length) : 0;
+  const owned = s.businesses ?? [];
+  const levels = owned.reduce((a, b) => a + b.level, 0);
+  const biz = owned.length === 0 ? 0 : levels >= 12 && owned.length >= 4 ? 4 : levels >= 8 && owned.length >= 3 ? 3 : levels >= 4 && owned.length >= 2 ? 2 : 1;
+  return Math.min(4, Math.max(job, biz));
+}
 
 // ---------- score (the leaderboard's main number) ----------
 
@@ -115,7 +137,7 @@ export function scoreParts(s: GameState): ScoreParts {
     level: level(s),
     rep: reputation(s),
     achievements: achievements(s).length,
-    careerLevel: s.career ? s.career.level + 1 : 0,
+    careerLevel: careerTier(s),
     businesses: (s.businesses ?? []).length,
     netWorth: netWorth(s),
   };

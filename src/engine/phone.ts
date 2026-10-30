@@ -13,7 +13,7 @@ import { INVITE_CHANCE, INVITE_DAYS, INVITES, inviteById, MAX_OPEN_INVITES, type
 import type { MoodletId } from "../data/moodlets";
 import { RENT, RENT_EVERY_DAYS, naira } from "./economy";
 import { rand } from "./rng";
-import { dayNumber, seedOf, statusTier } from "./progress";
+import { dayNumber, seedOf, statusTier, storyFlag } from "./progress";
 
 // ---------- saved data (all optional, so older saves keep working) ----------
 
@@ -27,7 +27,7 @@ export type ContactState = { rel: number; last: number; helped?: number; called?
 export type OpenInvite = { uid: number; id: InviteId; day: number; until: number; status: "open" | "accepted" | "declined" | "expired" };
 export type PhoneMsg = {
   uid: number;
-  from: ContactId | "bank" | "biz" | "club";
+  from: ContactId | "bank" | "biz" | "club" | `cast:${string}`;
   t: number;
   key: string;                       // text key (shown in the player's language)
   vars?: Record<string, string | number>;
@@ -51,6 +51,7 @@ export type Kit = {
   learn: (s: GameState, gain: Partial<Skills> | undefined) => GameState;
   addMood: (s: GameState, id: MoodletId) => GameState;
   bump: (s: GameState, key: string, by?: number) => GameState;
+  money: (n: number) => string;
 };
 
 // ---------- small helpers ----------
@@ -198,6 +199,7 @@ export function phoneBlocker(s: GameState, cmd: PhoneCommand): string | null {
       const b = bizById(cmd.id);
       if (!b) return "phone.err.unknown";
       if ((s.businesses ?? []).some(o => o.id === cmd.id)) return "phone.err.owned";
+      if (!storyFlag(s, b.flag)) return "phone.err.story";
       if (b.req && !meets(s.skills, b.req)) return "phone.err.skill";
       if (s.money < b.price) return "problem.noMoney";
       return null;

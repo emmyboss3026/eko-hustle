@@ -5,8 +5,12 @@ import { naira } from "../engine/economy";
 import { payBonus } from "../data/traits";
 import { useLang, Rich } from "../i18n/react";
 import { Progress } from "./ui";
+import { storyFlag } from "../engine/progress";
 
 type Props = { state: GameState; dispatch: (c: Command) => void; goTo: () => void };
+
+// Story careers show once you're on their route (locked until you qualify) or qualified.
+const ROUTE_OF: Partial<Record<string, string>> = { med: "med", law: "law", ent: "ent" };
 
 export default function WorkTab({ state, dispatch, goTo }: Props) {
   const { t, tx } = useLang();
@@ -55,9 +59,10 @@ export default function WorkTab({ state, dispatch, goTo }: Props) {
 
       <h3>{t("jobs.careers")}</h3>
       <div className="group">
-        {careerList.map(c => {
+        {careerList.filter(c => !c.flag || storyFlag(state, c.flag) || state.story?.route === ROUTE_OF[c.id]).map(c => {
           const mine = state.career?.id === c.id;
-          const canApply = meets(state.skills, c.levels[0].req);
+          const qual = !storyFlag(state, c.flag) ? c.flag : !storyFlag(state, c.levels[0].flag) ? c.levels[0].flag : undefined;
+          const canApply = meets(state.skills, c.levels[0].req) && !qual;
           return (
             <div key={c.id} className="career">
               <div className="career-head">
@@ -75,10 +80,11 @@ export default function WorkTab({ state, dispatch, goTo }: Props) {
                   </button>
                 )}
               </div>
+              {qual && !mine && <p className="note">🎓 {t("jobs.needsQual", { qual: t(`qual.${qual}`) })}</p>}
               <ol className="ladder">
                 {c.levels.map((l, i) => (
                   <li key={l.title} className={mine && state.career?.level === i ? "current" : ""}>
-                    <span>{tx.title(c.id, i)}{l.req ? <span className="note"> ({tx.req(l.req)})</span> : null}</span>
+                    <span>{tx.title(c.id, i)}{l.req ? <span className="note"> ({tx.req(l.req)})</span> : null}{l.flag && i > 0 ? <span className="note"> · 🎓 {t(`qual.${l.flag}`)}</span> : null}</span>
                     <span>{naira(Math.round(l.pay * bonus))}</span>
                   </li>
                 ))}
