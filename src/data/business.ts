@@ -3,7 +3,7 @@
 
 import type { Skills } from "./skills";
 
-export type BizId = "water" | "suya" | "pos" | "keke" | "salon" | "mart";
+export type BizId = "water" | "suya" | "pos" | "keke" | "salon" | "mart" | "estate" | "logistics" | "clinic" | "lawfirm" | "startup" | "label";
 
 export type Business = {
   id: BizId;
@@ -15,6 +15,7 @@ export type Business = {
   maxStaff: number;
   upgrade: number;      // price of each upgrade (× current level)
   req?: Partial<Skills>;
+  flag?: string;        // only for sale once this has happened in the story
 };
 
 export const BUSINESSES: Business[] = [
@@ -24,6 +25,13 @@ export const BUSINESSES: Business[] = [
   { id: "keke", emoji: "🛺", price: 250_000, base: 16_000, upkeep: 4_500, wage: 3_000, maxStaff: 3, upgrade: 120_000, req: { hustle: 3 } },
   { id: "salon", emoji: "💇🏾", price: 400_000, base: 24_000, upkeep: 7_000, wage: 3_500, maxStaff: 4, upgrade: 180_000, req: { charisma: 3 } },
   { id: "mart", emoji: "🏬", price: 900_000, base: 52_000, upkeep: 16_000, wage: 4_500, maxStaff: 6, upgrade: 400_000, req: { hustle: 5, charisma: 3 } },
+  // Unlocked in the story
+  { id: "estate", emoji: "🏘️", price: 2_000_000, base: 70_000, upkeep: 14_000, wage: 5_000, maxStaff: 2, upgrade: 900_000, flag: "property" },
+  { id: "logistics", emoji: "🚚", price: 2_500_000, base: 120_000, upkeep: 40_000, wage: 8_000, maxStaff: 8, upgrade: 1_000_000, req: { hustle: 6 }, flag: "cole_partner" },
+  { id: "clinic", emoji: "🏥", price: 3_000_000, base: 140_000, upkeep: 50_000, wage: 10_000, maxStaff: 8, upgrade: 1_200_000, req: { study: 8 }, flag: "clinic_ready" },
+  { id: "lawfirm", emoji: "🏛️", price: 2_000_000, base: 100_000, upkeep: 30_000, wage: 9_000, maxStaff: 6, upgrade: 900_000, req: { study: 7, charisma: 6 }, flag: "own_chambers" },
+  { id: "startup", emoji: "🚀", price: 1_500_000, base: 90_000, upkeep: 35_000, wage: 9_000, maxStaff: 8, upgrade: 800_000, req: { study: 7 }, flag: "founder" },
+  { id: "label", emoji: "💿", price: 1_800_000, base: 95_000, upkeep: 30_000, wage: 8_000, maxStaff: 6, upgrade: 850_000, req: { charisma: 6 }, flag: "own_label" },
 ];
 
 export const bizById = (id: string) => BUSINESSES.find(b => b.id === id);

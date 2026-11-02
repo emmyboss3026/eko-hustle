@@ -23,6 +23,7 @@ const howTos = [
   { id: "board", emoji: "🏆", steps: 2 },
   { id: "camera", emoji: "🎥", steps: 2 },
   { id: "sound", emoji: "🔊", steps: 2 },
+  { id: "story", emoji: "📖", steps: 3 },
   { id: "revive", emoji: "🚑", steps: 2 },
   { id: "privacy", emoji: "🔒", steps: 1 },
   { id: "feedback", emoji: "💬", steps: 3 },

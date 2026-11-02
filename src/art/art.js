@@ -168,6 +168,101 @@ const PLACE_ART = {
       <rect x="120" y="100" width="2" height="10" fill="#d4af37"/><rect x="198" y="100" width="2" height="10" fill="#d4af37"/><path d="M121 102 Q160 108 199 102" stroke="#c0392b" stroke-width="2" fill="none"/>
       ${person(210, 112, '#8e44ad')}${person(222, 112, '#e84393')}${person(234, 112, '#00cec9')}${person(246, 112, '#fdcb6e')}${person(136, 112, '#111', 1.15)}`;
   },
+
+  // ----- story places (original drawings) -----
+  family: (sk) => `${sky(sk)}${ground(104, '#a3b86c', '#8fa65a')}
+    ${tree(262, 106, 1.4, '#3d8b37')}
+    <circle cx="250" cy="72" r="2.5" fill="#f39c12"/><circle cx="266" cy="66" r="2.5" fill="#f39c12"/><circle cx="276" cy="78" r="2.5" fill="#f39c12"/>
+    <rect x="58" y="56" width="150" height="50" fill="#f3e2c7"/><polygon points="50,58 133,22 216,58" fill="#9c4a2f"/>
+    <rect x="120" y="76" width="26" height="30" fill="#6d4c41"/><circle cx="141" cy="92" r="1.6" fill="#f1c40f"/>
+    <rect x="72" y="70" width="30" height="20" fill="${windowGlow(sk.night)}"/><rect x="164" y="70" width="30" height="20" fill="${windowGlow(sk.night)}"/>
+    <rect x="72" y="79" width="30" height="2" fill="#6d4c41"/><rect x="164" y="79" width="30" height="2" fill="#6d4c41"/>
+    <rect x="30" y="112" width="70" height="4" fill="#8d6e63"/><rect x="34" y="116" width="3" height="10" fill="#5d4037"/><rect x="93" y="116" width="3" height="10" fill="#5d4037"/>
+    ${plasticChair(26, 126, '#2980b9')}${plasticChair(104, 126, '#e74c3c')}
+    ${person(60, 124, '#8e44ad', 0.95)}${person(78, 124, '#16a085', 0.85)}${person(226, 122, '#d35400')}`,
+
+  campus: (sk) => `${sky(sk)}${ground(106, '#86b25c', '#76a04e')}
+    <path d="M0 126 L320 118 L320 140 L0 140z" fill="#c8b48e"/>
+    <rect x="70" y="40" width="180" height="68" fill="#e8dcc4"/><polygon points="62,42 160,14 258,42" fill="#7f8c8d"/>
+    ${[0, 1, 2, 3, 4, 5].map((i) => `<rect x="${86 + i * 28}" y="46" width="8" height="62" fill="#fdfaf2"/>`).join('')}
+    <rect x="70" y="40" width="180" height="6" fill="#bdae92"/>
+    <rect x="136" y="84" width="48" height="24" fill="#5d4037"/>
+    <rect x="112" y="26" width="96" height="12" rx="2" fill="#1a5276"/>
+    <text x="160" y="35" font-size="8.5" font-weight="800" fill="#fff" text-anchor="middle" font-family="Sora,system-ui,sans-serif">LAGOON UNIVERSITY</text>
+    ${tree(30, 110, 1.1)}${tree(292, 112, 1)}
+    ${person(104, 124, '#2e86de')}${person(118, 126, '#f6b93b', 0.9)}${person(214, 124, '#e55039')}`,
+
+  hospital: (sk) => `${sky(sk)}${ground(108, '#a4abb2', '#8a9198')}
+    <rect x="60" y="30" width="200" height="80" fill="#f4f6f7"/><rect x="60" y="30" width="200" height="8" fill="#16a085"/>
+    ${Array.from({ length: 4 }, (_, r) => Array.from({ length: 8 }, (_, c) => (c === 3 || c === 4) && r === 3 ? '' : `<rect x="${70 + c * 23}" y="${44 + r * 15}" width="14" height="9" fill="${sk.night ? ((r * 3 + c) % 4 ? '#ffe9a8' : '#34495e') : '#aed6f1'}"/>`).join('')).join('')}
+    <rect x="136" y="88" width="48" height="22" fill="#5dade2" opacity="0.85"/><rect x="159" y="88" width="2" height="22" fill="#ecf0f1"/>
+    <rect x="148" y="10" width="24" height="24" rx="3" fill="#e74c3c"/><rect x="157" y="14" width="6" height="16" fill="#fff"/><rect x="152" y="19" width="16" height="6" fill="#fff"/>
+    <text x="160" y="84" font-size="7" font-weight="800" fill="#16a085" text-anchor="middle" font-family="Sora,system-ui,sans-serif">MAINLAND GENERAL</text>
+    <g transform="translate(250 116)"><rect x="-26" y="-14" width="40" height="14" rx="2" fill="#fff"/><rect x="-26" y="-14" width="40" height="3" fill="#e74c3c"/><rect x="8" y="-11" width="10" height="11" rx="1" fill="#fff"/><circle cx="-16" cy="1" r="3.4" fill="#2d3436"/><circle cx="8" cy="1" r="3.4" fill="#2d3436"/><rect x="-10" y="-10" width="8" height="2.5" fill="#e74c3c"/><rect x="-7" y="-13" width="2.5" height="8" fill="#e74c3c"/></g>
+    ${person(110, 122, '#ecf0f1')}${person(206, 122, '#2980b9', 0.95)}`,
+
+  tower: (sk) => `${sky(sk)}${ground(110, '#9aa1a8', '#7f868d')}
+    <rect x="30" y="56" width="50" height="54" fill="#5d6d7e"/><rect x="246" y="48" width="56" height="62" fill="#566573"/>
+    <rect x="112" y="6" width="96" height="104" fill="#2e4053"/>
+    ${Array.from({ length: 11 }, (_, r) => Array.from({ length: 6 }, (_, c) => `<rect x="${118 + c * 15}" y="${12 + r * 8.5}" width="11" height="5.5" fill="${sk.night ? ((r + c * 2) % 3 ? '#ffd27a' : '#1b2631') : '#85c1e9'}" opacity="0.92"/>`).join('')).join('')}
+    ${Array.from({ length: 5 }, (_, r) => `<rect x="36" y="${62 + r * 9}" width="38" height="4" fill="${windowGlow(sk.night)}" opacity="0.8"/>`).join('')}
+    ${Array.from({ length: 6 }, (_, r) => `<rect x="252" y="${54 + r * 9}" width="44" height="4" fill="${windowGlow(sk.night)}" opacity="0.8"/>`).join('')}
+    <rect x="140" y="98" width="40" height="12" fill="#1b2631"/><rect x="146" y="100" width="28" height="10" fill="#5dade2" opacity="0.7"/>
+    <text x="160" y="96" font-size="6.5" font-weight="800" fill="#f8c471" text-anchor="middle" font-family="Sora,system-ui,sans-serif">MARINA POINT</text>
+    ${palm(96, 124, 0.8)}${palm(228, 124, 0.8)}
+    ${person(130, 124, '#1f2d3d')}${person(194, 124, '#7d3c98', 0.95)}`,
+
+  chambers: (sk) => `${sky(sk)}${ground(108, '#b0a999', '#958e7f')}
+    <rect x="72" y="40" width="176" height="70" fill="#f2ead8"/><rect x="72" y="40" width="176" height="7" fill="#7b5e3b"/>
+    ${[0, 1, 2, 3].map((i) => `<rect x="${86 + i * 44}" y="56" width="22" height="30" fill="${windowGlow(sk.night)}"/><rect x="${86 + i * 44}" y="70" width="22" height="2" fill="#7b5e3b"/>`).join('')}
+    <rect x="144" y="90" width="32" height="20" fill="#4e342e"/>
+    <rect x="100" y="24" width="120" height="14" rx="2" fill="#1c2833"/>
+    <text x="160" y="34" font-size="8" font-weight="800" fill="#f5cba7" text-anchor="middle" font-family="Georgia,serif">NWOSU &amp; PARTNERS</text>
+    <g transform="translate(160 18)" stroke="#d4ac0d" stroke-width="1.6" fill="none"><path d="M-12 0 H12 M0 -6 V8 M-12 0 l-4 8 h8z M12 0 l-4 8 h8z"/></g>
+    ${person(120, 124, '#1c2833')}${person(206, 124, '#922b21', 0.95)}${tree(34, 112, 0.9)}${tree(290, 112, 0.95)}`,
+
+  court: (sk) => `${sky(sk)}${ground(110, '#c2bba9', '#a69f8d')}
+    <rect x="48" y="96" width="224" height="6" fill="#d5ccb5"/><rect x="40" y="102" width="240" height="8" fill="#cbc2aa"/>
+    <rect x="64" y="46" width="192" height="50" fill="#efe8d6"/><polygon points="56,48 160,16 264,48" fill="#e4dcc6"/><polygon points="72,46 160,22 248,46" fill="#d8cfb6"/>
+    ${[0, 1, 2, 3, 4, 5, 6].map((i) => `<rect x="${74 + i * 27}" y="50" width="9" height="46" fill="#fbf8f0"/><rect x="${72 + i * 27}" y="48" width="13" height="3" fill="#cfc6ad"/>`).join('')}
+    <circle cx="160" cy="36" r="6" fill="#d4ac0d"/>
+    <text x="160" y="58" font-size="6" font-weight="800" fill="#7b6a43" text-anchor="middle" font-family="Georgia,serif">STATE HIGH COURT</text>
+    ${person(110, 124, '#212f3d')}${person(124, 124, '#212f3d', 0.95)}${person(214, 124, '#a04000')}`,
+
+  residences: (sk) => {
+    const g = uid('pool');
+    return `${sky(sk)}${ground(104, '#d9d3c7', '#c4bdaf')}
+      <rect x="168" y="8" width="96" height="98" fill="#f7f9f9"/>
+      ${Array.from({ length: 9 }, (_, r) => `<rect x="168" y="${14 + r * 10}" width="96" height="2" fill="#aab7b8"/><rect x="174" y="${16 + r * 10}" width="84" height="6" fill="${sk.night ? (r % 2 ? '#ffd27a' : '#f8c471') : '#a9cce3'}" opacity="0.85"/>`).join('')}
+      <rect x="60" y="54" width="92" height="52" fill="#ecf0f1"/>
+      ${Array.from({ length: 4 }, (_, r) => `<rect x="66" y="${60 + r * 11}" width="80" height="6" fill="${windowGlow(sk.night)}" opacity="0.85"/>`).join('')}
+      <defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#48c9b0"/><stop offset="1" stop-color="#5dade2"/></linearGradient></defs>
+      <rect x="40" y="114" width="150" height="14" rx="6" fill="url(#${g})"/>
+      ${palm(22, 128, 0.9)}${palm(296, 128, 1)}
+      <text x="216" y="104" font-size="6.5" font-weight="800" fill="#7f8c8d" text-anchor="middle" font-family="Sora,system-ui,sans-serif">OCEAN CREST</text>
+      ${person(212, 126, '#f1948a')}${person(238, 126, '#2874a6', 0.95)}`;
+  },
+
+  studio: (sk) => {
+    const s = { ...sk, top: sk.night ? '#120d24' : sk.top, bottom: sk.night ? '#2a1e4a' : sk.bottom };
+    return `${sky(s)}${ground(108, '#5b5d6b', '#454756')}
+      <rect x="66" y="40" width="188" height="70" fill="#22222e"/><rect x="66" y="40" width="188" height="5" fill="#f39c12"/>
+      <text x="160" y="64" font-size="13" font-weight="800" fill="#f39c12" text-anchor="middle" font-family="Sora,system-ui,sans-serif">AFROWAVE</text>
+      <text x="160" y="74" font-size="6" font-weight="700" fill="#f8c471" text-anchor="middle" letter-spacing="2" font-family="Sora,system-ui,sans-serif">STUDIOS</text>
+      ${[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => `<rect x="${86 + i * 6}" y="${88 - (i * 7) % 11}" width="3" height="${4 + (i * 7) % 11}" fill="#e74c3c"/>`).join('')}
+      ${[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => `<rect x="${180 + i * 6}" y="${88 - (i * 5) % 9}" width="3" height="${4 + (i * 5) % 9}" fill="#3498db"/>`).join('')}
+      <rect x="146" y="84" width="28" height="26" fill="#6c3483" opacity="0.8"/>
+      <g transform="translate(270 112)"><rect x="-1" y="-40" width="2" height="40" fill="#bdc3c7"/><circle cx="0" cy="-44" r="7" fill="none" stroke="#fdebd0" stroke-width="2.5"/></g>
+      ${person(120, 124, '#e74c3c')}${person(206, 124, '#f1c40f', 1.05)}`;
+  },
+
+  pavilion: (sk) => `${sky(sk)}${ground(108, '#b8a98f', '#9e8f76')}
+    <rect x="50" y="52" width="220" height="58" fill="#fdf2e9"/><path d="M42 54 Q160 4 278 54z" fill="#c0392b"/><path d="M60 54 Q160 16 260 54z" fill="#e74c3c"/>
+    ${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<rect x="${58 + i * 28}" y="56" width="6" height="54" fill="#f5cba7"/>`).join('')}
+    <rect x="132" y="80" width="56" height="30" fill="${sk.night ? '#ffd27a' : '#fad7a0'}"/>
+    ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => `<circle cx="${64 + i * 21}" cy="${60 + (i % 2) * 3}" r="2.2" fill="${['#f1c40f', '#e67e22', '#9b59b6', '#1abc9c'][i % 4]}"/>`).join('')}
+    <text x="160" y="76" font-size="7" font-weight="800" fill="#922b21" text-anchor="middle" font-family="Sora,system-ui,sans-serif">ROYAL PAVILION</text>
+    ${person(104, 124, '#d4ac0d')}${person(116, 124, '#d4ac0d', 0.92)}${person(212, 124, '#8e44ad')}${person(226, 124, '#8e44ad', 0.92)}`,
 };
 
 /** A picture of home or a place as an SVG string. */

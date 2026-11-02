@@ -1,3 +1,4 @@
+import { playthrough, storyFinished } from "../engine/story";
 import { goalBlocker, goalChance, type Command, type GameState } from "../engine/game";
 import { goalSteps, PROOF_OF_FUNDS, type GoalStepId } from "../data/goals";
 import { naira } from "../engine/economy";
@@ -49,6 +50,7 @@ export default function GoalsTab({ state, dispatch }: Props) {
   return (
     <>
       <p className="lede">{t("goals.lede")}</p>
+      {!storyFinished(state) && <p className="note bad">⚠️ {t("goals.endsStory", { n: (state.story?.route ? playthrough(state.story.route, state.story.flags).length : 100) - (state.mission ?? 0) })}</p>}
 
       <h3>✈️ {t("goals.japa")}</h3>
       <div className="note">{t("goals.japaSavings", { money: naira(state.money), target: naira(japaTarget) })}</div>

@@ -10,6 +10,7 @@ export type SpotId =
   | "beach" | "club" | "island-street"
   | "village" | "mall" | "airport"
   | "mamaput" | "jollof" | "bigbite" | "crunchy"
+  | "campus" | "hospital" | "chambers" | "court" | "tower" | "studio" | "pavilion" | "residences" | "family"
   | "phone";
 
 export type Spot = {
@@ -42,6 +43,16 @@ export const spots: Record<SpotId, Spot> = {
   mall: { id: "mall", name: "Ikeja City Mall", emoji: "🛍️", district: "ikeja", open: [10, 22], blurb: "Air conditioning, shawarma and window-shopping." },
   crunchy: { id: "crunchy", name: "Crunchy Chicken", emoji: "🍟", district: "ikeja", open: [9, 22], blurb: "Fried chicken buckets inside the mall. Great for sharing.", art: "crunchy" },
   airport: { id: "airport", name: "Murtala Muhammed Airport", emoji: "🛫", district: "ikeja", blurb: "Your gateway out. Flights are booked in the ✈️ Goals tab." },
+  // Story places (chapter 2 onwards). Fictional names; inspired by real kinds of places in Lagos.
+  family: { id: "family", name: "Uncle Jide's house", emoji: "🏡", district: "mushin", open: [8, 21], blurb: "The family house: a mango tree, a long table and opinions about your life.", art: "family" },
+  campus: { id: "campus", name: "Lagoon University", emoji: "🎓", district: "yaba", open: [7, 21], blurb: "Lecture halls, a crowded library and the cafeteria everyone complains about.", art: "campus" },
+  hospital: { id: "hospital", name: "Mainland General Hospital", emoji: "🏥", district: "yaba", blurb: "Busy wards, tired nurses and doctors who never seem to sleep. Always open.", art: "hospital" },
+  tower: { id: "tower", name: "Marina Point Tower", emoji: "🏢", district: "island", open: [8, 20], blurb: "Glass, air conditioning and meetings about money. The business district.", art: "tower" },
+  chambers: { id: "chambers", name: "Nwosu & Partners", emoji: "⚖️", district: "island", open: [8, 19], blurb: "A law firm with a free legal clinic on Saturdays and a library full of law reports.", art: "chambers" },
+  court: { id: "court", name: "State High Court", emoji: "🏛️", district: "island", open: [9, 16], blurb: "Wigs, gowns and long queues. Anyone can watch from the public gallery.", art: "court" },
+  residences: { id: "residences", name: "Ocean Crest Residences", emoji: "🌇", district: "island", blurb: "Luxury flats with a pool and a view of the lagoon. Residents only.", art: "residences" },
+  studio: { id: "studio", name: "Afrowave Studios", emoji: "🎙️", district: "ikeja", open: [10, 2], blurb: "Recording booths, ring lights and producers who work all night.", art: "studio" },
+  pavilion: { id: "pavilion", name: "Royal Pavilion Event Centre", emoji: "🎪", district: "ikeja", open: [10, 24], blurb: "Weddings on Saturday, concerts on Sunday, conferences in between.", art: "pavilion" },
   phone: { id: "phone", name: "Your phone", emoji: "📱", district: "any", blurb: "Works anywhere: call home, hustle on WhatsApp, order delivery." },
 };
 

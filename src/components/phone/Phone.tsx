@@ -14,16 +14,17 @@ import MessagesApp from "./MessagesApp";
 import RewardsApp from "./RewardsApp";
 import BoardApp from "./BoardApp";
 import QuickApp from "./QuickApp";
-import StoryApp from "./StoryApp";
 import FriendsApp from "./FriendsApp";
-import { offered, storyOf } from "../../engine/story";
 import WorkTab from "../WorkTab";
+import StoryApp from "./StoryApp";
+import { currentStory, storyOf, tasksDone, challengeProgress } from "../../engine/story";
+import { CHALLENGES } from "../../data/story";
 
-export type AppId = "bank" | "invest" | "business" | "invites" | "contacts" | "messages" | "rewards" | "board" | "jobs" | "quick" | "story" | "friends";
+export type AppId = "story" | "friends" | "bank" | "invest" | "business" | "invites" | "contacts" | "messages" | "rewards" | "board" | "jobs" | "quick";
 
 export const APPS: { id: AppId; emoji: string; color: string }[] = [
+  { id: "story", emoji: "📖", color: "#8e44ad" },
   { id: "messages", emoji: "💬", color: "#25a55f" },
-  { id: "story", emoji: "📖", color: "#7a4cc2" },
   { id: "friends", emoji: "👫", color: "#2f9e8f" },
   { id: "bank", emoji: "🏦", color: "#1e5bd8" },
   { id: "invest", emoji: "📈", color: "#0d8a7a" },
@@ -48,17 +49,22 @@ type Props = {
   claiming: boolean;
   claimed: { amount: number; day: number } | null;
   userId: string | null;
+  onStory: (id: string | null) => void;
   onVisit: (owner: { id: string; name: string }) => void;
 };
 
 /** The in-game smartphone: a home screen of apps, each one working with the real game state. */
-export default function Phone({ state, dispatch, app, onApp, onClose, onTravel, daily, onClaim, claiming, claimed, userId, onVisit }: Props) {
+export default function Phone({ state, dispatch, app, onApp, onClose, onTravel, daily, onClaim, claiming, claimed, userId, onStory, onVisit }: Props) {
   const { t } = useLang();
+  const st = storyOf(state);
+  const cur = currentStory(st);
+  const storyBadge = (cur && tasksDone(state, cur, st.cur) ? 1 : 0)
+    + (st.challenges?.ids ?? []).filter(id => !st.challenges?.claimed.includes(id) && challengeProgress(state, CHALLENGES.find(c => c.id === id)!).done).length;
   const badges: Partial<Record<AppId, number>> = {
+    story: storyBadge,
     messages: unreadCount(state),
     invites: openInvites(state).filter(i => i.until >= dayOf(state.time)).length,
     rewards: daily?.canClaim ? 1 : 0,
-    story: storyOf(state).active || state.ending ? 0 : offered(state).length,
   };
 
   // Phone-style keys: Escape goes home, then closes.
@@ -76,6 +82,7 @@ export default function Phone({ state, dispatch, app, onApp, onClose, onTravel, 
   const tier = statusTier(state);
   let body: ReactNode;
   switch (app) {
+    case "story": body = <StoryApp state={state} dispatch={dispatch} onOpen={onStory} />; break;
     case "bank": body = <BankApp state={state} onRewards={() => onApp("rewards")} />; break;
     case "invest": body = <InvestApp state={state} dispatch={dispatch} />; break;
     case "business": body = <BizApp state={state} dispatch={dispatch} />; break;
@@ -86,7 +93,6 @@ export default function Phone({ state, dispatch, app, onApp, onClose, onTravel, 
     case "board": body = <BoardApp state={state} userId={userId} />; break;
     case "jobs": body = <WorkTab state={state} dispatch={dispatch} goTo={onTravel} />; break;
     case "quick": body = <QuickApp state={state} dispatch={dispatch} />; break;
-    case "story": body = <StoryApp state={state} dispatch={dispatch} />; break;
     case "friends": body = <FriendsApp userId={userId} onVisit={onVisit} />; break;
     default:
       body = (

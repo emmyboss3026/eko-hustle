@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { newGame, reduce, passTime, shiftPay, mood, earnings, upgrade, canRevive, type GameState } from "./game";
 import { actionById } from "../data/actions";
-import { missions } from "../data/missions";
+import { STORY } from "../data/story";
 import { RENT } from "./economy";
 import { HOME, CATALOG } from "../data/home";
 import { canPlace, findPath, wallBetween } from "./path";
@@ -261,18 +261,22 @@ describe("Eko Hustle 2: places, moods and missions", () => {
     expect(mood(s)).toBeGreaterThan(before - 5);
   });
 
-  it("finishing a mission pays its reward and moves to the next one", () => {
-    const s = reduce(fresh(), { type: "act", id: "bath" });
+  it("finishing a mission (tasks, then a choice) pays its reward and moves to the next one", () => {
+    const bathed = reduce(fresh(), { type: "act", id: "bath" });
+    expect(bathed.mission).toBe(0); // the tasks are done, but you still play the scene
+    const s = reduce(bathed, { type: "story", act: "finish", id: "bath", choice: 0 });
     expect(s.mission).toBe(1);
-    expect(s.money).toBe(fresh().money + missions[0].reward);
-    expect(s.log[0]).toContain("MISSION COMPLETE");
+    expect(s.money).toBe(bathed.money + (STORY[0].reward.money ?? 0));
+    expect(s.story?.flags).toContain("promise_rent");
+    expect(s.log.some(l => l.includes("MISSION COMPLETE"))).toBe(true);
   });
 
-  it("missions go in order: doing a later one first doesn't skip ahead", () => {
+  it("missions go in order: a task done before its mission starts doesn't count", () => {
     const cooked = reduce(fresh(), { type: "act", id: "cook" });
-    expect(cooked.mission).toBe(0);
     const bathed = reduce(cooked, { type: "act", id: "bath" });
-    expect(bathed.mission).toBe(2); // bath done, and cook was already done
+    const next = reduce(bathed, { type: "story", act: "finish", id: "bath", choice: 1 });
+    expect(next.story?.cur?.id).toBe("cook");
+    expect(reduce(next, { type: "story", act: "finish", id: "cook", choice: 0 }).mission).toBe(1); // not cooked since it started
   });
 
   it("walking in through a door in the streets moves you to that district", () => {

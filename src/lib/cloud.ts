@@ -136,7 +136,16 @@ async function postFeedback(f: Feedback): Promise<boolean> {
 export async function exportMyData(): Promise<unknown | null> {
   if (!supabase) return null;
   const { data, error } = await supabase.rpc("export_my_data");
-  return error ? null : data;
+  if (error) return null;
+  const story = await supabase.rpc("export_my_story");   // missing until update-2026-11-story.sql is run
+  return story.error ? data : { ...(data as object), story: story.data };
+}
+
+/** Tell the server a mission is finished (signed-in players). It counts each mission once and keeps the
+ *  leaderboard's mission count honest. Missions finished while offline simply aren't counted there. */
+export async function recordMission(life: number, mission: string, choice?: number): Promise<void> {
+  if (!supabase) return;
+  await supabase.rpc("record_mission", { p_life: life >>> 0, p_mission: mission, p_choice: choice ?? null }).then(() => {}, () => {});
 }
 
 /** Deletes your account and its online data (payment records stay, without your id, for tax law). */

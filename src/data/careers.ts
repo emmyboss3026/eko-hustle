@@ -2,12 +2,13 @@ import type { Needs } from "../engine/needs";
 import type { DistrictId } from "./places";
 import type { Skills } from "./skills";
 
-export type CareerId = "pos" | "okada" | "waiter" | "fastfood" | "fashion" | "tech" | "aviation";
+export type CareerId = "pos" | "okada" | "waiter" | "fastfood" | "fashion" | "tech" | "aviation" | "med" | "law" | "ent";
 
 export type CareerLevel = {
   title: string;
   pay: number;              // per shift, before trait bonus
   req?: Partial<Skills>;    // skills needed to reach this level
+  flag?: string;            // a qualification from the story, e.g. "mbbs" or "bar"
 };
 
 export type Career = {
@@ -20,6 +21,7 @@ export type Career = {
   effect: Partial<Needs>;   // what a shift does to your needs (includes toilet and lunch breaks)
   skill: Partial<Skills>;   // skills you gain per shift
   levels: CareerLevel[];
+  flag?: string;            // only shown once this has happened in the story
 };
 
 export const careers: Record<CareerId, Career> = {
@@ -98,6 +100,40 @@ export const careers: Record<CareerId, Career> = {
       { title: "Check-in agent", pay: 10_000, req: { charisma: 3 } },
       { title: "Cabin crew", pay: 20_000, req: { charisma: 5, fitness: 3 } },
       { title: "Flight dispatcher", pay: 35_000, req: { study: 6, charisma: 5 } },
+    ],
+  },
+  // ----- story careers (unlocked by qualifications in the story) -----
+  med: {
+    id: "med", name: "Medicine (Mainland General)", emoji: "🩺", where: "yaba", hours: 10, shiftsToPromote: 5, flag: "mbbs",
+    effect: { energy: -40, social: 10, bladder: 50, hunger: 20, hygiene: -10 },
+    skill: { study: 0.2, charisma: 0.15 },
+    levels: [
+      { title: "House officer", pay: 12_000, flag: "mbbs" },
+      { title: "Medical officer", pay: 20_000, flag: "nysc" },
+      { title: "Resident doctor", pay: 32_000, req: { study: 6 }, flag: "primaries" },
+      { title: "Consultant", pay: 55_000, req: { study: 8, charisma: 4 }, flag: "fellowship" },
+    ],
+  },
+  law: {
+    id: "law", name: "Law (Nwosu & Partners)", emoji: "⚖️", where: "island", hours: 8, shiftsToPromote: 5, flag: "bar",
+    effect: { energy: -30, fun: -5, bladder: 45, hunger: 15 },
+    skill: { study: 0.2, charisma: 0.2 },
+    levels: [
+      { title: "Junior associate", pay: 11_000, flag: "bar" },
+      { title: "Associate", pay: 18_000, req: { study: 5, charisma: 3 } },
+      { title: "Senior associate", pay: 30_000, req: { study: 7, charisma: 5 } },
+      { title: "Partner", pay: 52_000, req: { study: 8, charisma: 6 }, flag: "partner" },
+    ],
+  },
+  ent: {
+    id: "ent", name: "Entertainment (Afrowave)", emoji: "🎤", where: "ikeja", hours: 6, shiftsToPromote: 4, flag: "creator",
+    effect: { energy: -25, fun: 15, social: 20, bladder: 40, hunger: 15 },
+    skill: { charisma: 0.35 },
+    levels: [
+      { title: "Content creator", pay: 4_500, flag: "creator" },
+      { title: "Performing artist", pay: 9_000, req: { charisma: 3 } },
+      { title: "Recording artist", pay: 20_000, req: { charisma: 5 }, flag: "demo" },
+      { title: "Headliner", pay: 45_000, req: { charisma: 7 }, flag: "headliner" },
     ],
   },
 };

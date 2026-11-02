@@ -12,6 +12,9 @@ import PrivacySettings from "./PrivacySettings";
 import LangPicker from "./LangPicker";
 import SoundSettings from "./SoundSettings";
 import { exportSave, importSave } from "../engine/save";
+import { storyOf } from "../engine/story";
+import { ROUTES } from "../data/story/cast";
+import { QUALIFICATIONS } from "../lib/storyText";
 import { useLang } from "../i18n/react";
 import { RELAXED_SURVIVAL, isRelaxed } from "../data/survival";
 
@@ -78,6 +81,31 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
         ))}
       </div>
       <p className="note">{t("me.skillsHow")}</p>
+
+      <h3>🎓 {t("me.qualifications")}</h3>
+      {(() => {
+        const st = storyOf(state);
+        const route = ROUTES.find(r => r.id === st.route);
+        const quals = QUALIFICATIONS.filter(q => st.flags.includes(q));
+        return (
+          <div className="group">
+            <div className="row static">
+              <span className="row-emoji" aria-hidden>{route?.emoji ?? "🛣️"}</span>
+              <span className="row-main">
+                <span className="row-title">{route ? tx.route(route.id).name : t("me.noRoute")}</span>
+                <span className="note">{route ? tx.route(route.id).blurb : t("me.noRouteInfo")}</span>
+              </span>
+            </div>
+            {quals.map(q => (
+              <div key={q} className="row static">
+                <span className="row-emoji" aria-hidden>🎓</span>
+                <span className="row-main"><span className="row-title">{t(`qual.${q}`)}</span></span>
+              </div>
+            ))}
+            {quals.length === 0 && <p className="note pad">{t("me.noQuals")}</p>}
+          </div>
+        );
+      })()}
 
       <h3>{t("me.mood", { mood: mood(state) })}</h3>
       <div className="group">

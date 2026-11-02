@@ -1,61 +1,127 @@
--- Eko Hustle database update: the story (see src/data/story).
--- Run ONCE in Supabase → SQL Editor. It only adds what's listed and is safe to run again. Nothing existing is changed
--- except export_my_data(), which now also lists your story record.
---
--- What this does and does not do: the game's money lives in the player's save, so this does NOT make story
--- rewards server-paid. It keeps a server-side record of each finished mission (one row per player per mission, so a
--- replay or double tap can never count twice) for the leaderboard and for support. Reward amounts are fixed in the
--- mission data, not sent by the client.
+-- Eko Hustle database update: the story expansion (100-mission playthroughs) and payment refunds.
+-- Run ONCE in Supabase → SQL Editor (emmyboss3026's Project), then run story-catalog.sql.
+-- It only adds things; existing players, saves, leaderboards and payments are untouched. Safe to run again.
 
-create table if not exists public.story_claims (
-  user_id uuid not null references auth.users on delete cascade,
-  mission_id text not null check (mission_id ~ '^s[0-9]{2}[a-z]?-[a-z0-9-]{1,40}$'),
-  choice smallint check (choice between 0 and 9),
-  game_day int check (game_day between 1 and 100000),
-  created_at timestamptz not null default now(),
-  primary key (user_id, mission_id)
+-- =====================================================================
+-- 11. The story: the server's own list of missions, and what each player finished
+-- =====================================================================
+-- The missions themselves (text, dialogue, choices) live in the game files (src/data/story).
+-- The server keeps a copy of each mission's id, chapter, route and reward, so it can check what players record.
+create table if not exists public.story_catalog (
+  id text primary key check (id ~ '^[a-z0-9-]{2,40}$'),
+  chapter smallint not null check (chapter between 1 and 10),
+  route text check (route in ('biz', 'med', 'law', 'tech', 'ent')),
+  side boolean not null default false,
+  reward_naira int not null default 0 check (reward_naira >= 0),
+  reward_xp int not null default 0 check (reward_xp >= 0)
 );
-alter table public.story_claims enable row level security;
-revoke all on public.story_claims from anon, authenticated;
-grant select on public.story_claims to authenticated;
-drop policy if exists "Players see their own story record" on public.story_claims;
-create policy "Players see their own story record" on public.story_claims for select to authenticated using (user_id = auth.uid());
+alter table public.story_catalog enable row level security;
+revoke all on public.story_catalog from anon, authenticated;
+grant select on public.story_catalog to anon, authenticated;
+drop policy if exists "Anyone can read the mission list" on public.story_catalog;
+create policy "Anyone can read the mission list" on public.story_catalog for select using (true);
 
--- Record a finished mission. The same mission twice returns recorded = false and changes nothing.
-create or replace function public.record_story_mission(p_mission text, p_choice int, p_day int) returns json
+-- One row per mission a player finished in one life (life = the game's seed). A mission counts once.
+create table if not exists public.story_progress (
+  user_id uuid not null references auth.users on delete cascade,
+  life bigint not null,
+  mission_id text not null references public.story_catalog on delete cascade,
+  choice smallint check (choice between 0 and 9),
+  completed_at timestamptz not null default now(),
+  primary key (user_id, life, mission_id)
+);
+alter table public.story_progress enable row level security;
+revoke all on public.story_progress from anon, authenticated;
+grant select on public.story_progress to authenticated;
+drop policy if exists "Players see their own story" on public.story_progress;
+create policy "Players see their own story" on public.story_progress for select to authenticated using (user_id = auth.uid());
+create index if not exists story_progress_recent on public.story_progress (user_id, completed_at desc);
+
+-- Verified missions on the leaderboard (only what the server has seen counts)
+alter table public.player_stats add column if not exists missions smallint not null default 0 check (missions between 0 and 200);
+
+-- Record a finished mission. Safe to call twice (counts once). Checks that the mission exists,
+-- that missions aren't recorded faster than anyone could play them, and returns the server's reward.
+create or replace function public.record_mission(p_life bigint, p_mission text, p_choice int default null) returns json
 language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
-  added int;
+  m public.story_catalog;
+  last timestamptz;
+  n int;
+  inserted int;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '28000'; end if;
-  if p_mission is null or p_mission !~ '^s[0-9]{2}[a-z]?-[a-z0-9-]{1,40}$' then raise exception 'bad mission' using errcode = '22023'; end if;
-  insert into story_claims (user_id, mission_id, choice, game_day)
-  values (uid, p_mission, nullif(least(greatest(coalesce(p_choice, -1), -1), 9), -1), least(greatest(coalesce(p_day, 1), 1), 100000))
-  on conflict (user_id, mission_id) do nothing;
-  get diagnostics added = row_count;
-  return json_build_object('recorded', added = 1, 'total', (select count(*) from story_claims where user_id = uid));
+  if p_life is null or p_life < 0 or p_life > 4294967295 then raise exception 'bad life' using errcode = '22023'; end if;
+  select * into m from story_catalog where id = p_mission;
+  if not found then raise exception 'unknown mission' using errcode = '22023'; end if;
+  if p_choice is not null and (p_choice < 0 or p_choice > 9) then raise exception 'bad choice' using errcode = '22023'; end if;
+  -- A real mission takes at least a few seconds of play
+  select max(completed_at) into last from story_progress where user_id = uid;
+  if last is not null and last > now() - interval '3 seconds' then
+    return json_build_object('ok', false, 'reason', 'too_fast');
+  end if;
+  insert into story_progress (user_id, life, mission_id, choice) values (uid, p_life, m.id, p_choice)
+    on conflict do nothing;
+  get diagnostics inserted = row_count;
+  select count(*) into n from story_progress sp join story_catalog sc on sc.id = sp.mission_id
+    where sp.user_id = uid and sp.life = p_life and not sc.side;
+  update player_stats set missions = least(200, n) where user_id = uid;
+  return json_build_object('ok', true, 'repeat', inserted = 0, 'missions', n,
+                           'reward_naira', m.reward_naira, 'reward_xp', m.reward_xp);
 end $$;
-revoke execute on function public.record_story_mission(text, int, int) from public, anon;
-grant execute on function public.record_story_mission(text, int, int) to authenticated;
 
--- "Download my data" now includes the story record
-create or replace function public.export_my_data() returns json
+revoke execute on function public.record_mission(bigint, text, int) from public, anon;
+grant execute on function public.record_mission(bigint, text, int) to authenticated;
+
+-- "Download my data" includes the story
+create or replace function public.export_my_story() returns json
 language sql stable security definer set search_path = public as $$
-  select json_build_object(
-    'exported_at', now(),
-    'account', (select json_build_object('id', u.id, 'email', u.email, 'created_at', u.created_at, 'last_sign_in_at', u.last_sign_in_at) from auth.users u where u.id = auth.uid()),
-    'profile', (select row_to_json(p) from profiles p where p.id = auth.uid()),
-    'save', (select row_to_json(s) from saves s where s.user_id = auth.uid()),
-    'finished_lives', (select coalesce(json_agg(r), '[]') from runs r where r.user_id = auth.uid()),
-    'leaderboard', (select row_to_json(ps) from player_stats ps where ps.user_id = auth.uid()),
-    'daily_rewards', (select coalesce(json_agg(d), '[]') from daily_claims d where d.user_id = auth.uid()),
-    'gems', (select row_to_json(w) from gem_wallets w where w.user_id = auth.uid()),
-    'gem_history', (select coalesce(json_agg(g), '[]') from gem_ledger g where g.user_id = auth.uid()),
-    'payments', (select coalesce(json_agg(json_build_object('reference', pm.reference, 'product', pm.product, 'amount_kobo', pm.amount_kobo, 'created_at', pm.created_at)), '[]') from payments pm where pm.user_id = auth.uid()),
-    'feedback', (select coalesce(json_agg(json_build_object('created_at', f.created_at, 'category', f.category, 'message', f.message)), '[]') from feedback f where f.user_id = auth.uid()),
-    'story', (select coalesce(json_agg(json_build_object('mission', c.mission_id, 'choice', c.choice, 'game_day', c.game_day, 'created_at', c.created_at)), '[]') from story_claims c where c.user_id = auth.uid())
-  );
+  select coalesce(json_agg(json_build_object('life', life, 'mission', mission_id, 'choice', choice, 'completed_at', completed_at)
+                  order by completed_at), '[]')
+  from story_progress where user_id = auth.uid();
 $$;
-revoke execute on function public.export_my_data() from public, anon;
-grant execute on function public.export_my_data() to authenticated;
+revoke execute on function public.export_my_story() from public, anon;
+grant execute on function public.export_my_story() to authenticated;
+
+-- =====================================================================
+-- 12. Payments: status and refunds
+-- =====================================================================
+alter table public.payments add column if not exists status text not null default 'paid'
+  check (status in ('paid', 'refunded', 'partly_refunded'));
+alter table public.payments add column if not exists refunded_at timestamptz;
+alter table public.payments add column if not exists refund_note text check (char_length(refund_note) <= 300);
+
+-- Refund a gem purchase (run by you in the SQL Editor, or by a server function; never by players):
+--   select public.refund_gems('chk_...', 'Unused gems, asked within 14 days');   -- the Bachs checkout id
+-- Removes the gems that are still unused (never more than the player has) and marks the payment.
+-- Then refund the money in the Bachs dashboard. Running it twice does nothing the second time.
+create or replace function public.refund_gems(p_reference text, p_note text default null) returns json
+language plpgsql security definer set search_path = public as $$
+declare
+  pay public.payments;
+  bought int;
+  bal int;
+  take int;
+begin
+  select * into pay from payments where reference = p_reference for update;
+  if not found then raise exception 'no such payment'; end if;
+  if pay.status <> 'paid' then return json_build_object('ok', true, 'repeat', true, 'status', pay.status); end if;
+  select delta into bought from gem_ledger where reference = p_reference and reason = 'purchase';
+  bought := coalesce(bought, 0);
+  if pay.user_id is not null and bought > 0 then
+    select balance into bal from gem_wallets where user_id = pay.user_id for update;
+    take := least(bought, coalesce(bal, 0));
+    if take > 0 then
+      insert into gem_ledger (user_id, delta, reason, reference) values (pay.user_id, -take, 'refund', 'refund_' || p_reference);
+      update gem_wallets set balance = balance - take, updated_at = now() where user_id = pay.user_id;
+    end if;
+  else
+    take := 0;
+  end if;
+  update payments set status = case when bought > 0 and take < bought then 'partly_refunded' else 'refunded' end,
+                      refunded_at = now(), refund_note = left(p_note, 300)
+    where reference = p_reference;
+  return json_build_object('ok', true, 'gems_removed', take, 'gems_bought', coalesce(bought, 0));
+end $$;
+revoke execute on function public.refund_gems(text, text) from public, anon, authenticated;

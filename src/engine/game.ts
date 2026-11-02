@@ -20,11 +20,10 @@ import {
 import { canPlace } from "./path";
 import { moodlets as moodInfo, type ActiveMoodlet, type MoodletId } from "../data/moodlets";
 import { spots, spotOpen, type SpotId } from "../data/spots";
-import { missions } from "../data/missions";
 import { translate, type Lang } from "../i18n/core";
 import { text } from "../i18n/text";
 import {
-  newDay, phoneStep, startPhone, addRep, addMessage, bond, BANK_SIZE,
+  newDay, phoneStep, startPhone, addRep, bond, BANK_SIZE,
   type Kit, type PhoneCommand, type Txn, type TxnCat, type Holding, type Trade, type ContactState,
   type OpenInvite, type PhoneMsg, type DailyClaim,
 } from "./phone";
@@ -32,9 +31,8 @@ import type { FundId } from "../data/invest";
 import type { OwnedBiz } from "../data/business";
 import type { ContactId } from "../data/contacts";
 import { REVIVE, type ReviveHow } from "../data/revive";
-import { storyById } from "../data/story";
-import type { Effect, StoryMission } from "../data/story/types";
-import { storyOf, offered, activeMission, tasksDone, expired, affordable, type StoryState } from "./story";
+import { storyFlag } from "./progress";
+import { syncStory, storyStep, type StoryCommand, type StoryState } from "./story";
 
 export type EndingKind = "japa" | "landlord" | "evicted" | "collapsed";
 export type Ending = { kind: EndingKind; day: number; final?: boolean }; // final: no more revive offer
@@ -98,7 +96,7 @@ export type GameState = {
   daily?: DailyClaim[];     // daily login rewards credited to this life
   camera?: "top" | "first"; // overhead or first-person view
   revives?: { ad: number; gem: number; refs: string[] }; // times you came back after collapsing (refs: gems used)
-  story?: StoryState;       // the long branching story (see data/story and engine/story.ts)
+  story?: StoryState;       // the story: missions done, choices, flags, career route (see engine/story.ts)
 };
 
 export type DiaryEntry = { t: number; line: string };
@@ -124,8 +122,7 @@ export type Command =
   | { type: "greet" }     // you answered a passer-by in the streets
   | { type: "revive"; how: ReviveHow; ref?: string } // back from hospital (ref: the server's id for the gem used)
   | { type: "finalize" }  // the player chose to end this life instead of reviving
-  | { type: "storyStart"; id: string }     // take on a story mission
-  | { type: "storyChoose"; index: number } // pick an option at the end of the active story mission
+  | StoryCommand
   | PhoneCommand;
 
 export const AD_REWARD = 3_000;
@@ -153,7 +150,7 @@ function startHome(): Home {
 
 export function newGame(sim: Sim, lang: Lang = "en", seed?: number): GameState {
   const first = translate(lang, "log.arrive", { name: sim.name, money: naira(START_MONEY), rent: naira(RENT) });
-  return startPhone({
+  return checkStory(startPhone({
     version: 4,
     seed,
     sim,
@@ -181,14 +178,15 @@ export function newGame(sim: Sim, lang: Lang = "en", seed?: number): GameState {
     mission: 0,
     rep: 0,
     bank: [{ t: 8 * 60, amt: START_MONEY, cat: "other", label: translate(lang, "bank.start") }],
-  });
+    story: { done: [], flags: [], picks: {} },
+  }));
 }
 
 /** Bring an older save up to date, or return null if it isn't a save at all. */
 export function upgrade(data: unknown): GameState | null {
   const d = data as (Omit<Partial<GameState>, "version"> & { version?: number }) | null;
   if (!d || typeof d !== "object" || !d.sim || !d.needs) return null;
-  if (d.version === 4 && d.home && d.power) return d as GameState;
+  if (d.version === 4 && d.home && d.power) return d.story ? (d as GameState) : checkStory(d as GameState);
   const extras = { moodlets: [], counts: {}, mission: 0 };
   if (d.version === 3 && d.home && d.power) {
     // Eko Hustle 1: the room now has three rooms. Starter furniture is swapped for the new
@@ -412,6 +410,7 @@ export const powered = (s: GameState) => s.power.grid || generatorOn(s);
 export function canDo(s: GameState, a: Action): string | null {
   const x = tx(s);
   if (a.where !== "any" && a.where !== s.location) return msg(s, "problem.goTo", { place: x.district(a.where) });
+  if (!storyFlag(s, a.flag)) return msg(s, "problem.story");
   if (!spotOpen(a.spot, s.time)) return msg(s, "problem.closed", { place: x.spot(a.spot), hours: openHours(s, a.spot) });
   if (a.req && !meets(s.skills, a.req)) return msg(s, "problem.needs", { req: x.req(a.req) });
   if (a.uses && !a.uses.some(t => hasItem(s, t))) {
@@ -519,86 +518,11 @@ export function reduce(s: GameState, cmd: Command): GameState {
   if (cmd.type === "revive") return revive(s, cmd.how, cmd.ref);
   if (cmd.type === "finalize") return s.ending ? { ...s, ending: { ...s.ending, final: true } } : s;
   const next = step(s, cmd);
-  return next === s ? s : checkStory(checkMissions(next));
+  return next === s ? s : checkStory(next);
 }
 
-// ---------- the story ----------
-
-function applyEffect(s: GameState, e: Effect, label: string): GameState {
-  let n = s;
-  if (e.money) n = e.money > 0 ? pay(n, e.money, "mission", label) : charge(n, -e.money, "other", label);
-  if (e.rep) n = addRep(n, e.rep);
-  if (e.skill) n = learn(n, e.skill);
-  if (e.bond) n = bond(n, e.bond[0], e.bond[1]);
-  if (e.mood) n = addMood(n, e.mood);
-  if (e.flag) n = { ...n, story: { ...storyOf(n), flags: { ...storyOf(n).flags, [e.flag[0]]: e.flag[1] } } };
-  return n;
-}
-
-/** Tell the player on the phone about story missions that just opened up (once each). */
-function announce(s: GameState): GameState {
-  const st = storyOf(s);
-  const fresh = offered(s).filter(m => !st.notified.includes(m.id));
-  if (!fresh.length) return s;
-  let n: GameState = { ...s, story: { ...st, notified: [...st.notified, ...fresh.map(m => m.id)] } };
-  for (const m of fresh) n = addMessage(n, { from: "story", key: "msg.story.new", vars: { title: m.title } });
-  return n;
-}
-
-function finishStory(s: GameState, m: StoryMission, pick: number | null): GameState {
-  const st = storyOf(s);
-  let n = applyEffect(s, m.reward, m.title);
-  const opt = pick === null ? undefined : m.choice?.options[pick];
-  if (opt?.effect) n = applyEffect(n, opt.effect, m.title);
-  const after = storyOf(n);
-  n = { ...n, story: { ...after, done: [...st.done, m.id], active: null, choosing: false, base: {}, choices: pick === null ? after.choices : { ...after.choices, [m.id]: pick } } };
-  n = addRep(addMood(n, "mission"), 1);
-  n = say(n, `📖 ${m.title}` + (m.reward.money ? ` +${naira(m.reward.money)}` : "") + (opt ? `. ${opt.result}` : ""));
-  return announce(n);
-}
-
-/** Move the active story mission along: finished, waiting for a choice, or out of time. */
-export function checkStory(s: GameState): GameState {
-  let n = announce(s);
-  const m = activeMission(n);
-  const st = storyOf(n);
-  if (!m || st.choosing) return n;
-  if (expired(n, m)) {
-    n = { ...n, story: { ...st, active: null, base: {}, failed: [...st.failed.filter(id => id !== m.id), m.id] } };
-    return say(n, `📖 ${m.title}: ${m.fail ?? "Time ran out. You can try again."}`);
-  }
-  if (!tasksDone(n, m)) return n;
-  if (m.choice) return say({ ...n, story: { ...st, choosing: true } }, `📖 ${m.title}: ${m.choice.prompt}`);
-  return finishStory(n, m, null);
-}
-
-function storyStart(s: GameState, id: string): GameState {
-  const st = storyOf(s);
-  if (st.active || !offered(s).some(m => m.id === id)) return s;
-  const m = storyById(id)!;
-  return say({ ...s, story: { ...st, active: id, choosing: false, base: { ...s.counts }, startDay: dayOf(s.time), failed: st.failed.filter(f => f !== id) } }, `📖 ${m.title}`);
-}
-
-function storyChoose(s: GameState, index: number): GameState {
-  const m = activeMission(s);
-  const opt = m?.choice?.options[index];
-  if (!m || !opt || !storyOf(s).choosing || !affordable(s, opt.effect?.money)) return s;
-  return finishStory(s, m, index);
-}
-
-/** Finish the current mission (and any after it that are already done), paying the rewards. */
-export function checkMissions(s: GameState): GameState {
-  let next = s;
-  for (let guard = 0; guard < missions.length; guard++) {
-    const m = missions[next.mission ?? 0];
-    if (!m || !m.done(next)) break;
-    next = { ...next, mission: (next.mission ?? 0) + 1 };
-    if (m.reward) next = pay(next, m.reward, "mission", tx(next).mission(m).title);
-    next = addRep(addMood(next, "mission"), 1);
-    next = say(next, msg(next, "log.mission", { title: tx(next).mission(m).title }) + (m.reward ? ` +${naira(m.reward)}` : ""));
-  }
-  return next;
-}
+/** Keep the story up to date: start the next mission, deadlines, daily challenges, the week. */
+export const checkStory = (s: GameState): GameState => syncStory(s, kit);
 
 function step(s: GameState, cmd: Command): GameState {
   if (s.ending) return s;
@@ -606,9 +530,6 @@ function step(s: GameState, cmd: Command): GameState {
   if (s.eventId && cmd.type !== "choose") return s;
 
   switch (cmd.type) {
-    case "storyStart": return storyStart(s, cmd.id);
-    case "storyChoose": return storyChoose(s, cmd.index);
-
     case "tick": {
       let next = passTime(s, cmd.minutes);
       if (!next.ending && next.power.grid && cmd.power !== undefined && cmd.power < POWER.outagePerHour * (cmd.minutes / 60)) {
@@ -643,7 +564,7 @@ function step(s: GameState, cmd: Command): GameState {
       const effect = boosted(a.effect, s.sim.trait, a.category === "food", a.boost ? s.skills[a.boost] : 0);
       next = passTime(next, a.minutes, effect, a.asleep);
       if (next.ending) return next;
-      next = bump(learn(next, a.skill), a.id);
+      next = bump(bump(learn(next, a.skill), a.id), `at:${a.spot}`);
       if (a.mood) next = addMood(next, a.mood);
       if (REP_ACTIONS[a.id]) next = addRep(next, REP_ACTIONS[a.id]);
       if (a.id === "call-mummy") next = bond(next, "mummy", 4);
@@ -661,6 +582,7 @@ function step(s: GameState, cmd: Command): GameState {
     case "apply": {
       const c = careers[cmd.career];
       const first = c.levels[0];
+      if (!storyFlag(s, c.flag) || !storyFlag(s, first.flag)) return say(s, msg(s, "log.jobStory", { job: tx(s).career(c.id), qual: msg(s, `qual.${first.flag ?? c.flag}`) }));
       if (!meets(s.skills, first.req)) return say(s, msg(s, "log.jobNeeds", { job: tx(s).career(c.id), req: tx(s).req(first.req) }));
       if (s.career?.id === c.id) return s;
       return say(bump({ ...s, career: { id: c.id, level: 0, shifts: 0 } }, "apply"), msg(s, "log.hired", { emoji: c.emoji, title: tx(s).title(c.id, 0), place: tx(s).district(c.where) }));
@@ -686,7 +608,7 @@ function step(s: GameState, cmd: Command): GameState {
       next = say(next, msg(s, "log.shift", { title: tx(s).title(c.id, s.career.level), money: naira(earned) }));
       // Promotion?
       const up = c.levels[career.level + 1];
-      if (up && career.shifts >= c.shiftsToPromote && meets(next.skills, up.req)) {
+      if (up && career.shifts >= c.shiftsToPromote && meets(next.skills, up.req) && storyFlag(next, up.flag)) {
         next = {
           ...next,
           career: { id: c.id, level: career.level + 1, shifts: 0 },
@@ -838,6 +760,9 @@ function step(s: GameState, cmd: Command): GameState {
     case "finalize":
       return s; // handled in reduce(), since they work on an ended life
 
+    case "story":
+      return storyStep(s, cmd, kit);
+
     default:
       // Everything on the phone (bank, invest, business, contacts, invites, messages, daily rewards, camera)
       return phoneStep(s, cmd, kit);
@@ -845,4 +770,4 @@ function step(s: GameState, cmd: Command): GameState {
 }
 
 /** The helpers the phone module uses (passed in to avoid a circular import). */
-const kit: Kit = { say, msg, pay, charge, move, passTime, learn, addMood, bump };
+const kit: Kit = { say, msg, pay, charge, move, passTime, learn, addMood, bump, money: naira };

@@ -6,6 +6,7 @@ import { districts, type DistrictId } from "../data/places";
 import { spotList, spotOpen, spots, type SpotId } from "../data/spots";
 import { missionTags } from "../data/missions";
 import { naira } from "../engine/economy";
+import { storyFlag } from "../engine/progress";
 import { useLang } from "../i18n/react";
 import ActionRow from "./ActionRow";
 import Art from "./Art";
@@ -103,7 +104,7 @@ function SpotCard({ id, state, dispatch, missionSpot, missionActions }: {
 }) {
   const { t, tx } = useLang();
   const spot = spots[id];
-  const list = actionsAt(id);
+  const list = actionsAt(id).filter(a => storyFlag(state, a.flag));
   const open = spotOpen(id, state.time);
   const isMission = missionSpot === id || list.some(a => missionActions.has(a.id));
   const hours = openHours(state, id);

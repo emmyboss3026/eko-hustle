@@ -8,7 +8,9 @@ import { spots, type SpotId } from "../data/spots";
 import { districts, modes, type DistrictId } from "../data/places";
 import { careers, type CareerId } from "../data/careers";
 import { events, type GameEvent } from "../data/events";
-import { missions, type Mission } from "../data/missions";
+import { STORY, CHALLENGES, WEEKS, type Challenge, type WeekEvent } from "../data/story";
+import { CAST, CHAPTERS, ROUTES, castById } from "../data/story/cast";
+import type { RouteId, StoryMission } from "../data/story/types";
 import { moodlets, type MoodletId } from "../data/moodlets";
 import { traits, type TraitId } from "../data/traits";
 import { skillInfo, type SkillId, type Skills } from "../data/skills";
@@ -43,11 +45,34 @@ export function text(lang: Lang) {
           ? c(`event.${e.id}.c${i}.win`, e.choices[i].chance!.win.result)
           : c(`event.${e.id}.c${i}.result`, e.choices[i].result),
     }),
-    mission: (m: Mission) => ({
+    mission: (m: StoryMission) => ({
       title: c(`mission.${m.id}.title`, m.title),
       goal: c(`mission.${m.id}.goal`, m.goal),
-      steps: m.steps.map((s, i) => c(`mission.${m.id}.step${i}`, s)),
+      steps: (m.steps ?? []).map((s, i) => c(`mission.${m.id}.step${i}`, s)),
     }),
+    story: (m: StoryMission) => ({
+      title: c(`mission.${m.id}.title`, m.title),
+      goal: c(`mission.${m.id}.goal`, m.goal),
+      intro: c(`mission.${m.id}.intro`, m.intro),
+      steps: (m.steps ?? []).map((s, i) => c(`mission.${m.id}.step${i}`, s)),
+      line: (i: number) => c(`mission.${m.id}.line${i}`, m.lines[i]?.text ?? ""),
+      choice: (i: number) => c(`mission.${m.id}.choice${i}`, m.choices?.[i]?.label ?? ""),
+      result: (i: number) => c(`mission.${m.id}.result${i}`, m.choices?.[i]?.result ?? ""),
+      win: (i: number) => c(`mission.${m.id}.win${i}`, m.choices?.[i]?.chance?.win ?? ""),
+      fail: c(`mission.${m.id}.fail`, m.fail?.text ?? ""),
+    }),
+    castName: (id: string) => c(`cast.${id}.name`, castById(id)?.name ?? id),
+    castRole: (id: string) => c(`cast.${id}.role`, castById(id)?.role ?? ""),
+    chapter: (n: number) => {
+      const ch = CHAPTERS.find(x => x.n === n) ?? CHAPTERS[0];
+      return { title: c(`chapter.${ch.n}.title`, ch.title), blurb: c(`chapter.${ch.n}.blurb`, ch.blurb) };
+    },
+    route: (id: RouteId) => {
+      const r = ROUTES.find(x => x.id === id)!;
+      return { name: c(`route.${id}.name`, r.name), blurb: c(`route.${id}.blurb`, r.blurb) };
+    },
+    challenge: (ch: Challenge) => c(`challenge.${ch.id}`, ch.title),
+    week: (w: WeekEvent) => ({ title: c(`week.${w.id}.title`, w.title), desc: c(`week.${w.id}.desc`, w.desc) }),
     mood: (id: MoodletId) => ({ label: c(`mood.${id}.label`, moodlets[id].label), desc: c(`mood.${id}.desc`, moodlets[id].desc) }),
     trait: (id: TraitId) => ({ name: c(`trait.${id}.name`, traits[id].name), desc: c(`trait.${id}.desc`, traits[id].desc) }),
     skill,
@@ -99,10 +124,35 @@ export function contentEntries(): [string, string][] {
       if (ch.chance) add(`event.${e.id}.c${i}.win`, ch.chance.win.result);
     });
   }
-  for (const m of missions) {
+  for (const m of STORY) {
     add(`mission.${m.id}.title`, m.title);
     add(`mission.${m.id}.goal`, m.goal);
-    m.steps.forEach((s, i) => add(`mission.${m.id}.step${i}`, s));
+    add(`mission.${m.id}.intro`, m.intro);
+    (m.steps ?? []).forEach((s, i) => add(`mission.${m.id}.step${i}`, s));
+    m.lines.forEach((l, i) => add(`mission.${m.id}.line${i}`, l.text));
+    (m.choices ?? []).forEach((ch, i) => {
+      add(`mission.${m.id}.choice${i}`, ch.label);
+      add(`mission.${m.id}.result${i}`, ch.result);
+      if (ch.chance) add(`mission.${m.id}.win${i}`, ch.chance.win);
+    });
+    if (m.fail) add(`mission.${m.id}.fail`, m.fail.text);
+  }
+  for (const p of CAST) {
+    add(`cast.${p.id}.name`, p.name);
+    add(`cast.${p.id}.role`, p.role);
+  }
+  for (const ch of CHAPTERS) {
+    add(`chapter.${ch.n}.title`, ch.title);
+    add(`chapter.${ch.n}.blurb`, ch.blurb);
+  }
+  for (const r of ROUTES) {
+    add(`route.${r.id}.name`, r.name);
+    add(`route.${r.id}.blurb`, r.blurb);
+  }
+  for (const ch of CHALLENGES) add(`challenge.${ch.id}`, ch.title);
+  for (const w of WEEKS) {
+    add(`week.${w.id}.title`, w.title);
+    add(`week.${w.id}.desc`, w.desc);
   }
   for (const [id, m] of Object.entries(moodlets)) {
     add(`mood.${id}.label`, m.label);

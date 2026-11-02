@@ -17,6 +17,9 @@ import HelpSheet from "../components/HelpSheet";
 import Sheet from "../components/Sheet";
 import TipBubble from "../components/TipBubble";
 import MissionCard from "../components/MissionCard";
+import StorySheet from "../components/StorySheet";
+import { storyOf, taskProgress, taskTarget } from "../engine/story";
+import { taskKind } from "../data/story/types";
 import Guide, { guideSeen } from "../components/Guide";
 import Cutscene, { type Ride } from "../components/Cutscene";
 import Loading from "../components/Loading";
@@ -35,11 +38,11 @@ import type { HouseView } from "../three/HouseView";
 import FeedbackSheet from "../components/FeedbackSheet";
 import DiarySheet from "../components/DiarySheet";
 import { useLang } from "../i18n/react";
-import { flushFeedback } from "../lib/cloud";
+import { flushFeedback, recordMission } from "../lib/cloud";
+import { seedOf } from "../engine/progress";
 import Phone, { type AppId } from "../components/phone/Phone";
 import { openInvites, unreadCount } from "../engine/phone";
 import { claimDaily, getDailyStatus, type DailyStatus } from "../lib/daily";
-import { recordStoryMission } from "../lib/story";
 import { naira as nairaFmt } from "../engine/economy";
 
 // The 3D scenes are a big download, so they load in the background.
@@ -47,7 +50,7 @@ const RoomScene = lazy(() => import("../components/RoomScene"));
 const StreetScene = lazy(() => import("../components/StreetScene"));
 const VisitScene = lazy(() => import("../components/VisitScene"));
 
-type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary";
+type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story";
 
 const dock: { id: Panel | "phone"; emoji: string }[] = [
   { id: "do", emoji: "📍" },
@@ -66,11 +69,25 @@ const DISTRICT_VIEW: Record<string, SpotId | null> = { yaba: "hub", island: "bea
 
 const moodFace = (m: number) => (m >= 70 ? "😄" : m >= 35 ? "🙂" : "😣");
 
+/** The first task of the mission you haven't done yet. */
+function nextTask(s: GameState, m: Mission | null) {
+  if (!m) return null;
+  const p = storyOf(s).cur;
+  const i = m.tasks.findIndex((task, n) => !taskProgress(s, task, p, n).done);
+  return i >= 0 ? m.tasks[i] : null;
+}
+
 /** Which dock button a mission points at (for its 🎯 tag). */
-function missionPanel(m: Mission | null): Panel | null {
+function missionPanel(s: GameState, m: Mission | null): Panel | "phone" | null {
   if (!m) return null;
   if (m.tab === "home") return m.furniture ? null : "shop";
-  return m.tab;
+  if (m.tab) return m.tab;
+  const task = nextTask(s, m);
+  if (!task) return null;
+  const target = taskTarget(task);
+  if (target.app) return "phone";
+  if (target.tab === "home") return "shop";
+  return (target.tab as Panel) ?? null;
 }
 
 type Props = {
@@ -118,14 +135,6 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   });
   const mission = currentMission(state);
   const atHome = state.location === "mushin";
-
-  // Finished story missions are recorded on the server once each (it ignores repeats)
-  const storyDone = state.story?.done ?? [];
-  const recorded = useRef(storyDone.length);
-  useEffect(() => {
-    for (const id of storyDone.slice(recorded.current)) void recordStoryMission(id, state.story?.choices[id] ?? null, dayOf(state.time));
-    recorded.current = storyDone.length;
-  }, [storyDone.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // What the screen shows: your room, the streets (walking), or the place you're at
   const focus: SpotId | null =
@@ -184,6 +193,19 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
     lastUnread.current = unreadNow;
   }, [unreadNow]);
 
+  // Finished missions go to the server (signed-in players), one at a time, a few seconds apart
+  const sentStory = useRef(storyOf(state).done.length);
+  useEffect(() => {
+    const st = storyOf(state);
+    if (!userId) {
+      sentStory.current = st.done.length;
+      return;
+    }
+    const fresh = st.done.slice(sentStory.current);
+    sentStory.current = st.done.length;
+    fresh.forEach((id, i) => window.setTimeout(() => void recordMission(seedOf(state), id, st.picks[id]), i * 3500));
+  }, [state, userId]);
+
   useEffect(() => {
     initAds();
     void flushFeedback(); // send any feedback written while offline
@@ -237,11 +259,39 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
     }
   }, []);
   const endRide = useCallback(() => setRide(null), []);
+  const [storyId, setStoryId] = useState<string | null>(null);
+  const openStory = useCallback((id: string | null) => {
+    setStoryId(id);
+    setSelected(null);
+    setPhone(null);
+    setPanel("story");
+  }, []);
 
   // "Show me" on the mission card
   function showMission() {
     const m = mission;
     if (!m) return;
+    const task = nextTask(state, m);
+    if (task && !m.tab) {
+      const target = taskTarget(task);
+      if (target.app) {
+        setPanel(null);
+        setPhone(target.app as AppId);
+        return;
+      }
+      if (taskKind(task) === "count" && (task as { count: string }).count === "enter") {
+        setPanel(null);
+        setWalking(true);
+        return;
+      }
+      if (target.tab === "home") return openPanel(atHome ? "shop" : "go");
+      const action = target.spot ? actionById(target.spot) : undefined;
+      const spot = (action?.spot ?? target.spot) as SpotId | undefined;
+      const where = spot && spots[spot] ? spots[spot].district : null;
+      if (where && where !== "any" && where !== state.location) return openPanel("go");
+      if (spot === "home") return openPanel(null);
+      return openPanel((target.tab as Panel) ?? "do", spot && spots[spot] ? spot : undefined);
+    }
     if (m.furniture) {
       if (!atHome) return openPanel("go");
       const item = state.home.objects.find(o => o.type === m.furniture);
@@ -256,7 +306,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
       return;
     }
     if (m.tab === "home") return openPanel(atHome ? "shop" : "go");
-    openPanel(m.tab, m.spot);
+    openPanel(m.tab ?? "do", m.hint);
   }
 
   function startPlacing(type: FurnitureType, uid: number | null = null) {
@@ -280,7 +330,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const m = mood(state);
   const job = state.career ? careers[state.career.id] : null;
   const canWork = !!job && job.where === state.location && !walking;
-  const missionDock = missionPanel(mission);
+  const missionDock = missionPanel(state, mission);
   const narrow = typeof innerWidth === "number" && innerWidth < 900;
   const lit = state.power.grid || generatorOn(state);
   const phoneBadge = unreadCount(state) + openInvites(state).filter(i => i.until >= day).length + (daily?.canClaim ? 1 : 0);
@@ -386,7 +436,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
       </div>
 
       <div className="alerts">
-        <MissionCard state={state} onShow={showMission} />
+        <MissionCard state={state} dispatch={dispatch} onShow={showMission} onStory={() => openStory(null)} />
         <PaymentNotice />
         {state.rentOwed > 0 && (
           <div className="owed2" role="alert">
@@ -516,6 +566,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
           {panel === "feedback" && <FeedbackSheet state={state} />}
           {panel === "diary" && <DiarySheet state={state} />}
           {panel === "help" && <HelpSheet onGuide={() => setGuide(true)} />}
+          {panel === "story" && <StorySheet key={storyId ?? "main"} state={state} dispatch={dispatch} id={storyId} onShow={showMission} onClose={() => setPanel(null)} />}
         </Sheet>
       )}
       {selected !== null && !panel && showRoom && (
@@ -540,6 +591,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
           onApp={a => setPhone(a ?? "home")}
           onClose={() => { setPhone(null); setClaimed(null); }}
           onTravel={() => { setPhone(null); setPanel("go"); }}
+          onStory={openStory}
           daily={daily}
           onClaim={claim}
           claiming={claiming}

@@ -20,7 +20,9 @@ Deno.serve(async req => {
   // 2. What they're buying, that they agreed to the terms, and where to send them afterwards (only our own site)
   const body = await req.json().catch(() => ({}));
   const { returnTo } = body;
-  const productId = typeof body.product === "string" && body.product in PRODUCTS ? body.product : "supporter-pack";
+  // No product = an older game version buying the supporter pack. Anything else must be on the list.
+  const productId = body.product === undefined ? "supporter-pack" : String(body.product);
+  if (!Object.hasOwn(PRODUCTS, productId)) return json({ ok: false, error: "Unknown product." }, 400);
   const product = PRODUCTS[productId];
   // The player must tick both boxes in the game: terms + immediate delivery (EU withdrawal waiver)
   if (body.consent?.terms !== true || body.consent?.immediate !== true) {
