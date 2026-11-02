@@ -14,7 +14,7 @@ import type { RouteId, StoryMission } from "../data/story/types";
 import { moodlets, type MoodletId } from "../data/moodlets";
 import { traits, type TraitId } from "../data/traits";
 import { skillInfo, type SkillId, type Skills } from "../data/skills";
-import { CATALOG, HOME, type FurnitureType } from "../data/home";
+import { CATALOG, EXTRA_ROOMS, HOME, type FurnitureType } from "../data/home";
 import { goalSteps, type GoalStepId } from "../data/goals";
 import { presets } from "../data/characters";
 
@@ -173,6 +173,7 @@ export function contentEntries(): [string, string][] {
   }
   for (const r of HOME.rooms) add(`room.${r.name}`, r.name);
   add("room.Living room", "Living room");
+  for (const r of EXTRA_ROOMS) add(`room.${r}`, r);
   add("home.name", HOME.name);
   for (const [id, g] of Object.entries(goalSteps)) {
     add(`goal.${id}.name`, g.name);

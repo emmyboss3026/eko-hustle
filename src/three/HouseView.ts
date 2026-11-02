@@ -3,7 +3,7 @@
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { CATALOG, HOME, type FurnitureType, type Placed } from "../data/home";
+import { CATALOG, HOME, type FurnitureType, type HomePlan, type Placed } from "../data/home";
 import { findPath, footprint, routeToObject, walkable, type Tile } from "../engine/path";
 import { box, buildPiece, buildSim, daylight, mat, type Tick } from "./pieces";
 import { buildCompound } from "./compound.js";
@@ -11,7 +11,7 @@ import type { Look } from "../data/characters";
 
 export { daylight };
 
-const HALF = HOME.size / 2;
+const HALF = HOME.size / 2;   // the anchor: the original flat, which the neighbours and the yard are drawn around
 const WALL_H = 1.5;
 const tileCenter = (x: number, y: number) => new THREE.Vector3(x + 0.5 - HALF, 0, y + 0.5 - HALF);
 
@@ -42,6 +42,8 @@ export class HouseView {
   private remotes = new Map<string, { fig: ReturnType<typeof buildSim>; x: number; z: number; yaw: number; tx: number; tz: number; tyaw: number; anim: number }>();
   private simPos: THREE.Vector3 | null = null;
   private simYaw = 0;
+  private plan: HomePlan = HOME;
+  private shellGroup: THREE.Group | null = null;
   private simTile: Tile = { ...HOME.door };
   private path: Tile[] = [];
   private activity: Activity = null;
@@ -198,7 +200,7 @@ export class HouseView {
     this.camera.aspect = w / h;
     // Frame the whole room for this screen shape: narrow screens need the camera further back.
     const halfFov = THREE.MathUtils.degToRad(this.camera.fov / 2);
-    const span = HOME.size * 1.45;
+    const span = this.plan.size * 1.45;
     const fitV = span / 2 / Math.tan(halfFov);
     const fitH = span / 2 / (Math.tan(halfFov) * this.camera.aspect);
     const fit = Math.max(fitV, fitH) * 0.95;
@@ -212,12 +214,14 @@ export class HouseView {
 
   private buildShell() {
     const shell = new THREE.Group();
+    this.shellGroup = shell;
+    const mid = this.plan.size / 2 - HALF; // the middle of the room, as an offset from the anchor
     const tileGeo = new THREE.BoxGeometry(0.98, 0.04, 0.98);
-    for (let x = 0; x < HOME.size; x++) {
-      for (let y = 0; y < HOME.size; y++) {
-        const room = HOME.rooms.find(r => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
+    for (let x = 0; x < this.plan.size; x++) {
+      for (let y = 0; y < this.plan.size; y++) {
+        const room = this.plan.rooms.find(r => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1);
         const even = (x + y) % 2 === 0;
-        const color = room ? (even ? room.floor : room.floor2) : even ? HOME.floor : HOME.floor2;
+        const color = room ? (even ? room.floor : room.floor2) : even ? this.plan.floor : this.plan.floor2;
         const t = new THREE.Mesh(tileGeo, mat(color, { roughness: 0.6 }));
         const c = tileCenter(x, y);
         t.position.set(c.x, -0.02, c.z);
@@ -225,7 +229,7 @@ export class HouseView {
         shell.add(t);
       }
     }
-    const base = box(HOME.size + 0.3, 0.12, HOME.size + 0.3, "#6b5b4b", 0, -0.1, 0);
+    const base = box(this.plan.size + 0.3, 0.12, this.plan.size + 0.3, "#6b5b4b", mid, -0.1, mid);
     base.castShadow = false;
     shell.add(base);
 
@@ -233,12 +237,12 @@ export class HouseView {
     this.compound = buildCompound();
     shell.add(this.compound.group);
 
-    const wallMat = mat(HOME.wall);
+    const wallMat = mat(this.plan.wall);
     const accentMat = mat("#f7c59f"); // a warm feature wall at the back
     // Back wall (along x at z = -HALF) with a window over tiles 1..3.
     const z = -HALF - 0.05;
     this.backWall.add(box(1, WALL_H, 0.1, accentMat, -HALF + 0.5, WALL_H / 2, z));
-    this.backWall.add(box(HOME.size - 3, WALL_H, 0.1, accentMat, -HALF + 3 + (HOME.size - 3) / 2, WALL_H / 2, z));
+    this.backWall.add(box(this.plan.size - 3, WALL_H, 0.1, accentMat, -HALF + 3 + (this.plan.size - 3) / 2, WALL_H / 2, z));
     this.backWall.add(box(2, 0.6, 0.1, accentMat, -HALF + 2, 0.3, z));
     this.backWall.add(box(2, 0.3, 0.1, accentMat, -HALF + 2, WALL_H - 0.15, z));
     // framed pictures and a skirting board along the back wall
@@ -247,7 +251,7 @@ export class HouseView {
       this.backWall.add(box(0.6, 0.4, 0.06, c1, fx, 1.0, z + 0.09));
       this.backWall.add(box(0.25, 0.4, 0.07, c2, fx + 0.12, 1.0, z + 0.1));
     }
-    this.backWall.add(box(HOME.size, 0.12, 0.14, "#fffaf0", 0, 0.06, z + 0.04));
+    this.backWall.add(box(this.plan.size, 0.12, 0.14, "#fffaf0", mid, 0.06, z + 0.04));
     this.windowMat = new THREE.MeshStandardMaterial({ color: "#bfe3ff", transparent: true, opacity: 0.45, emissive: "#bfe3ff", emissiveIntensity: 0.3 });
     const glass = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.6), this.windowMat);
     glass.position.set(-HALF + 2, 0.9, z + 0.02);
@@ -255,29 +259,30 @@ export class HouseView {
     for (let i = 1; i < 4; i++) this.backWall.add(box(0.03, 0.6, 0.03, "#2d3436", -HALF + 1 + i * 0.5, 0.9, z + 0.06));
     // Left wall (along z at x = -HALF): shared with the neighbour's flat.
     const x = -HALF - 0.05;
-    this.leftWall.add(box(0.1, WALL_H, HOME.size, wallMat, x, WALL_H / 2, 0));
+    this.leftWall.add(box(0.1, WALL_H, this.plan.size, wallMat, x, WALL_H / 2, mid));
     shell.add(this.backWall, this.leftWall);
     // The front and right walls are cut down low so you can see into the rooms
     // (a dollhouse view). The front door is in the front wall.
     const stub = 0.42;
-    const dz = HALF + 0.05;
-    const doorX0 = HOME.door.x - HALF;
+    const edge = this.plan.size - HALF;   // the front and right walls
+    const dz = edge + 0.05;
+    const doorX0 = this.plan.door.x - HALF;
     const doorX1 = doorX0 + 1;
     shell.add(box(doorX0 + HALF, stub, 0.1, wallMat, (-HALF + doorX0) / 2, stub / 2, dz));
-    shell.add(box(HALF - doorX1, stub, 0.1, wallMat, (doorX1 + HALF) / 2, stub / 2, dz));
-    shell.add(box(0.1, stub, HOME.size + 0.1, wallMat, HALF + 0.05, stub / 2, 0));
+    shell.add(box(edge - doorX1, stub, 0.1, wallMat, (doorX1 + edge) / 2, stub / 2, dz));
+    shell.add(box(0.1, stub, this.plan.size + 0.1, wallMat, edge + 0.05, stub / 2, mid));
     for (const px of [doorX0, doorX1]) shell.add(box(0.08, stub + 0.12, 0.14, "#6d4c41", px, (stub + 0.12) / 2, dz));
     shell.add(box(1, 0.02, 0.14, "#6d4c41", (doorX0 + doorX1) / 2, 0.01, dz));
 
     // Inside walls, with gaps for doors.
     const topH = WALL_H - 1.1;
-    for (const w of HOME.walls) {
+    for (const w of this.plan.walls) {
       for (let i = w.from; i < w.to; i++) {
         if (w.doors.includes(i)) continue;
         shell.add(
           w.axis === "v"
-            ? box(0.08, 1.1, 1, mat(HOME.wall), w.at - HALF, 0.55, i + 0.5 - HALF)
-            : box(1, 1.1, 0.08, mat(HOME.wall), i + 0.5 - HALF, 0.55, w.at - HALF),
+            ? box(0.08, 1.1, 1, mat(this.plan.wall), w.at - HALF, 0.55, i + 0.5 - HALF)
+            : box(1, 1.1, 0.08, mat(this.plan.wall), i + 0.5 - HALF, 0.55, w.at - HALF),
         );
         // In first person the inside walls go up to the ceiling.
         this.fpWalls.add(
@@ -290,19 +295,38 @@ export class HouseView {
     // First person: the front and right walls stand at full height (with the front door open)…
     const upH = WALL_H - stub;
     this.fpWalls.add(box(doorX0 + HALF, upH, 0.1, wallMat, (-HALF + doorX0) / 2, stub + upH / 2, dz));
-    this.fpWalls.add(box(HALF - doorX1, upH, 0.1, wallMat, (doorX1 + HALF) / 2, stub + upH / 2, dz));
+    this.fpWalls.add(box(edge - doorX1, upH, 0.1, wallMat, (doorX1 + edge) / 2, stub + upH / 2, dz));
     this.fpWalls.add(box(1, WALL_H - 1.25, 0.1, wallMat, (doorX0 + doorX1) / 2, 1.25 + (WALL_H - 1.25) / 2, dz)); // over the door
-    this.fpWalls.add(box(0.1, upH, HOME.size + 0.1, wallMat, HALF + 0.05, stub + upH / 2, 0));
+    this.fpWalls.add(box(0.1, upH, this.plan.size + 0.1, wallMat, edge + 0.05, stub + upH / 2, mid));
     // …and there's a ceiling.
-    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(HOME.size + 0.2, HOME.size + 0.2), new THREE.MeshStandardMaterial({ color: "#f1ede4", side: THREE.DoubleSide }));
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(this.plan.size + 0.2, this.plan.size + 0.2), new THREE.MeshStandardMaterial({ color: "#f1ede4", side: THREE.DoubleSide }));
     ceiling.rotation.x = Math.PI / 2;
-    ceiling.position.y = WALL_H;
+    ceiling.position.set(mid, WALL_H, mid);
     this.fpWalls.add(ceiling);
     this.fpWalls.traverse(o => {
       if (o instanceof THREE.Mesh) o.castShadow = false;
     });
     this.fpWalls.visible = false;
     this.scene.add(shell, this.fpWalls);
+  }
+
+  /** Switch to a bigger (or smaller) flat after building an extension. Rebuilds the shell around the same tiles. */
+  setPlan(plan: HomePlan) {
+    if (plan.size === this.plan.size) return;
+    this.plan = plan;
+    if (this.shellGroup) {
+      this.scene.remove(this.shellGroup);
+      this.shellGroup.traverse(o => {
+        if (o instanceof THREE.Mesh) o.geometry.dispose();
+      });
+    }
+    this.scene.remove(this.fpWalls);
+    for (const g of [this.backWall, this.leftWall, this.fpWalls]) for (const c of [...g.children]) g.remove(c);
+    this.buildShell();
+    this.fpWalls.visible = this.fp;
+    const mid = plan.size / 2 - HALF;
+    this.controls.target.set(mid, 0.3, mid);
+    this.resize();
   }
 
   /** Feed the latest furniture and light. Rebuilds furniture only when something changed. */
@@ -313,12 +337,12 @@ export class HouseView {
     if (!info.home) {
       this.activity = null;
       this.path = [];
-      this.simTile = { ...HOME.door };
+      this.simTile = { ...this.plan.door };
       this.simPos = null;
     }
     // Furniture may have moved where the Sim stands: step to a free tile.
-    if (!walkable(HOME, objects, this.simTile.x, this.simTile.y)) {
-      this.simTile = { ...HOME.door };
+    if (!walkable(this.plan, objects, this.simTile.x, this.simTile.y)) {
+      this.simTile = { ...this.plan.door };
       this.simPos = null;
       this.path = [];
     }
@@ -361,7 +385,7 @@ export class HouseView {
 
   /** Walk the Sim to a floor tile (just for show). */
   walkTo(x: number, y: number): boolean {
-    const route = findPath(HOME, this.objects, this.simTile, { x, y });
+    const route = findPath(this.plan, this.objects, this.simTile, { x, y });
     if (!route) return false;
     this.activity = null;
     this.path = route;
@@ -372,7 +396,7 @@ export class HouseView {
   use(uid: number, action: string) {
     const obj = this.objects.find(o => o.uid === uid);
     if (!obj) return;
-    const best = routeToObject(HOME, this.objects, this.simTile, obj);
+    const best = routeToObject(this.plan, this.objects, this.simTile, obj);
     this.path = best?.route ?? [];
     const walkSeconds = this.path.length / 3;
     this.activity = { uid, action, until: this.time + walkSeconds + (SLEEPS.has(action) ? 4 : 2.5) };
@@ -505,10 +529,11 @@ export class HouseView {
     this.controls.update();
     const tg = this.controls.target;
     const lim = HALF + 1;
+    const hi = this.plan.size - HALF + 1;
     const clamped = new THREE.Vector3(
-      Math.max(-lim, Math.min(lim, tg.x)),
+      Math.max(-lim, Math.min(hi, tg.x)),
       Math.max(0, Math.min(1, tg.y)),
-      Math.max(-lim, Math.min(lim, tg.z)),
+      Math.max(-lim, Math.min(hi, tg.z)),
     );
     if (!clamped.equals(tg)) {
       this.camera.position.add(clamped.clone().sub(tg));
@@ -612,7 +637,7 @@ export class HouseView {
     if (!p) return null;
     const x = Math.floor(p.x + HALF);
     const y = Math.floor(p.z + HALF);
-    if (x < 0 || y < 0 || x >= HOME.size || y >= HOME.size) return null;
+    if (x < 0 || y < 0 || x >= this.plan.size || y >= this.plan.size) return null;
     return { x, y };
   }
 

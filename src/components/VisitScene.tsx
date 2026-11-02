@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { GameState } from "../engine/game";
 import { HouseView } from "../three/HouseView";
 import { fetchHome } from "../lib/homes";
+import { homePlan, levelForObjects } from "../data/home";
 import { multiplayerUrl } from "../lib/multiplayer";
 import { useLang } from "../i18n/react";
 import { useHomeNet } from "./useHomeNet";
@@ -31,6 +32,7 @@ export default function VisitScene({ owner, state, onLeave }: Props) {
     void fetchHome(owner.id).then(objects => {
       if (!alive) return;
       if (!objects) return setLoad("denied");
+      view.current?.setPlan(homePlan(levelForObjects(objects)));
       view.current?.setState(objects, { hour: (state.time % 1440) / 60, powered: true, grid: true, genRunning: false, home: true }, null);
       setLoad("ready");
     });

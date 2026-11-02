@@ -4,7 +4,7 @@
 
 import { PLACE_LOTS, toWorld } from "../three/world.js";
 
-export type UpgradeId = "driveway" | "gate" | "garden" | "garage" | "balcony" | "floor2" | "pool";
+export type UpgradeId = "driveway" | "gate" | "garden" | "garage" | "balcony" | "floor2" | "pool" | "wing" | "wing2";
 export type Property = Partial<Record<UpgradeId, boolean>>;
 
 export type Upgrade = { id: UpgradeId; emoji: string; name: string; desc: string; price: number; needs?: UpgradeId[] };
@@ -16,6 +16,8 @@ export const UPGRADES: Upgrade[] = [
   { id: "garage", emoji: "🏠", name: "Garage", desc: "A covered garage beside the house with its own parking space.", price: 400_000, needs: ["driveway"] },
   { id: "balcony", emoji: "🪟", name: "Balcony", desc: "A balcony with a railing over your front door.", price: 250_000 },
   { id: "floor2", emoji: "🏢", name: "Second floor", desc: "Build a whole new floor on top of the house. Duplex living.", price: 1_500_000, needs: ["balcony"] },
+  { id: "wing", emoji: "🧱", name: "Extension: study and guest room", desc: "Build new rooms onto your flat: a study, a guest room and a dining area. The flat grows from 8 x 8 to 10 x 10 tiles.", price: 700_000 },
+  { id: "wing2", emoji: "🏗️", name: "Second extension", desc: "Extend the new rooms again, up to 12 x 12 tiles. Room for a lot of furniture.", price: 2_500_000, needs: ["wing"] },
   { id: "pool", emoji: "🏊🏾", name: "Swimming pool", desc: "A tiled pool in the back garden.", price: 900_000, needs: ["garden"] },
 ];
 

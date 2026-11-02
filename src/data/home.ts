@@ -57,9 +57,44 @@ export const HOME: HomePlan = {
   door: { x: 2, y: 7 },
 };
 
+/** Extra rooms you can build onto the flat. The room grows right and down, so tiles you already filled never move.
+ *  wing: 8 x 8 becomes 10 x 10. wing2: 12 x 12. */
+export const EXTRA_ROOMS = ["Study", "Guest room", "Dining area"] as const;
+export const MAX_SIZE = 12;
+
+export const wingLevel = (p?: { wing?: boolean; wing2?: boolean }) => (p?.wing ? (p?.wing2 ? 2 : 1) : 0);
+
+export function homePlan(level: number): HomePlan {
+  if (level <= 0) return HOME;
+  const size = HOME.size + 2 * Math.min(2, level);
+  return {
+    ...HOME,
+    name: level > 1 ? "Large home, Mushin" : "Extended flat, Mushin",
+    size,
+    walls: [
+      ...HOME.walls,
+      { axis: "v", at: HOME.size, from: 0, to: size, doors: [6] },              // old flat | new wing
+      { axis: "h", at: 5, from: HOME.size, to: size, doors: [HOME.size + 1] },  // study | guest room
+    ],
+    rooms: [
+      ...HOME.rooms,
+      { name: "Study",       x0: HOME.size, y0: 0, x1: size, y1: 5,    floor: "#c9d6e8", floor2: "#bccbe0" },
+      { name: "Guest room",  x0: HOME.size, y0: 5, x1: size, y1: size, floor: "#e8d3c0", floor2: "#dcc4ae" },
+      { name: "Dining area", x0: 0, y0: HOME.size, x1: HOME.size, y1: size, floor: "#e9cf9f", floor2: "#ddc08c" },
+    ],
+    door: { x: HOME.door.x, y: size - 1 },
+  };
+}
+
+/** The wing a visitor should see, worked out from where the owner's furniture stands (visitors are not told the upgrades). */
+export const levelForObjects = (objs: { x: number; y: number }[]) => {
+  const far = Math.max(0, ...objs.map(o => Math.max(o.x, o.y)));
+  return far >= HOME.size + 2 ? 2 : far >= HOME.size ? 1 : 0;
+};
+
 /** Which room a tile is in (for labels). */
-export const roomAt = (x: number, y: number) =>
-  HOME.rooms.find(r => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1)?.name ?? "Living room";
+export const roomAt = (x: number, y: number, plan: HomePlan = HOME) =>
+  plan.rooms.find(r => x >= r.x0 && x < r.x1 && y >= r.y0 && y < r.y1)?.name ?? "Living room";
 
 export const CATALOG: Record<FurnitureType, Furniture> = {
   mattress:  { name: "Foam mattress",        emoji: "🛏️", price: 18_000,  w: 1, d: 2, blurb: "Sleep and nap." },

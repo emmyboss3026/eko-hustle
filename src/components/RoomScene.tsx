@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { generatorOn, powered, type GameState } from "../engine/game";
-import { CATALOG, HOME, type FurnitureType } from "../data/home";
+import { CATALOG, homePlan, wingLevel, type FurnitureType } from "../data/home";
 import { canPlace } from "../engine/path";
 import { HouseView } from "../three/HouseView";
 import { useLang } from "../i18n/react";
@@ -30,7 +30,7 @@ const shirts: Record<string, string> = {
 
 export function placingValid(state: GameState, p: Placing | null): boolean {
   if (!p || p.x === null || p.y === null) return false;
-  return canPlace(HOME, state.home.objects, { type: p.type, uid: p.uid ?? undefined, x: p.x, y: p.y, rot: p.rot })
+  return canPlace(homePlan(wingLevel(state.property)), state.home.objects, { type: p.type, uid: p.uid ?? undefined, x: p.x, y: p.y, rot: p.rot })
     && (p.uid !== null || state.money >= CATALOG[p.type].price);
 }
 
@@ -58,6 +58,11 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const wing = wingLevel(state.property);
+  useEffect(() => {
+    viewRef.current?.setPlan(homePlan(wing));
+  }, [wing, viewRef]);
 
   useEffect(() => {
     viewRef.current?.setState(objects, { hour, powered: light, grid: state.power.grid, genRunning: gen, home: true }, selected);

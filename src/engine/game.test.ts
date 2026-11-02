@@ -3,7 +3,7 @@ import { newGame, reduce, passTime, shiftPay, mood, earnings, upgrade, canRevive
 import { actionById } from "../data/actions";
 import { STORY } from "../data/story";
 import { RENT } from "./economy";
-import { HOME, CATALOG } from "../data/home";
+import { HOME, CATALOG, homePlan, wingLevel, levelForObjects } from "../data/home";
 import { canPlace, findPath, wallBetween } from "./path";
 
 const sim = { name: "Ada", trait: "hustler" as const, avatar: "👩🏾" };
@@ -398,5 +398,40 @@ describe("gem packs", () => {
     for (const p of GEM_PACKS) {
       expect(server).toMatch(new RegExp(`"${p.id}":\\s*\\{\\s*naira:\\s*${p.price}\\b[^}]*gems:\\s*${p.gems}\\b`));
     }
+  });
+});
+
+describe("home extensions", () => {
+  it("the plan grows with the wings and keeps the old tiles where they were", () => {
+    expect(homePlan(0)).toBe(HOME);
+    expect(homePlan(1).size).toBe(10);
+    expect(homePlan(2).size).toBe(12);
+    expect(homePlan(1).rooms.slice(0, HOME.rooms.length)).toEqual(HOME.rooms);
+    expect(wingLevel({ wing: true })).toBe(1);
+    expect(wingLevel({ wing: true, wing2: true })).toBe(2);
+    expect(wingLevel({ wing2: true })).toBe(0);   // needs the first wing
+  });
+
+  it("furniture fits in the new rooms only after you build them", () => {
+    const sofa = { type: "chair" as const, x: 9, y: 2, rot: 0 };
+    expect(canPlace(HOME, [], sofa)).toBe(false);
+    expect(canPlace(homePlan(1), [], sofa)).toBe(true);
+    expect(canPlace(homePlan(1), [], { ...sofa, x: 11 })).toBe(false);
+    expect(canPlace(homePlan(2), [], { ...sofa, x: 11 })).toBe(true);
+  });
+
+  it("every room of a bigger flat can be reached from the front door", () => {
+    for (const level of [1, 2]) {
+      const plan = homePlan(level);
+      for (const r of plan.rooms) {
+        expect(findPath(plan, [], plan.door, { x: r.x0, y: r.y0 }), `${r.name} at level ${level}`).not.toBeNull();
+      }
+    }
+  });
+
+  it("a visitor sees the wing that matches the furniture", () => {
+    expect(levelForObjects([{ x: 3, y: 3 }])).toBe(0);
+    expect(levelForObjects([{ x: 8, y: 1 }])).toBe(1);
+    expect(levelForObjects([{ x: 3, y: 10 }])).toBe(2);
   });
 });

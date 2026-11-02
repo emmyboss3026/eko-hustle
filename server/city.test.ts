@@ -188,7 +188,7 @@ describe("homes", () => {
     for (let i = 0; i < 6; i++) expect(s.enter(`p${i}`, "o")).not.toBeNull();
     expect(s.enter("p7", "o")).toBeNull();
     s.advance(2000);
-    expect(s.cities.move("p0", 9, 7, 0, 1)).toBe(false);      // outside the 8-tile room
+    expect(s.cities.move("p0", 13, 7, 0, 1)).toBe(false);      // outside the biggest (12-tile) room
     expect(s.cities.move("p0", 2, 7, 0, 1)).toBe(true);
     s.advance(1000);
     expect(s.cities.move("p0", 30, 7, 0, 1)).toBe(false);     // far too fast for a home
