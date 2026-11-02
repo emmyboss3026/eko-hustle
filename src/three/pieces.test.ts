@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildPiece } from "./pieces";
-import { CATALOG, shopList, type FurnitureType } from "../data/home";
+import { CATALOG, decorList, furnitureList, shopList, type FurnitureType } from "../data/home";
 
 describe("furniture models", () => {
   it("every item in the shop has a real 3D model, not the pink placeholder box", () => {
@@ -17,6 +17,15 @@ describe("furniture models", () => {
       expect(shopList).toContain(t);
       expect(CATALOG[t].price).toBeGreaterThan(0);
     }
+  });
+
+  it("the shop has more furniture and a separate accessories tab", () => {
+    expect(furnitureList.length).toBeGreaterThanOrEqual(30);
+    expect(decorList.length).toBeGreaterThanOrEqual(12);
+    expect(furnitureList.some(t => CATALOG[t].decor)).toBe(false);
+    for (const t of ["kingbed", "washer", "grandclock", "runner"] as FurnitureType[]) expect(shopList).toContain(t);
+    expect(CATALOG.runner.walkable && CATALOG.doormat.walkable).toBe(true);
+    expect(CATALOG.speaker.power && CATALOG.washer.power).toBe(true);
   });
 
   it("lamps and air conditioners need light, and leather sofas are the luxury tier", () => {

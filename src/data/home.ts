@@ -5,7 +5,8 @@ export type FurnitureType =
   | "mattress" | "bed" | "bucket" | "shower" | "burner" | "fridge" | "tv" | "radio"
   | "chair" | "sofa" | "fan" | "plant" | "generator" | "rug" | "toilet"
   | "mirror" | "dumbbells" | "desk" | "bookshelf"
-  | "wardrobe" | "dining" | "lamp" | "art" | "curtain" | "armchair" | "aircon" | "leathersofa";
+  | "wardrobe" | "dining" | "lamp" | "art" | "curtain" | "armchair" | "aircon" | "leathersofa"
+  | "tvstand" | "coffeetable" | "sidetable" | "kingbed" | "dresser" | "island" | "shoerack" | "washer" | "ottoman" | "cabinet" | "vase" | "grandclock" | "frames" | "candles" | "basket" | "trophy" | "globe" | "speaker" | "lantern" | "cactus" | "runner" | "doormat";
 
 export type Furniture = {
   name: string;
@@ -16,6 +17,7 @@ export type Furniture = {
   power?: boolean;      // needs light (grid or generator) to use
   walkable?: boolean;   // you can walk over it (rugs)
   fixed?: boolean;      // part of the room: can't be sold, moved or bought
+  decor?: boolean;      // an accessory: sold on the Accessories tab, only for looks
   blurb: string;
 };
 
@@ -181,10 +183,34 @@ export const CATALOG: Record<FurnitureType, Furniture> = {
   curtain:   { name: "Curtains",             emoji: "🪟", price: 18_000,  w: 1, d: 1, blurb: "Ankara curtains on a rail. Colour for the window." },
   armchair:  { name: "Armchair",             emoji: "💺", price: 60_000,  w: 1, d: 1, blurb: "A deep chair for reading and rest." },
   aircon:    { name: "Air conditioner",      emoji: "❄️", price: 220_000, w: 1, d: 1, power: true, blurb: "Cool air all night. Needs light." },
+  tvstand: { name: "Furniture", emoji: "\ud83d\udcfa", price: 45000, w: 2, d: 1, blurb: "A low cabinet for the TV, the decoder and the console." },
+  coffeetable: { name: "Coffee table", emoji: "\u2615", price: 30000, w: 2, d: 1, blurb: "A low table with a shelf underneath. Drinks, remotes and gist." },
+  sidetable: { name: "Bedside table", emoji: "\ud83d\udecf\ufe0f", price: 12000, w: 1, d: 1, blurb: "A small table with a drawer for your phone and your keys." },
+  kingbed: { name: "King-size bed", emoji: "\ud83d\udecc", price: 140000, w: 3, d: 2, blurb: "A huge bed with a headboard and two pillows. Sleep like a chief." },
+  dresser: { name: "Dresser", emoji: "\ud83d\uddc4\ufe0f", price: 70000, w: 2, d: 1, blurb: "Three drawers and a small mirror on top." },
+  island: { name: "Kitchen island", emoji: "\ud83c\udf7d\ufe0f", price: 110000, w: 2, d: 1, blurb: "A dark worktop with two stools. Cook, chat and eat in one place." },
+  shoerack: { name: "Shoe rack", emoji: "\ud83d\udc5f", price: 8000, w: 1, d: 1, blurb: "Three shelves for the sneakers, the sandals and the church shoes." },
+  washer: { name: "Washing machine", emoji: "\ud83e\uddfa", price: 180000, w: 1, d: 1, power: true, blurb: "Clothes washed at home. No more Saturday at the laundry. Needs light." },
+  ottoman: { name: "Ottoman", emoji: "\ud83d\udfe0", price: 15000, w: 1, d: 1, blurb: "A round cushioned seat. Extra seat, footrest or small table." },
+  cabinet: { name: "Display cabinet", emoji: "\ud83c\udffa", price: 55000, w: 1, d: 1, blurb: "Glass doors for the good plates, the trophies and the family photos." },
+  vase: { name: "Flower vase", emoji: "\ud83d\udc90", price: 6000, w: 1, d: 1, decor: true, blurb: "A tall vase with fresh flowers. The room smells better already." },
+  grandclock: { name: "Grandfather clock", emoji: "\ud83d\udd70\ufe0f", price: 85000, w: 1, d: 1, decor: true, blurb: "A tall wooden clock that ticks like a heartbeat." },
+  frames: { name: "Photo frames", emoji: "\ud83d\uddbc\ufe0f", price: 7000, w: 1, d: 1, decor: true, blurb: "Three framed photos on a little table. Mummy would approve." },
+  candles: { name: "Candles", emoji: "\ud83d\udd6f\ufe0f", price: 4000, w: 1, d: 1, decor: true, blurb: "Three candles on a plate. Soft light for NEPA nights." },
+  basket: { name: "Woven basket", emoji: "\ud83e\uddfa", price: 9000, w: 1, d: 1, decor: true, blurb: "A hand-woven basket with a folded wrapper inside." },
+  trophy: { name: "Trophy stand", emoji: "\ud83c\udfc6", price: 25000, w: 1, d: 1, decor: true, blurb: "Gold cups on a pedestal. Show what you have won." },
+  globe: { name: "Globe", emoji: "\ud83c\udf0d", price: 18000, w: 1, d: 1, decor: true, blurb: "A globe on a wooden stand. For people who plan to japa, or just dream." },
+  speaker: { name: "Tower speaker", emoji: "\ud83d\udd0a", price: 60000, w: 1, d: 1, power: true, decor: true, blurb: "Big sound for the owambe at home. Needs light." },
+  lantern: { name: "Lantern", emoji: "\ud83c\udfee", price: 12000, w: 1, d: 1, decor: true, blurb: "A brass lantern with a warm glow that needs no electricity." },
+  cactus: { name: "Cactus", emoji: "\ud83c\udf35", price: 5000, w: 1, d: 1, decor: true, blurb: "A tough little plant. Water it never, love it always." },
+  runner: { name: "Hallway runner", emoji: "\ud83d\udfeb", price: 22000, w: 1, d: 3, walkable: true, decor: true, blurb: "A long striped runner. Walk on it." },
+  doormat: { name: "Doormat", emoji: "\ud83d\udeaa", price: 6000, w: 1, d: 1, walkable: true, decor: true, blurb: "Wipe your feet. It says so right on it." },
   leathersofa: { name: "Leather sofa (luxury)", emoji: "🛋️", price: 350_000, w: 3, d: 1, blurb: "A three-seat leather sofa. The room looks richer at once." },
 };
 
 export const shopList = (Object.keys(CATALOG) as FurnitureType[]).filter(t => !CATALOG[t].fixed);
+export const furnitureList = shopList.filter(t => !CATALOG[t].decor);
+export const decorList = shopList.filter(t => CATALOG[t].decor);
 
 /** What the room comes with. */
 export const START_OBJECTS: Omit<Placed, "uid">[] = [

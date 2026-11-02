@@ -603,6 +603,8 @@ export const en: Dict = {
   "friends.waiting": "Waiting for an answer",
   "friends.cancel": "Cancel",
   "friends.cancelled": "Request cancelled.",
+  "shop.tabFurniture": "Furniture",
+  "shop.tabDecor": "Accessories",
   "dock.builder": "Build",
   "dock.more": "More",
   "panel.more": "☰ More",

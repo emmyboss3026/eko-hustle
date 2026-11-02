@@ -335,6 +335,213 @@ export function buildPiece(type: FurnitureType, { powered, active }: { powered: 
       for (const x of [-1.0, 1.0]) g.add(box(0.3, 0.3, 0.12, x < 0 ? '#d4a017' : '#1f7a8c', x, 0.7, -0.15));
       break;
     }
+    case 'tvstand': {
+      g.add(box(1.8, 0.42, 0.5, '#5d4037', 0, 0.23));
+      g.add(box(1.9, 0.04, 0.56, '#3e2723', 0, 0.46));
+      for (const x of [-0.45, 0.45]) g.add(box(0.8, 0.3, 0.02, '#795548', x, 0.23, 0.26));
+      for (const x of [-0.45, 0.45]) g.add(box(0.05, 0.05, 0.03, '#f2c94c', x + 0.3, 0.25, 0.28));
+      g.add(box(0.5, 0.06, 0.3, '#212121', -0.6, 0.51));
+      break;
+    }
+    case 'coffeetable': {
+      g.add(box(1.5, 0.06, 0.7, '#8d6e63', 0, 0.42));
+      g.add(box(1.3, 0.03, 0.5, '#6d4c41', 0, 0.15));
+      legs(g, 1.4, 0.6, 0.42, '#5d4037', 0.04, 0.035);
+      g.add(cyl(0.07, 0.06, 0.1, '#ffffff', -0.3, 0.5, 0.05, 12));
+      g.add(box(0.3, 0.02, 0.2, '#d9435d', 0.3, 0.46, -0.05));
+      break;
+    }
+    case 'sidetable': {
+      g.add(box(0.6, 0.5, 0.45, '#a1887f', 0, 0.3));
+      g.add(box(0.64, 0.04, 0.5, '#795548', 0, 0.56));
+      g.add(box(0.5, 0.16, 0.02, '#8d6e63', 0, 0.38, 0.23));
+      g.add(box(0.08, 0.03, 0.03, '#f2c94c', 0, 0.38, 0.25));
+      legs(g, 0.52, 0.38, 0.1, '#5d4037', 0.02, 0.025);
+      g.add(box(0.14, 0.02, 0.08, '#212121', 0.12, 0.59));
+      break;
+    }
+    case 'kingbed': {
+      g.add(box(2.8, 0.3, 1.9, '#5d4037', 0, 0.2));
+      g.add(box(2.7, 0.26, 1.8, '#f5f0e6', 0, 0.46));
+      g.add(box(2.85, 0.9, 0.12, '#4e342e', 0, 0.62, -0.95));
+      g.add(box(2.7, 0.1, 1.15, '#1f7a8c', 0, 0.62, 0.3));
+      for (const x of [-0.65, 0.65]) g.add(box(0.9, 0.16, 0.45, '#ffffff', x, 0.64, -0.62));
+      g.add(box(2.7, 0.04, 0.5, '#d4a017', 0, 0.66, 0.0));
+      break;
+    }
+    case 'dresser': {
+      g.add(box(1.8, 0.9, 0.55, '#8d6e63', 0, 0.45));
+      g.add(box(1.86, 0.04, 0.6, '#5d4037', 0, 0.92));
+      for (const y of [0.22, 0.45, 0.68]) {
+        g.add(box(1.7, 0.2, 0.02, '#a1887f', 0, y, 0.28));
+        for (const x of [-0.4, 0.4]) g.add(box(0.1, 0.03, 0.03, '#f2c94c', x, y, 0.3));
+      }
+      g.add(box(0.6, 0.5, 0.04, '#cfd8dc', 0, 1.2, -0.2));
+      g.add(box(0.66, 0.56, 0.03, '#5d4037', 0, 1.2, -0.22));
+      break;
+    }
+    case 'island': {
+      g.add(box(1.8, 0.9, 0.7, '#f4f1ea', 0, 0.45));
+      g.add(box(1.95, 0.06, 0.82, '#2d3436', 0, 0.93));
+      g.add(box(1.7, 0.05, 0.02, '#cfd8dc', 0, 0.5, 0.36));
+      for (const x of [-0.45, 0.45]) {
+        g.add(cyl(0.17, 0.17, 0.06, '#d9435d', x, 0.66, 0.65, 14));
+        g.add(cyl(0.03, 0.03, 0.6, '#b0bec5', x, 0.33, 0.65, 8));
+      }
+      g.add(cyl(0.1, 0.1, 0.07, '#f1c40f', 0.5, 1.0, 0, 12));
+      break;
+    }
+    case 'shoerack': {
+      for (const y of [0.1, 0.4, 0.7]) g.add(box(0.8, 0.04, 0.32, '#8d6e63', 0, y));
+      g.add(box(0.04, 0.75, 0.32, '#6d4c41', -0.4, 0.38));
+      g.add(box(0.04, 0.75, 0.32, '#6d4c41', 0.4, 0.38));
+      for (const [x, y, c] of [[-0.2, 0.14, '#e74c3c'], [0.2, 0.14, '#ecf0f1'], [-0.2, 0.44, '#2d3436'], [0.2, 0.44, '#f1c40f'], [0, 0.74, '#3498db']] as [number, number, string][]) g.add(box(0.26, 0.09, 0.14, c, x, y + 0.07));
+      break;
+    }
+    case 'washer': {
+      g.add(box(0.72, 0.86, 0.66, '#eceff1', 0, 0.43));
+      g.add(box(0.72, 0.12, 0.66, '#cfd8dc', 0, 0.84));
+      const door = cyl(0.22, 0.22, 0.04, '#90a4ae', 0, 0.42, 0.34, 20);
+      door.rotation.x = Math.PI / 2;
+      g.add(door);
+      const glass = cyl(0.17, 0.17, 0.045, '#455a64', 0, 0.42, 0.345, 20);
+      glass.rotation.x = Math.PI / 2;
+      g.add(glass);
+      g.add(box(0.2, 0.05, 0.02, powered && active ? '#55efc4' : '#455a64', 0.2, 0.78, 0.34));
+      if (active && powered) tick = (_dt, t) => { glass.rotation.y = t * 8; };
+      break;
+    }
+    case 'ottoman': {
+      g.add(cyl(0.36, 0.36, 0.32, '#d9435d', 0, 0.2, 0, 20));
+      g.add(cyl(0.38, 0.38, 0.05, '#c0392b', 0, 0.38, 0, 20));
+      g.add(cyl(0.34, 0.34, 0.03, '#f1c40f', 0, 0.04, 0, 20));
+      break;
+    }
+    case 'cabinet': {
+      g.add(box(0.8, 1.5, 0.4, '#5d4037', 0, 0.75));
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(0.68, 1.2, 0.02), new THREE.MeshStandardMaterial({ color: '#cfe8ff', transparent: true, opacity: 0.35 }));
+      glass.position.set(0, 0.85, 0.21);
+      g.add(glass);
+      for (const y of [0.55, 0.95, 1.3]) g.add(box(0.68, 0.03, 0.34, '#8d6e63', 0, y));
+      g.add(cyl(0.07, 0.05, 0.12, '#f1c40f', -0.15, 1.38, 0, 10));
+      g.add(box(0.2, 0.14, 0.04, '#ecf0f1', 0.15, 1.03, 0.08));
+      g.add(cyl(0.1, 0.1, 0.03, '#ecf0f1', -0.1, 0.62, 0.05, 14));
+      break;
+    }
+    case 'vase': {
+      g.add(cyl(0.16, 0.11, 0.62, '#1f7a8c', 0, 0.31, 0, 14));
+      g.add(cyl(0.09, 0.14, 0.12, '#1f7a8c', 0, 0.68, 0, 14));
+      for (const [x, z, y, c] of [[-0.1, 0, 0.98, '#ff7eb6'], [0.1, 0.05, 1.05, '#f1c40f'], [0, -0.08, 1.12, '#e74c3c']] as [number, number, number, string][]) {
+        g.add(cyl(0.012, 0.012, y - 0.7, '#27ae60', x * 0.6, 0.7 + (y - 0.7) / 2, z, 6));
+        const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.09, 0), mat(c, { flatShading: true }));
+        f.position.set(x, y, z);
+        g.add(f);
+      }
+      break;
+    }
+    case 'grandclock': {
+      g.add(box(0.5, 1.7, 0.34, '#6d4c41', 0, 0.85));
+      g.add(box(0.58, 0.1, 0.4, '#4e342e', 0, 1.74));
+      g.add(box(0.56, 0.1, 0.4, '#4e342e', 0, 0.05));
+      const face = cyl(0.19, 0.19, 0.03, '#fffaf0', 0, 1.38, 0.18, 24);
+      face.rotation.x = Math.PI / 2;
+      g.add(face);
+      g.add(box(0.02, 0.14, 0.02, '#212121', 0, 1.43, 0.2));
+      g.add(box(0.1, 0.02, 0.02, '#212121', 0.04, 1.38, 0.2));
+      g.add(box(0.3, 0.6, 0.02, '#3e2723', 0, 0.7, 0.18));
+      const pend = cyl(0.07, 0.07, 0.02, '#f2c94c', 0, 0.55, 0.2, 14);
+      pend.rotation.x = Math.PI / 2;
+      g.add(pend);
+      break;
+    }
+    case 'frames': {
+      g.add(box(0.7, 0.04, 0.4, '#8d6e63', 0, 0.5));
+      legs(g, 0.62, 0.32, 0.5, '#5d4037', 0.03, 0.025);
+      for (const [x, h, c] of [[-0.22, 0.26, '#ffcc80'], [0, 0.34, '#90caf9'], [0.22, 0.22, '#a5d6a7']] as [number, number, string][]) {
+        g.add(box(0.2, h, 0.03, '#3e2723', x, 0.52 + h / 2, -0.02));
+        g.add(box(0.15, h - 0.06, 0.035, c, x, 0.52 + h / 2, -0.015));
+      }
+      break;
+    }
+    case 'candles': {
+      g.add(cyl(0.3, 0.3, 0.03, '#ecf0f1', 0, 0.015, 0, 20));
+      for (const [x, z, h] of [[-0.12, 0.04, 0.34], [0.12, -0.04, 0.26], [0.02, 0.14, 0.2]] as [number, number, number][]) {
+        g.add(cyl(0.05, 0.05, h, '#fff3d6', x, 0.03 + h / 2, z, 10));
+        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), new THREE.MeshStandardMaterial({ color: '#ffb347', emissive: '#ff9f1c', emissiveIntensity: 1.4 }));
+        flame.position.set(x, 0.07 + h, z);
+        g.add(flame);
+      }
+      break;
+    }
+    case 'basket': {
+      g.add(cyl(0.34, 0.26, 0.4, '#b8863b', 0, 0.2, 0, 18));
+      g.add(cyl(0.36, 0.34, 0.05, '#8d6e2f', 0, 0.42, 0, 18));
+      g.add(cyl(0.3, 0.3, 0.04, '#e67e22', 0, 0.4, 0, 18));
+      g.add(box(0.3, 0.06, 0.2, '#c0392b', 0.05, 0.46, 0.02));
+      break;
+    }
+    case 'trophy': {
+      g.add(box(0.6, 0.5, 0.4, '#3e2723', 0, 0.25));
+      g.add(box(0.66, 0.05, 0.46, '#5d4037', 0, 0.52));
+      for (const [x, s] of [[-0.18, 0.8], [0.05, 1.1], [0.24, 0.7]] as [number, number][]) {
+        g.add(cyl(0.02, 0.02, 0.12 * s, '#d4a017', x, 0.57 + 0.06 * s, 0, 8));
+        g.add(cyl(0.1 * s, 0.04 * s, 0.16 * s, '#f2c94c', x, 0.7 + 0.08 * s, 0, 12));
+      }
+      break;
+    }
+    case 'globe': {
+      g.add(cyl(0.2, 0.24, 0.05, '#5d4037', 0, 0.03, 0, 16));
+      g.add(cyl(0.025, 0.025, 0.5, '#5d4037', 0, 0.3, 0, 8));
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 14), mat('#2e86c1', { roughness: 0.5 }));
+      ball.position.y = 0.78;
+      ball.castShadow = true;
+      g.add(ball);
+      for (const [x, y, z, s] of [[0.12, 0.84, 0.25, 0.1], [-0.18, 0.72, 0.22, 0.12], [0.2, 0.7, -0.2, 0.09]] as [number, number, number, number][]) g.add(box(s, s * 0.8, 0.04, '#58d68d', x, y, z));
+      break;
+    }
+    case 'speaker': {
+      g.add(box(0.5, 1.3, 0.45, '#212121', 0, 0.65));
+      const woofer = cyl(0.17, 0.17, 0.04, '#424242', 0, 0.4, 0.23, 20);
+      woofer.rotation.x = Math.PI / 2;
+      g.add(woofer);
+      const tweeter = cyl(0.08, 0.08, 0.04, '#616161', 0, 0.95, 0.23, 16);
+      tweeter.rotation.x = Math.PI / 2;
+      g.add(tweeter);
+      g.add(box(0.08, 0.02, 0.02, powered ? '#55efc4' : '#455a64', 0.17, 1.2, 0.23));
+      if (powered) tick = (_dt, t) => { woofer.scale.set(1 + Math.sin(t * 14) * 0.04, 1, 1 + Math.sin(t * 14) * 0.04); };
+      break;
+    }
+    case 'lantern': {
+      g.add(cyl(0.2, 0.22, 0.04, '#b8860b', 0, 0.02, 0, 8));
+      g.add(cyl(0.18, 0.2, 0.5, new THREE.MeshStandardMaterial({ color: '#ffd28a', emissive: '#ff9f1c', emissiveIntensity: 0.9, transparent: true, opacity: 0.85 }), 0, 0.29, 0, 8));
+      g.add(cyl(0.02, 0.2, 0.14, '#b8860b', 0, 0.61, 0, 8));
+      g.add(cyl(0.04, 0.04, 0.06, '#b8860b', 0, 0.71, 0, 8));
+      for (let i = 0; i < 4; i++) g.add(box(0.025, 0.5, 0.025, '#b8860b', Math.cos(i * 1.57) * 0.18, 0.29, Math.sin(i * 1.57) * 0.18));
+      break;
+    }
+    case 'cactus': {
+      g.add(cyl(0.2, 0.15, 0.26, '#d98a63', 0, 0.13, 0, 14));
+      g.add(cyl(0.11, 0.12, 0.55, '#2e8b57', 0, 0.52, 0, 10));
+      g.add(cyl(0.05, 0.06, 0.22, '#2e8b57', 0.15, 0.55, 0, 8));
+      g.add(box(0.14, 0.05, 0.05, '#2e8b57', 0.09, 0.45, 0));
+      g.add(cyl(0.05, 0.06, 0.2, '#2e8b57', -0.14, 0.62, 0, 8));
+      g.add(box(0.12, 0.05, 0.05, '#2e8b57', -0.09, 0.52, 0));
+      break;
+    }
+    case 'runner': {
+      const base = box(0.9, 0.02, 2.8, '#1f4e79', 0, 0.011);
+      base.castShadow = false;
+      g.add(base);
+      for (const z of [-1.0, 0, 1.0]) g.add(Object.assign(box(0.7, 0.022, 0.3, '#f4c27a', 0, 0.012, z), { castShadow: false }));
+      g.add(Object.assign(box(0.06, 0.024, 2.6, '#d9435d', 0, 0.013), { castShadow: false }));
+      break;
+    }
+    case 'doormat': {
+      g.add(Object.assign(box(0.9, 0.025, 0.6, '#6d4c41', 0, 0.013), { castShadow: false }));
+      g.add(Object.assign(box(0.8, 0.028, 0.5, '#a1887f', 0, 0.014), { castShadow: false }));
+      for (const x of [-0.24, -0.08, 0.08, 0.24]) g.add(Object.assign(box(0.06, 0.03, 0.1, '#3e2723', x, 0.015), { castShadow: false }));
+      break;
+    }
     default:
       g.add(box(0.8, 0.8, 0.8, '#ff00ff'));
   }

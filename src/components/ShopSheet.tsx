@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { itemBlocker, type GameState } from "../engine/game";
 import { actionsFor } from "../data/actions";
-import { CATALOG, roomAt, shopList, type FurnitureType } from "../data/home";
+import { CATALOG, decorList, furnitureList, roomAt, type FurnitureType } from "../data/home";
 import { missionTags } from "../data/missions";
 import { naira } from "../engine/economy";
 import { Tag } from "./ui";
@@ -18,6 +19,7 @@ export default function ShopSheet({ state, onBuy, onPick, onOpen }: Props) {
   const { t, tx } = useLang();
   const tags = missionTags(state);
   const atHome = state.location === "mushin";
+  const [tab, setTab] = useState<"furniture" | "decor">("furniture");
   return (
     <>
       <div className="shop-big">
@@ -26,8 +28,12 @@ export default function ShopSheet({ state, onBuy, onPick, onOpen }: Props) {
       </div>
       {!atHome && <p className="note bad">{t("shop.awayNote")}</p>}
       <p className="lede">{t("shop.lede")}</p>
+      <div className="car-tabs" role="tablist">
+        <button role="tab" aria-selected={tab === "furniture"} onClick={() => setTab("furniture")}><span aria-hidden>🛋️</span><small>{t("shop.tabFurniture")}</small></button>
+        <button role="tab" aria-selected={tab === "decor"} onClick={() => setTab("decor")}><span aria-hidden>🪴</span><small>{t("shop.tabDecor")}</small></button>
+      </div>
       <div className="group">
-        {shopList.map(f => {
+        {(tab === "furniture" ? furnitureList : decorList).map(f => {
           const spec = CATALOG[f];
           const problem = itemBlocker(state, f);
           const does = actionsFor(f).map(a => tx.action(a)).join(" · ");
