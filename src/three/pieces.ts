@@ -261,6 +261,80 @@ export function buildPiece(type: FurnitureType, { powered, active }: { powered: 
       }
       break;
     }
+    case 'wardrobe': {
+      const wood = '#7a4b2a';
+      g.add(box(1.8, 1.7, 0.6, wood, 0, 0.85, 0));
+      g.add(box(0.86, 1.55, 0.03, '#8d5a35', -0.45, 0.85, 0.32));
+      g.add(box(0.86, 1.55, 0.03, '#8d5a35', 0.45, 0.85, 0.32));
+      for (const x of [-0.1, 0.1]) g.add(box(0.04, 0.3, 0.05, '#f2c94c', x, 0.85, 0.35));
+      g.add(box(1.9, 0.06, 0.7, '#5d3a1f', 0, 1.72, 0));
+      break;
+    }
+    case 'dining': {
+      g.add(box(1.6, 0.06, 1.6, '#c8a27a', 0, 0.74));
+      legs(g, 1.6, 1.6, 0.74, '#6d4c41', 0.1, 0.05);
+      for (const [x, z, ry] of [[0, -1.0, 0], [0, 1.0, Math.PI], [-1.0, 0, Math.PI / 2], [1.0, 0, -Math.PI / 2]] as [number, number, number][]) {
+        const c = new THREE.Group();
+        c.add(box(0.42, 0.05, 0.42, '#2f6f73', 0, 0.45));
+        c.add(box(0.42, 0.45, 0.05, '#2f6f73', 0, 0.7, -0.2));
+        legs(c, 0.42, 0.42, 0.45, '#4a3a2a', 0.03, 0.02);
+        c.position.set(x * 0.8, 0, z * 0.8);
+        c.rotation.y = ry;
+        g.add(c);
+      }
+      g.add(box(0.5, 0.04, 0.5, '#f4f1ea', 0, 0.78));
+      g.add(cyl(0.12, 0.1, 0.18, '#27ae60', 0, 0.9, 0, 8));
+      break;
+    }
+    case 'lamp': {
+      g.add(cyl(0.2, 0.22, 0.04, '#2d3436'));
+      g.add(cyl(0.02, 0.02, 1.4, '#b2b2b2', 0, 0.72, 0, 8));
+      const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.38, 14, 1, true), new THREE.MeshStandardMaterial({ color: '#ffe3b3', side: THREE.DoubleSide, emissive: powered ? '#ffc766' : '#000000', emissiveIntensity: powered ? 1.4 : 0, roughness: 0.8 }));
+      shade.position.y = 1.5;
+      g.add(shade);
+      if (powered) { const pl = new THREE.PointLight('#ffcf8a', 0.9, 4, 1.6); pl.position.y = 1.5; g.add(pl); }
+      break;
+    }
+    case 'art': {
+      g.add(box(0.06, 1.05, 0.06, '#5d4037', -0.3, 0.52, 0));
+      g.add(box(0.06, 1.05, 0.06, '#5d4037', 0.3, 0.52, 0));
+      g.add(box(0.9, 0.7, 0.05, '#3b2f2a', 0, 1.0, 0));
+      g.add(box(0.78, 0.58, 0.06, '#f4c27a', 0, 1.0, 0.01));
+      g.add(box(0.22, 0.5, 0.07, '#d9435d', -0.22, 1.0, 0.02));
+      g.add(box(0.2, 0.34, 0.07, '#1f7a8c', 0.05, 0.92, 0.02));
+      g.add(cyl(0.1, 0.1, 0.07, '#2f2a8a', 0.26, 1.12, 0.02, 14)).rotation.x = Math.PI / 2;
+      break;
+    }
+    case 'curtain': {
+      g.add(box(1.0, 0.03, 0.05, '#b8860b', 0, 1.45, 0));
+      for (let i = 0; i < 8; i++) g.add(box(0.1, 1.35, 0.06, i % 2 ? '#e67e22' : '#c0392b', -0.45 + i * 0.13, 0.75, 0.02 + (i % 2) * 0.02));
+      for (let i = 0; i < 4; i++) g.add(box(0.04, 0.9, 0.02, '#f1c40f', -0.4 + i * 0.27, 1.1, 0.07));
+      break;
+    }
+    case 'armchair': {
+      g.add(box(0.85, 0.34, 0.8, '#b85c38', 0, 0.2));
+      g.add(box(0.85, 0.6, 0.2, '#b85c38', 0, 0.55, -0.3));
+      g.add(box(0.16, 0.45, 0.8, '#a04e2e', -0.4, 0.4));
+      g.add(box(0.16, 0.45, 0.8, '#a04e2e', 0.4, 0.4));
+      g.add(box(0.55, 0.12, 0.5, '#d9895f', 0, 0.42, 0.06));
+      break;
+    }
+    case 'aircon': {
+      g.add(box(0.95, 0.3, 0.26, '#f4f6f8', 0, 1.2, -0.3));
+      g.add(box(0.85, 0.04, 0.02, active && powered ? '#55efc4' : '#9aa5ad', 0, 1.1, -0.17));
+      g.add(box(0.9, 0.05, 0.1, '#e1e6ea', 0, 1.06, -0.16));
+      break;
+    }
+    case 'leathersofa': {
+      const c = '#3b2a22';
+      g.add(box(2.9, 0.42, 0.9, c, 0, 0.21));
+      g.add(box(2.9, 0.62, 0.24, c, 0, 0.62, -0.34));
+      g.add(box(0.22, 0.6, 0.9, '#2c1f19', -1.34, 0.32));
+      g.add(box(0.22, 0.6, 0.9, '#2c1f19', 1.34, 0.32));
+      for (const x of [-0.85, 0, 0.85]) g.add(box(0.8, 0.14, 0.6, '#4d382d', x, 0.48, 0.08));
+      for (const x of [-1.0, 1.0]) g.add(box(0.3, 0.3, 0.12, x < 0 ? '#d4a017' : '#1f7a8c', x, 0.7, -0.15));
+      break;
+    }
     default:
       g.add(box(0.8, 0.8, 0.8, '#ff00ff'));
   }

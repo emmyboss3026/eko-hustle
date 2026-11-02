@@ -4,7 +4,8 @@
 export type FurnitureType =
   | "mattress" | "bed" | "bucket" | "shower" | "burner" | "fridge" | "tv" | "radio"
   | "chair" | "sofa" | "fan" | "plant" | "generator" | "rug" | "toilet"
-  | "mirror" | "dumbbells" | "desk" | "bookshelf";
+  | "mirror" | "dumbbells" | "desk" | "bookshelf"
+  | "wardrobe" | "dining" | "lamp" | "art" | "curtain" | "armchair" | "aircon" | "leathersofa";
 
 export type Furniture = {
   name: string;
@@ -80,6 +81,14 @@ export const CATALOG: Record<FurnitureType, Furniture> = {
   dumbbells: { name: "Dumbbell rack",        emoji: "🏋🏾", price: 14_000,  w: 1, d: 1, blurb: "Work out at home: grows Fitness." },
   desk:      { name: "Desk + laptop",        emoji: "💻", price: 160_000, w: 2, d: 1, power: true, blurb: "Learn to code and do freelance gigs from home. Needs light." },
   bookshelf: { name: "Bookshelf",            emoji: "📚", price: 12_000,  w: 1, d: 1, blurb: "Read books: grows Study." },
+  wardrobe:  { name: "Wardrobe",             emoji: "🚪", price: 90_000,  w: 2, d: 1, blurb: "Two big doors for your clothes. A proper bedroom." },
+  dining:    { name: "Dining set",           emoji: "🍽️", price: 120_000, w: 2, d: 2, blurb: "A table with four chairs for family and friends." },
+  lamp:      { name: "Floor lamp",           emoji: "💡", price: 20_000,  w: 1, d: 1, power: true, blurb: "Warm light in the corner. Glows when there is light." },
+  art:       { name: "Wall artwork",         emoji: "🖼️", price: 15_000,  w: 1, d: 1, blurb: "A bold Nigerian print on a stand. Makes the room yours." },
+  curtain:   { name: "Curtains",             emoji: "🪟", price: 18_000,  w: 1, d: 1, blurb: "Ankara curtains on a rail. Colour for the window." },
+  armchair:  { name: "Armchair",             emoji: "💺", price: 60_000,  w: 1, d: 1, blurb: "A deep chair for reading and rest." },
+  aircon:    { name: "Air conditioner",      emoji: "❄️", price: 220_000, w: 1, d: 1, power: true, blurb: "Cool air all night. Needs light." },
+  leathersofa: { name: "Leather sofa (luxury)", emoji: "🛋️", price: 350_000, w: 3, d: 1, blurb: "A three-seat leather sofa. The room looks richer at once." },
 };
 
 export const shopList = (Object.keys(CATALOG) as FurnitureType[]).filter(t => !CATALOG[t].fixed);
