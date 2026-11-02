@@ -41,3 +41,14 @@ graphify-out/
 
 # Local Claude settings
 .claude/
+
+# Sensitive files
+recovery-codes.txt
+.env
+.env.*
+!.env.example
+
+# Local development files
+graphify-out/
+supabase/.temp/
+.claude/launch.json
