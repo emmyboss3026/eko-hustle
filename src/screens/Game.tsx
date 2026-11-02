@@ -27,6 +27,8 @@ import Cutscene, { type Ride } from "../components/Cutscene";
 import Loading from "../components/Loading";
 import { placingValid, type Placing } from "../components/RoomScene";
 import BlueprintSheet from "../components/BlueprintSheet";
+import PhotoSheet from "../components/PhotoSheet";
+import Avatar from "../components/Avatar";
 import { wallsCost, wallsProblem } from "../engine/estate";
 import { soundForLog } from "../lib/sound";
 import { play, setScene, startAmbience, stopAmbience, type Sfx } from "../lib/audio";
@@ -54,7 +56,7 @@ const RoomScene = lazy(() => import("../components/RoomScene"));
 const StreetScene = lazy(() => import("../components/StreetScene"));
 const VisitScene = lazy(() => import("../components/VisitScene"));
 
-type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story" | "build" | "cars" | "more" | "builder" | "plans";
+type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story" | "build" | "cars" | "more" | "builder" | "plans" | "photo";
 
 // Four main buttons. Travel, Jobs, Goals and Me live under More; Shop is an app on the phone and part of Build.
 const dock: { id: Panel | "phone"; emoji: string }[] = [
@@ -433,7 +435,10 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
       {/* ---------- top: who, when, money and needs ---------- */}
       <header className="hud2">
         <div className="hud2-row">
-          <span className="hud2-avatar" aria-hidden>{state.sim.avatar}</span>
+          <button className="hud2-avatar" onClick={() => openPanel(panel === "photo" ? null : "photo")} aria-label={t("hud.photo")} title={t("hud.photo")}>
+            <Avatar emoji={state.sim.avatar} />
+            <i className="avatar-cam" aria-hidden>📷</i>
+          </button>
           <div className="hud2-who">
             <b>{state.sim.name}</b>
             <span>
@@ -660,6 +665,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
               {!showRoom && <p className="note">{t("builder.home")}</p>}
             </>
           )}
+          {panel === "photo" && <PhotoSheet avatar={state.sim.avatar} onClose={() => setPanel(null)} />}
           {panel === "plans" && <BlueprintSheet state={state} dispatch={dispatch} />}
           {panel === "build" && <BuildSheet state={state} dispatch={dispatch} />}
           {panel === "cars" && <DealershipSheet state={state} dispatch={dispatch} />}

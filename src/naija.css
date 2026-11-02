@@ -484,3 +484,19 @@ body { background: radial-gradient(120% 90% at 50% 0%, #26186b 0%, #0d1030 55%, 
 .gram-pick { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--nv-line); background: rgba(255, 255, 255, 0.1); color: inherit; font-weight: 800; }
 .gram-pick[aria-checked="true"] { background: linear-gradient(135deg, #2ee6c5, #3be08a); color: #06241d; }
 .news-row .row-title { white-space: normal; }
+
+/* ---------- profile picture ---------- */
+button.hud2-avatar { position: relative; padding: 0; overflow: visible; cursor: pointer; color: inherit; }
+button.hud2-avatar:active { transform: scale(0.94); }
+.avatar-photo { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.hud2-avatar .avatar-cam {
+  position: absolute; right: -4px; bottom: -4px;
+  display: grid; place-items: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  font-size: 11px; font-style: normal;
+  background: var(--nv-teal); border: 2px solid #1a1650;
+}
+.photo-preview { display: grid; place-items: center; width: 150px; height: 150px; margin: 6px auto 14px; border-radius: 50%; overflow: hidden; font-size: 84px; background: radial-gradient(circle at 30% 25%, #5a4bd6, #2a2478); border: 4px solid var(--nv-teal); box-shadow: 0 0 22px rgba(46, 230, 197, 0.45); }
+.photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+.me-avatar.avatar-photo { display: inline-block; width: 1.3em; height: 1.3em; vertical-align: -0.3em; }
+.board-face.big.avatar-photo { width: 52px; height: 52px; }
