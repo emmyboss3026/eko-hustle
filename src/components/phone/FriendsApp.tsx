@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLang } from "../../i18n/react";
 import {
-  blockPlayer, findPlayers, inviteHome, myFriends, myHomeInvites, removeFriend, requestFriend, respondFriend,
+  blockPlayer, findPlayers, inviteHome, myFriends, myHomeInvites, removeFriend, reportPlayer, requestFriend, respondFriend,
   type Found, type Friend, type HomeInvite,
 } from "../../lib/friends";
 
@@ -14,6 +14,7 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
   const [found, setFound] = useState<Found[] | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reporting, setReporting] = useState<{ id: string; reason: string } | null>(null);
 
   const load = useCallback(async () => {
     const [f, i] = await Promise.all([myFriends(), myHomeInvites()]);
@@ -92,6 +93,15 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
           <button className="chip-btn" disabled={busy} onClick={() => run(() => inviteHome(f.id), t("friends.invited"))}>🏠 {t("friends.invite")}</button>
           <button className="chip-btn" disabled={busy} onClick={() => run(() => removeFriend(f.id), t("friends.removed"))}>{t("friends.remove")}</button>
           <button className="chip-btn" disabled={busy} onClick={() => run(() => blockPlayer(f.id), t("friends.blocked"))}>{t("friends.block")}</button>
+          <button className="chip-btn" disabled={busy} onClick={() => setReporting(r => (r?.id === f.id ? null : { id: f.id, reason: "harassment" }))}>{t("friends.report")}</button>
+          {reporting?.id === f.id && (
+            <span className="row">
+              <select value={reporting.reason} onChange={e => setReporting({ id: f.id, reason: e.target.value })} aria-label={t("friends.report")}>
+                {["harassment", "cheating", "offensive_name", "spam", "other"].map(r => <option key={r} value={r}>{t(`friends.why.${r}`)}</option>)}
+              </select>
+              <button className="chip-btn" disabled={busy} onClick={() => { const r = reporting; setReporting(null); void run(() => reportPlayer(r.id, r.reason), t("friends.reported")); }}>{t("friends.sendReport")}</button>
+            </span>
+          )}
         </div>
       ))}
 

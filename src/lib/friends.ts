@@ -22,4 +22,5 @@ export const requestFriend = (id: string) => call<Result>("friend_request", { p_
 export const respondFriend = (id: string, accept: boolean) => call<Result>("friend_respond", { p_from: id, p_accept: accept });
 export const removeFriend = (id: string) => call<Result>("friend_remove", { p_other: id });
 export const blockPlayer = (id: string) => call<Result>("block_player", { p_other: id });
+export const reportPlayer = (id: string, reason: string) => call<Result>("report_player", { p_other: id, p_reason: reason });
 export const inviteHome = (id: string) => call<Result>("invite_home", { p_guest: id });
