@@ -447,3 +447,40 @@ body { background: radial-gradient(120% 90% at 50% 0%, #26186b 0%, #0d1030 55%, 
 .plan-svg { width: 96px; height: 96px; background: #fff7ea; border-radius: 8px; }
 .plan-info { display: grid; gap: 6px; justify-items: start; }
 .wall-warn { color: #ffb86b; }
+
+/* the tip bubble's three buttons were white glyphs on white: make them readable on the dark glass */
+.tip-buttons button {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  font-weight: 900;
+  font-size: 20px;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.tip-buttons button:hover, .tip-buttons button:active { background: rgba(46, 230, 197, 0.35); border-color: var(--nv-teal); }
+.tip.urgent .tip-buttons button { border-color: rgba(255, 200, 120, 0.7); }
+.tip-mini { background: var(--nv-glass-strong); color: var(--nv-text); border: 1px solid var(--nv-line); }
+.tip-text { color: var(--nv-text); }
+.tip-text b { color: var(--nv-teal); margin-right: 4px; }
+.tip.urgent .tip-text b { color: #ffd08a; }
+
+/* ---------- the arcade, Gram and News ---------- */
+.memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+.memory-card { aspect-ratio: 1; border-radius: 14px; font-size: 28px; border: 2px solid rgba(255, 255, 255, 0.25); background: linear-gradient(135deg, #5f3dc4, #3b2a92); color: #fff; }
+.memory-card.up { background: #fff7ea; border-color: var(--nv-teal); }
+.memory-card.found { background: #e3fff5; opacity: 0.85; }
+.maths-q { margin: 8px 0 12px; padding: 14px; border-radius: 16px; background: rgba(255, 255, 255, 0.1); font-weight: 800; font-size: 17px; }
+.maths-q.ok { background: rgba(59, 224, 138, 0.35); }
+.maths-q.no { background: rgba(255, 95, 95, 0.35); }
+.maths-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.maths-options .btn { padding: 14px 8px; font-size: 16px; }
+.rush-field { position: relative; height: 260px; margin-top: 8px; border-radius: 16px; background: linear-gradient(180deg, #2b2f5e, #14163a); overflow: hidden; touch-action: manipulation; }
+.rush-target { position: absolute; width: 56px; height: 56px; transform: translate(-50%, -50%); border-radius: 50%; font-size: 32px; background: rgba(255, 255, 255, 0.14); border: 2px solid rgba(255, 255, 255, 0.4); }
+.arcade-result { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 18px 6px; }
+.arcade-big { font-size: 56px; }
+.gram-head { display: grid; justify-items: center; gap: 2px; padding: 14px; margin-bottom: 8px; border-radius: 18px; background: linear-gradient(135deg, #d6336c, #7048e8); color: #fff; }
+.gram-count { font-family: var(--display); font-size: 38px; line-height: 1; }
+.gram-pick { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--nv-line); background: rgba(255, 255, 255, 0.1); color: inherit; font-weight: 800; }
+.gram-pick[aria-checked="true"] { background: linear-gradient(135deg, #2ee6c5, #3be08a); color: #06241d; }
+.news-row .row-title { white-space: normal; }

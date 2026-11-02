@@ -34,6 +34,7 @@ import { REVIVE, type ReviveHow } from "../data/revive";
 import { storyFlag } from "./progress";
 import { syncStory, storyStep, type StoryCommand, type StoryState } from "./story";
 import { estateStep, type EstateCommand } from "./estate";
+import { appsStep, type AppsCommand } from "./apps";
 import type { Property, Vehicle } from "../data/estate";
 
 export type EndingKind = "japa" | "landlord" | "evicted" | "collapsed";
@@ -104,6 +105,8 @@ export type GameState = {
   camera?: "top" | "first"; // overhead or first-person view
   revives?: { ad: number; gem: number; refs: string[] }; // times you came back after collapsing (refs: gems used)
   property?: Property;     // what you have built on your home lot (see data/estate.ts)
+  arcade?: { day: number; plays: Record<string, number> };   // mini-game plays today (see engine/apps.ts)
+  gram?: { followers: number; posts: number; lastPost: number; paid: number[] };
   homeGoals?: string[];     // home goals you have claimed (see data/homeGoals.ts)
   vehicles?: Vehicle[];    // cars you own and where they are parked
   nextVehicle?: number;    // next id for a car
@@ -135,6 +138,7 @@ export type Command =
   | { type: "finalize" }  // the player chose to end this life instead of reviving
   | StoryCommand
   | EstateCommand
+  | AppsCommand
   | PhoneCommand;
 
 export const AD_REWARD = 3_000;
@@ -774,6 +778,10 @@ function step(s: GameState, cmd: Command): GameState {
 
     case "story":
       return storyStep(s, cmd, kit);
+
+    case "arcade":
+    case "gramPost":
+      return appsStep(s, cmd, kit);
 
     case "build":
     case "wall":

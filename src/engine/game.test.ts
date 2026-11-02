@@ -9,6 +9,8 @@ import { RENT } from "./economy";
 import { HOME, CATALOG, homePlan, wingLevel, levelForObjects, WALL_PRICE, FLOOR_PRICE, floorById, tidyEdges, defaultEdges } from "../data/home";
 import { canPlace, findPath, wallBetween, allReachable } from "./path";
 import { wallsCost } from "./estate";
+import { ARCADE_PAID_PLAYS, ARCADE_TOP_PRIZE, GRAM_MILESTONES, arcadeLeft, gramPostedToday } from "./apps";
+import { headlinesFor } from "../components/phone/NewsApp";
 
 const sim = { name: "Ada", trait: "hustler" as const, avatar: "👩🏾" };
 const fresh = (patch: Partial<GameState> = {}): GameState => ({ ...newGame(sim), ...patch });
@@ -584,5 +586,54 @@ describe("wall editor and blueprints", () => {
     const restored = reduce(one, { type: "restoreLayout" });
     expect(restored.home.walls).toEqual(defaultEdges(0));
     expect(reduce(fresh({ money: 10 }), { type: "blueprint", id: b.id }).home.walls).toBeUndefined();
+  });
+});
+
+describe("phone apps: arcade and Gram", () => {
+  it("a mini-game pays by score, lifts fun, and only the first paid plays of the day pay", () => {
+    const s0 = fresh({ money: 0, needs: { ...newGame(sim).needs, fun: 20 } });
+    const one = reduce(s0, { type: "arcade", game: "memory", score: 100 });
+    expect(one.money).toBe(ARCADE_TOP_PRIZE);
+    expect(one.needs.fun).toBeGreaterThan(20);
+    const two = reduce(one, { type: "arcade", game: "memory", score: 50 });
+    expect(two.money - one.money).toBe(500);
+    const three = reduce(two, { type: "arcade", game: "memory", score: 100 });
+    expect(three.money).toBe(two.money);                                   // today's paid plays are used up
+    expect(arcadeLeft(three, "memory")).toBe(0);
+    expect(arcadeLeft(three, "rush")).toBe(ARCADE_PAID_PLAYS);            // other games are separate
+  });
+
+  it("scores are clamped and unknown games are ignored", () => {
+    const s = fresh({ money: 0 });
+    expect(reduce(s, { type: "arcade", game: "rush", score: 99999 }).money).toBe(ARCADE_TOP_PRIZE);
+    expect(reduce(s, { type: "arcade", game: "rush", score: -50 }).money).toBe(0);
+    expect(reduce(s, { type: "arcade", game: "poker", score: 100 })).toBe(s);
+  });
+
+  it("the daily limit resets the next day", () => {
+    let s = fresh({ money: 0 });
+    for (let i = 0; i < 3; i++) s = reduce(s, { type: "arcade", game: "maths", score: 100 });
+    expect(arcadeLeft(s, "maths")).toBe(0);
+    s = { ...s, time: s.time + 1440 };
+    expect(arcadeLeft(s, "maths")).toBe(ARCADE_PAID_PLAYS);
+  });
+
+  it("Gram: one post a day gains followers and reputation; sponsor deals pay once", () => {
+    let s = fresh({ money: 0 });
+    s = reduce(s, { type: "gramPost", caption: 0 });
+    expect(s.gram!.followers).toBeGreaterThan(3);
+    expect(gramPostedToday(s)).toBe(true);
+    expect(reduce(s, { type: "gramPost", caption: 1 }).gram!.posts).toBe(1);        // not twice in a day
+    s = { ...s, gram: { ...s.gram!, followers: 49 }, time: s.time + 1440 };
+    const rich = reduce(s, { type: "gramPost", caption: 0 });
+    expect(rich.money).toBe(GRAM_MILESTONES[0].prize);
+    expect(rich.gram!.paid).toEqual([50]);
+    const later = reduce({ ...rich, time: rich.time + 1440 }, { type: "gramPost", caption: 0 });
+    expect(later.money - rich.money).toBeLessThan(GRAM_MILESTONES[0].prize);        // no second payout
+  });
+
+  it("the news shows three different headlines a day and changes over days", () => {
+    for (const day of [1, 2, 9, 40]) expect(new Set(headlinesFor(day)).size).toBe(3);
+    expect(headlinesFor(1)).not.toEqual(headlinesFor(2));
   });
 });

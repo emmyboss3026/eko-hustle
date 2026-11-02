@@ -712,7 +712,11 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
           state={state}
           dispatch={dispatch}
           app={phone === "home" ? null : phone}
-          onApp={a => { if (a === "shop") { setPhone(null); openPanel("shop"); } else setPhone(a ?? "home"); }}
+          onApp={a => {
+            // Some apps are shortcuts to a screen of the game
+            const to: Partial<Record<string, Panel>> = { shop: "shop", estate: "builder", cars: "cars", goals: "goals" };
+            if (a && to[a]) { setPhone(null); openPanel(to[a]!); } else setPhone(a ?? "home");
+          }}
           onClose={() => { setPhone(null); setClaimed(null); }}
           onTravel={() => { setPhone(null); setPanel("go"); }}
           onStory={openStory}
