@@ -38,7 +38,8 @@ export const SIDES = STORY.filter(m => m.side);
 const OLD_ORDER = ["bath", "cook", "first-naira", "groceries", "job", "ride", "shift", "streets", "skill", "furniture", "rent"];
 
 export function storyOf(s: GameState): StoryState {
-  if (s.story) return s.story;
+  // A save from the earlier 100-mission path has a different shape (flags as an object): treat it as no story yet
+  if (s.story && Array.isArray(s.story.flags) && s.story.picks) return s.story;
   // An older save: the missions you finished count, as far as they still line up.
   const done = OLD_ORDER.slice(0, Math.min(s.mission ?? 0, OLD_ORDER.length)).filter(id => storyById(id));
   return { done, flags: [], picks: {} };

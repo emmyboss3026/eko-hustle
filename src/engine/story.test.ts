@@ -280,4 +280,10 @@ describe("daily challenges and weekly events", () => {
     expect(s.money).toBe(money + c.money);
     expect(reduce(s, { type: "story", act: "challenge", id: c.id }).money).toBe(s.money);
   });
+
+  it("a save from the earlier 100-mission path does not break the new story", () => {
+    const old = { ...newGame({ name: "Ada", trait: "hustler", avatar: "x" }), story: { done: ["s01-keys"], active: null, base: {}, startDay: 0, choosing: false, choices: {}, flags: { lane: "study" }, failed: [], notified: [] } } as unknown as GameState;
+    expect(storyOf(old).flags).toEqual([]);
+    expect(() => reduce(old, { type: "act", id: "cook" })).not.toThrow();
+  });
 });
