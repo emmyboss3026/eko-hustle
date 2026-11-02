@@ -27,7 +27,7 @@ export type ContactState = { rel: number; last: number; helped?: number; called?
 export type OpenInvite = { uid: number; id: InviteId; day: number; until: number; status: "open" | "accepted" | "declined" | "expired" };
 export type PhoneMsg = {
   uid: number;
-  from: ContactId | "bank" | "biz" | "club";
+  from: ContactId | "bank" | "biz" | "club" | "story";
   t: number;
   key: string;                       // text key (shown in the player's language)
   vars?: Record<string, string | number>;

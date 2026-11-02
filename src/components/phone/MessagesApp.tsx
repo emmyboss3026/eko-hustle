@@ -11,12 +11,13 @@ const SENDER: Record<string, { emoji: string; key: string }> = {
   bank: { emoji: "🏦", key: "msgs.bank" },
   biz: { emoji: "🏪", key: "msgs.biz" },
   club: { emoji: "🍾", key: "msgs.club" },
+  story: { emoji: "📖", key: "msgs.story" },
 };
 
 /** Where a message's "open the app" link goes. */
 const LINK: Record<string, AppId> = {
   "msg.invite": "invites", "msg.biz.profit": "business", "msg.biz.loss": "business", "msg.tunde.invest": "invest",
-  "msg.funke.business": "business", "msg.bank.daily": "rewards", "msg.bank.welcome": "bank", "msg.landlord.rent": "bank",
+  "msg.story.new": "story", "msg.funke.business": "business", "msg.bank.daily": "rewards", "msg.bank.welcome": "bank", "msg.landlord.rent": "bank",
 };
 
 export function senderName(t: (k: string) => string, from: From) {

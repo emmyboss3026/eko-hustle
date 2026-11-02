@@ -24,7 +24,7 @@ import { missions } from "../data/missions";
 import { translate, type Lang } from "../i18n/core";
 import { text } from "../i18n/text";
 import {
-  newDay, phoneStep, startPhone, addRep, bond, BANK_SIZE,
+  newDay, phoneStep, startPhone, addRep, addMessage, bond, BANK_SIZE,
   type Kit, type PhoneCommand, type Txn, type TxnCat, type Holding, type Trade, type ContactState,
   type OpenInvite, type PhoneMsg, type DailyClaim,
 } from "./phone";
@@ -32,6 +32,9 @@ import type { FundId } from "../data/invest";
 import type { OwnedBiz } from "../data/business";
 import type { ContactId } from "../data/contacts";
 import { REVIVE, type ReviveHow } from "../data/revive";
+import { storyById } from "../data/story";
+import type { Effect, StoryMission } from "../data/story/types";
+import { storyOf, offered, activeMission, tasksDone, expired, affordable, type StoryState } from "./story";
 
 export type EndingKind = "japa" | "landlord" | "evicted" | "collapsed";
 export type Ending = { kind: EndingKind; day: number; final?: boolean }; // final: no more revive offer
@@ -95,6 +98,7 @@ export type GameState = {
   daily?: DailyClaim[];     // daily login rewards credited to this life
   camera?: "top" | "first"; // overhead or first-person view
   revives?: { ad: number; gem: number; refs: string[] }; // times you came back after collapsing (refs: gems used)
+  story?: StoryState;       // the long branching story (see data/story and engine/story.ts)
 };
 
 export type DiaryEntry = { t: number; line: string };
@@ -120,6 +124,8 @@ export type Command =
   | { type: "greet" }     // you answered a passer-by in the streets
   | { type: "revive"; how: ReviveHow; ref?: string } // back from hospital (ref: the server's id for the gem used)
   | { type: "finalize" }  // the player chose to end this life instead of reviving
+  | { type: "storyStart"; id: string }     // take on a story mission
+  | { type: "storyChoose"; index: number } // pick an option at the end of the active story mission
   | PhoneCommand;
 
 export const AD_REWARD = 3_000;
@@ -513,7 +519,71 @@ export function reduce(s: GameState, cmd: Command): GameState {
   if (cmd.type === "revive") return revive(s, cmd.how, cmd.ref);
   if (cmd.type === "finalize") return s.ending ? { ...s, ending: { ...s.ending, final: true } } : s;
   const next = step(s, cmd);
-  return next === s ? s : checkMissions(next);
+  return next === s ? s : checkStory(checkMissions(next));
+}
+
+// ---------- the story ----------
+
+function applyEffect(s: GameState, e: Effect, label: string): GameState {
+  let n = s;
+  if (e.money) n = e.money > 0 ? pay(n, e.money, "mission", label) : charge(n, -e.money, "other", label);
+  if (e.rep) n = addRep(n, e.rep);
+  if (e.skill) n = learn(n, e.skill);
+  if (e.bond) n = bond(n, e.bond[0], e.bond[1]);
+  if (e.mood) n = addMood(n, e.mood);
+  if (e.flag) n = { ...n, story: { ...storyOf(n), flags: { ...storyOf(n).flags, [e.flag[0]]: e.flag[1] } } };
+  return n;
+}
+
+/** Tell the player on the phone about story missions that just opened up (once each). */
+function announce(s: GameState): GameState {
+  const st = storyOf(s);
+  const fresh = offered(s).filter(m => !st.notified.includes(m.id));
+  if (!fresh.length) return s;
+  let n: GameState = { ...s, story: { ...st, notified: [...st.notified, ...fresh.map(m => m.id)] } };
+  for (const m of fresh) n = addMessage(n, { from: "story", key: "msg.story.new", vars: { title: m.title } });
+  return n;
+}
+
+function finishStory(s: GameState, m: StoryMission, pick: number | null): GameState {
+  const st = storyOf(s);
+  let n = applyEffect(s, m.reward, m.title);
+  const opt = pick === null ? undefined : m.choice?.options[pick];
+  if (opt?.effect) n = applyEffect(n, opt.effect, m.title);
+  const after = storyOf(n);
+  n = { ...n, story: { ...after, done: [...st.done, m.id], active: null, choosing: false, base: {}, choices: pick === null ? after.choices : { ...after.choices, [m.id]: pick } } };
+  n = addRep(addMood(n, "mission"), 1);
+  n = say(n, `📖 ${m.title}` + (m.reward.money ? ` +${naira(m.reward.money)}` : "") + (opt ? `. ${opt.result}` : ""));
+  return announce(n);
+}
+
+/** Move the active story mission along: finished, waiting for a choice, or out of time. */
+export function checkStory(s: GameState): GameState {
+  let n = announce(s);
+  const m = activeMission(n);
+  const st = storyOf(n);
+  if (!m || st.choosing) return n;
+  if (expired(n, m)) {
+    n = { ...n, story: { ...st, active: null, base: {}, failed: [...st.failed.filter(id => id !== m.id), m.id] } };
+    return say(n, `📖 ${m.title}: ${m.fail ?? "Time ran out. You can try again."}`);
+  }
+  if (!tasksDone(n, m)) return n;
+  if (m.choice) return say({ ...n, story: { ...st, choosing: true } }, `📖 ${m.title}: ${m.choice.prompt}`);
+  return finishStory(n, m, null);
+}
+
+function storyStart(s: GameState, id: string): GameState {
+  const st = storyOf(s);
+  if (st.active || !offered(s).some(m => m.id === id)) return s;
+  const m = storyById(id)!;
+  return say({ ...s, story: { ...st, active: id, choosing: false, base: { ...s.counts }, startDay: dayOf(s.time), failed: st.failed.filter(f => f !== id) } }, `📖 ${m.title}`);
+}
+
+function storyChoose(s: GameState, index: number): GameState {
+  const m = activeMission(s);
+  const opt = m?.choice?.options[index];
+  if (!m || !opt || !storyOf(s).choosing || !affordable(s, opt.effect?.money)) return s;
+  return finishStory(s, m, index);
 }
 
 /** Finish the current mission (and any after it that are already done), paying the rewards. */
@@ -536,6 +606,9 @@ function step(s: GameState, cmd: Command): GameState {
   if (s.eventId && cmd.type !== "choose") return s;
 
   switch (cmd.type) {
+    case "storyStart": return storyStart(s, cmd.id);
+    case "storyChoose": return storyChoose(s, cmd.index);
+
     case "tick": {
       let next = passTime(s, cmd.minutes);
       if (!next.ending && next.power.grid && cmd.power !== undefined && cmd.power < POWER.outagePerHour * (cmd.minutes / 60)) {

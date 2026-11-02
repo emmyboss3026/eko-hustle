@@ -39,6 +39,7 @@ import { flushFeedback } from "../lib/cloud";
 import Phone, { type AppId } from "../components/phone/Phone";
 import { openInvites, unreadCount } from "../engine/phone";
 import { claimDaily, getDailyStatus, type DailyStatus } from "../lib/daily";
+import { recordStoryMission } from "../lib/story";
 import { naira as nairaFmt } from "../engine/economy";
 
 // The 3D scenes are a big download, so they load in the background.
@@ -115,6 +116,14 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   });
   const mission = currentMission(state);
   const atHome = state.location === "mushin";
+
+  // Finished story missions are recorded on the server once each (it ignores repeats)
+  const storyDone = state.story?.done ?? [];
+  const recorded = useRef(storyDone.length);
+  useEffect(() => {
+    for (const id of storyDone.slice(recorded.current)) void recordStoryMission(id, state.story?.choices[id] ?? null, dayOf(state.time));
+    recorded.current = storyDone.length;
+  }, [storyDone.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // What the screen shows: your room, the streets (walking), or the place you're at
   const focus: SpotId | null =

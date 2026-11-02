@@ -27,3 +27,17 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Sensitive files
+recovery-codes.txt
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Temporary files
+supabase/.temp/
+graphify-out/
+
+# Local Claude settings
+.claude/
