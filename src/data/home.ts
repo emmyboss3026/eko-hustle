@@ -46,13 +46,13 @@ export const HOME: HomePlan = {
     { axis: "v", at: 5, from: 3, to: 8, doors: [5] },   // living room | bedroom
   ],
   rooms: [
-    { name: "Kitchen",  x0: 0, y0: 0, x1: 5, y1: 3, floor: "#e3d7bf", floor2: "#d4c6a8" },
-    { name: "Bathroom", x0: 5, y0: 0, x1: 8, y1: 3, floor: "#8fbcc9", floor2: "#a7cfda" },
-    { name: "Bedroom",  x0: 5, y0: 3, x1: 8, y1: 8, floor: "#a8795a", floor2: "#a8795a" },
+    { name: "Kitchen",  x0: 0, y0: 0, x1: 5, y1: 3, floor: "#eef2f5", floor2: "#d9e2e8" },
+    { name: "Bathroom", x0: 5, y0: 0, x1: 8, y1: 3, floor: "#8fd6e4", floor2: "#aee6f0" },
+    { name: "Bedroom",  x0: 5, y0: 3, x1: 8, y1: 8, floor: "#d9b88f", floor2: "#cdab80" },
   ],
-  floor: "#c9a27a",   // living room
-  floor2: "#bf9670",
-  wall: "#efe4d0",
+  floor: "#d8a878",   // living room
+  floor2: "#cc9c6c",
+  wall: "#fff4e2",
   door: { x: 2, y: 7 },
 };
 

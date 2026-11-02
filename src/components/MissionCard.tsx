@@ -20,13 +20,18 @@ export default function MissionCard({ state, onStory }: {
   const [shown, setShown] = useState<string | null>(null);
   const seen = useRef<string | null>(null);
 
+  // A new mission (or "tasks done") raises the notification...
   useEffect(() => {
     if (!key || seen.current === key) return;
     seen.current = key;
     setShown(key);
+  }, [key]);
+  // ...and it goes away by itself after a few seconds
+  useEffect(() => {
+    if (!shown) return;
     const id = setTimeout(() => setShown(null), 8_000);
     return () => clearTimeout(id);
-  }, [key]);
+  }, [shown]);
 
   if (!m || shown !== key) return null;
   const mt = tx.story(m);

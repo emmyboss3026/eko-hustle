@@ -94,7 +94,8 @@ for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) LOT_CENTERS.push([-150 +
 
 const placeAt = (cx, cz) => Object.keys(PLACE_LOTS).find((id) => PLACE_LOTS[id].cx === cx && PLACE_LOTS[id].cz === cz) ?? null;
 
-const PALETTE = ['#e8d5b5', '#d9b38c', '#c7d3dd', '#e3c4a8', '#b9c7a5', '#f0e0c0', '#d6a77a', '#c9b8d8', '#e6cfa3', '#a9c4c9'];
+const PALETTE = ['#ff9a76', '#ffd166', '#5fd3e6', '#8bd68c', '#c58cf0', '#ff7eb6', '#6ec1ff', '#ffb870', '#b6e07a', '#8e9cff'];
+const TOWER_PALETTE = ['#6fa8dc', '#5cc5c1', '#8e9cff', '#7fb6e8'];
 
 /** Every ordinary building in town (not the places). Deterministic. */
 export const BUILDINGS = [];
@@ -110,7 +111,7 @@ LOT_CENTERS.forEach(([cx, cz], index) => {
     const h = tall ? 18 + Math.floor(r() * 22) : 5 + Math.floor(r() * 9);
     BUILDINGS.push({
       x: cx + sx + (r() - 0.5) * 2, z: cz + sz + (r() - 0.5) * 2, w, d, h,
-      color: PALETTE[Math.floor(r() * PALETTE.length)],
+      color: tall ? TOWER_PALETTE[Math.floor(r() * TOWER_PALETTE.length)] : PALETTE[Math.floor(r() * PALETTE.length)],
       roof: r() < 0.5 ? 'zinc' : 'flat', tank: r() < 0.6, kind: tall ? 'tower' : 'house',
     });
   }

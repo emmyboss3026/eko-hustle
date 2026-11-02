@@ -79,6 +79,8 @@ export class HouseView {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.12;
     container.appendChild(this.renderer.domElement);
     this.renderer.domElement.style.touchAction = "none";
 
@@ -232,12 +234,20 @@ export class HouseView {
     shell.add(this.compound.group);
 
     const wallMat = mat(HOME.wall);
+    const accentMat = mat("#f7c59f"); // a warm feature wall at the back
     // Back wall (along x at z = -HALF) with a window over tiles 1..3.
     const z = -HALF - 0.05;
-    this.backWall.add(box(1, WALL_H, 0.1, wallMat, -HALF + 0.5, WALL_H / 2, z));
-    this.backWall.add(box(HOME.size - 3, WALL_H, 0.1, wallMat, -HALF + 3 + (HOME.size - 3) / 2, WALL_H / 2, z));
-    this.backWall.add(box(2, 0.6, 0.1, wallMat, -HALF + 2, 0.3, z));
-    this.backWall.add(box(2, 0.3, 0.1, wallMat, -HALF + 2, WALL_H - 0.15, z));
+    this.backWall.add(box(1, WALL_H, 0.1, accentMat, -HALF + 0.5, WALL_H / 2, z));
+    this.backWall.add(box(HOME.size - 3, WALL_H, 0.1, accentMat, -HALF + 3 + (HOME.size - 3) / 2, WALL_H / 2, z));
+    this.backWall.add(box(2, 0.6, 0.1, accentMat, -HALF + 2, 0.3, z));
+    this.backWall.add(box(2, 0.3, 0.1, accentMat, -HALF + 2, WALL_H - 0.15, z));
+    // framed pictures and a skirting board along the back wall
+    for (const [fx, c1, c2] of [[-HALF + 4.4, "#ff7eb6", "#fff4e2"], [-HALF + 5.4, "#4aa8ff", "#fff4e2"], [-HALF + 6.4, "#2ee6c5", "#fff4e2"]] as [number, string, string][]) {
+      this.backWall.add(box(0.75, 0.55, 0.05, "#3b2f2a", fx, 1.0, z + 0.07));
+      this.backWall.add(box(0.6, 0.4, 0.06, c1, fx, 1.0, z + 0.09));
+      this.backWall.add(box(0.25, 0.4, 0.07, c2, fx + 0.12, 1.0, z + 0.1));
+    }
+    this.backWall.add(box(HOME.size, 0.12, 0.14, "#fffaf0", 0, 0.06, z + 0.04));
     this.windowMat = new THREE.MeshStandardMaterial({ color: "#bfe3ff", transparent: true, opacity: 0.45, emissive: "#bfe3ff", emissiveIntensity: 0.3 });
     const glass = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.6), this.windowMat);
     glass.position.set(-HALF + 2, 0.9, z + 0.02);

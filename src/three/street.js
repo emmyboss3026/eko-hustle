@@ -466,11 +466,11 @@ export class StreetView {
     this.water.rotation.x = -Math.PI / 2;
     this.water.position.y = -0.8;
     S.add(this.water);
-    const land = box(LAND_HALF * 2, 1, LAND_HALF * 2, '#b3a47c', 0, -0.5, 0, false);
+    const land = box(LAND_HALF * 2, 1, LAND_HALF * 2, '#4fa85a', 0, -0.5, 0, false);
     S.add(land);
     // Heights are spaced apart so distant surfaces never flicker through each other.
     const L = LAND_HALF * 2;
-    S.add(mergedBoxes(LOT_CENTERS.map(([cx, cz]) => ({ w: LOT_HALF * 2, h: 0.04, d: LOT_HALF * 2, x: cx, y: 0.0, z: cz, color: '#a99a73' })), { shadow: false }));
+    S.add(mergedBoxes(LOT_CENTERS.map(([cx, cz]) => ({ w: LOT_HALF * 2, h: 0.04, d: LOT_HALF * 2, x: cx, y: 0.0, z: cz, color: '#6fc468' })), { shadow: false }));
     // Roads (one mesh) and raised pavements (one mesh).
     const roads = [];
     const walks = [];
@@ -478,8 +478,8 @@ export class StreetView {
       roads.push({ w: ROAD_HALF * 2, h: 0.04, d: L, x: r, y: 0.08, z: 0, color: '#3b3d43' });
       roads.push({ w: L, h: 0.04, d: ROAD_HALF * 2, x: 0, y: 0.11, z: r, color: '#3b3d43' });
       for (const side of [-1, 1]) {
-        walks.push({ w: 1.8, h: 0.18, d: L, x: r + side * (ROAD_HALF + 0.9), y: 0.09, z: 0, color: '#c2baa9' });
-        walks.push({ w: L, h: 0.18, d: 1.8, x: 0, y: 0.09, z: r + side * (ROAD_HALF + 0.9), color: '#c2baa9' });
+        walks.push({ w: 1.8, h: 0.18, d: L, x: r + side * (ROAD_HALF + 0.9), y: 0.09, z: 0, color: '#e6e0d2' });
+        walks.push({ w: L, h: 0.18, d: 1.8, x: 0, y: 0.09, z: r + side * (ROAD_HALF + 0.9), color: '#e6e0d2' });
       }
     }
     S.add(mergedBoxes(roads, { roughness: 0.95, shadow: false }));
@@ -504,6 +504,20 @@ export class StreetView {
     const panes = [];
     const tanks = [];
     S.add(mergedBoxes(BUILDINGS.map((b) => ({ w: b.w, h: b.h, d: b.d, x: b.x, y: b.h / 2, z: b.z, color: b.color }))));
+    const ACCENTS = ['#ff5f6d', '#ffc371', '#2ee6c5', '#9b6bff', '#ff8fb1', '#4aa8ff', '#ffd23d'];
+    const trims = [];
+    BUILDINGS.forEach((b, i) => {
+      const a = ACCENTS[(i * 5) % ACCENTS.length];
+      trims.push({ w: b.w + 0.7, h: 0.45, d: b.d + 0.7, x: b.x, y: b.h + 0.22, z: b.z, color: a });   // roof rim
+      trims.push({ w: b.w + 0.7, h: 0.3, d: b.d + 0.7, x: b.x, y: 0.15, z: b.z, color: '#cfc8ba' });     // plinth
+      if (b.kind === 'house') {
+        trims.push({ w: b.w * 0.7, h: 0.35, d: 2.2, x: b.x, y: 3.4, z: b.z + b.d / 2 + 1.1, color: ACCENTS[(i * 3 + 2) % ACCENTS.length] }); // shop awning
+        trims.push({ w: 1.6, h: 2.6, d: 0.2, x: b.x - b.w * 0.18, y: 1.3, z: b.z + b.d / 2 + 0.1, color: '#5b4636' });                             // door
+      } else {
+        trims.push({ w: b.w + 0.2, h: 0.5, d: b.d + 0.2, x: b.x, y: b.h * 0.5, z: b.z, color: a });                                              // tower band
+      }
+    });
+    if (trims.length) S.add(mergedBoxes(trims, { roughness: 0.7 }));
     const roofs = BUILDINGS.filter((b) => b.roof === 'zinc' && b.kind === 'house')
       .map((b) => ({ w: b.w + 0.8, h: 0.2, d: b.d + 0.8, x: b.x, y: b.h + 0.5, z: b.z, color: '#8e9aa3', rx: 0.1 }));
     if (roofs.length) S.add(mergedBoxes(roofs, { metalness: 0.4, roughness: 0.6, shadow: false }));

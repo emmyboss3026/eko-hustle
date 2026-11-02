@@ -320,3 +320,17 @@ body { background: radial-gradient(120% 90% at 50% 0%, #26186b 0%, #0d1030 55%, 
 .lang-picker button small { color: var(--nv-soft); }
 .lang-picker button[aria-checked="true"] { background: linear-gradient(135deg, #2ee6c5, #3be08a); color: #06241d; border-color: transparent; box-shadow: 0 4px 14px rgba(46, 230, 197, 0.45); }
 .lang-picker button[aria-checked="true"] small { color: #0d4a3c; }
+
+/* ---------- dark-phone fixes for parts that hard-code light colours ---------- */
+.phone .seg { background: rgba(255, 255, 255, 0.08); }
+.phone .seg button { color: var(--nv-soft); }
+.phone .seg button[aria-selected="true"], .phone .seg button[aria-pressed="true"] { background: linear-gradient(135deg, #2ee6c5, #3be08a); color: #06241d; box-shadow: none; }
+.phone .stat, .phone .stats > * { background: rgba(255, 255, 255, 0.07); border: 1px solid var(--nv-line); color: #fff; }
+.phone .stat span { color: var(--nv-soft); }
+.phone .chip { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.phone .chip.up { background: rgba(59, 224, 138, 0.22); color: #8ff0c0; }
+.phone .chip.down { background: rgba(255, 95, 95, 0.22); color: #ffb4a6; }
+.phone .cat-track { background: rgba(255, 255, 255, 0.1); }
+.phone .txn { border-color: rgba(255, 255, 255, 0.1); }
+.phone .good-text, .phone .row-price.earn { color: #7df0b4; }
+.phone .bad-text { color: #ffb4a6; }
