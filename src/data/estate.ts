@@ -4,7 +4,7 @@
 
 import { PLACE_LOTS, toWorld } from "../three/world.js";
 
-export type UpgradeId = "driveway" | "gate" | "garden" | "garage" | "balcony" | "floor2" | "pool" | "wing" | "wing2" | "wing3" | "wing4" | "wing5" | "wing6";
+export type UpgradeId = "driveway" | "gate" | "garden" | "garage" | "balcony" | "floor2" | "pool" | "wing" | "wing2" | "wing3" | "wing4" | "wing5";
 /** What you have built, and the plot of land you own (0 or missing: you rent the old flat). */
 export type Property = Partial<Record<UpgradeId, boolean>> & { land?: number };
 
@@ -16,13 +16,12 @@ export const UPGRADES: Upgrade[] = [
   { id: "garden", emoji: "🌳", name: "Garden", desc: "Lawn, flower beds, shrubs and a shade tree in the yard.", price: 60_000 },
   { id: "garage", emoji: "🏠", name: "Garage", desc: "A covered garage beside the house with its own parking space.", price: 400_000, needs: ["driveway"] },
   { id: "balcony", emoji: "🪟", name: "Balcony", desc: "A balcony with a railing over your front door.", price: 250_000 },
-  { id: "floor2", emoji: "🏢", name: "Second floor", desc: "Build a whole new floor on top of the house. Duplex living.", price: 1_500_000, needs: ["balcony"] },
-  { id: "wing", emoji: "🧱", name: "Extension: study and guest room", desc: "Build new rooms onto your flat: a study, a guest room and a dining area. The flat grows from 8 x 8 to 10 x 10 tiles.", price: 700_000 },
-  { id: "wing2", emoji: "🏗️", name: "Second extension", desc: "Extend the new rooms again, up to 12 x 12 tiles. Room for a lot of furniture.", price: 2_500_000, needs: ["wing"] },
-  { id: "wing3", emoji: "🧱", name: "Third extension", desc: "More rooms: the house grows to 14 x 14 tiles. Needs your own land.", price: 5_000_000, needs: ["wing2"], land: 1 },
-  { id: "wing4", emoji: "🧱", name: "Fourth extension", desc: "The house grows to 16 x 16 tiles. Needs at least a half plot.", price: 9_000_000, needs: ["wing3"], land: 2 },
-  { id: "wing5", emoji: "🧱", name: "Fifth extension", desc: "The house grows to 18 x 18 tiles. Needs at least a full plot.", price: 16_000_000, needs: ["wing4"], land: 3 },
-  { id: "wing6", emoji: "🏛️", name: "Grand wing", desc: "The biggest house: 20 x 20 tiles. Needs the whole estate.", price: 30_000_000, needs: ["wing5"], land: 4 },
+  { id: "floor2", emoji: "🏢", name: "Second floor", desc: "Build a whole new floor on top of the house, with a staircase inside. Walk up to a lounge and two bedrooms, and furnish them. Duplex living.", price: 1_500_000, needs: ["balcony"] },
+  { id: "wing", emoji: "🧱", name: "Extension: study and guest room", desc: "Build new rooms onto your flat: a study, a guest room and a dining area. The flat grows from 10 x 10 to 12 x 12 tiles.", price: 700_000 },
+  { id: "wing2", emoji: "🧱", name: "Second extension", desc: "More rooms: the house grows to 14 x 14 tiles. Needs your own land.", price: 3_000_000, needs: ["wing"], land: 1 },
+  { id: "wing3", emoji: "🧱", name: "Third extension", desc: "The house grows to 16 x 16 tiles. Needs at least a half plot.", price: 6_000_000, needs: ["wing2"], land: 2 },
+  { id: "wing4", emoji: "🧱", name: "Fourth extension", desc: "The house grows to 18 x 18 tiles. Needs at least a full plot.", price: 12_000_000, needs: ["wing3"], land: 3 },
+  { id: "wing5", emoji: "🏛️", name: "Grand wing", desc: "The biggest house: 20 x 20 tiles. Needs the whole estate.", price: 25_000_000, needs: ["wing4"], land: 4 },
   { id: "pool", emoji: "🏊🏾", name: "Swimming pool", desc: "A tiled pool in the back garden.", price: 900_000, needs: ["garden"] },
 ];
 

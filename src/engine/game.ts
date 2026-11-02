@@ -14,7 +14,7 @@ import { eventById, pickEvent, EVENT_CHANCE, EVENT_COOLDOWN, type Outcome } from
 import { addSkills, meets, describeReq, startSkills, type Skills } from "../data/skills";
 import { goalSteps, ieltsChance, visaChance, PROOF_OF_FUNDS, type GoalStepId } from "../data/goals";
 import {
-  CATALOG, EVICT_AFTER_WEEKS, HOME, homePlan, wingLevel, POWER, SELL_BACK, START_OBJECTS, START_SUPPLIES,
+  CATALOG, EVICT_AFTER_WEEKS, HOME, onFloor, planOf, POWER, SELL_BACK, START_OBJECTS, START_SUPPLIES,
   type FurnitureType, type Placed,
 } from "../data/home";
 import { canPlace } from "./path";
@@ -118,7 +118,7 @@ export const DIARY_SIZE = 500;
 
 export type Command =
   | { type: "tick"; minutes: number; roll: number; pick: number; power?: number; powerPick?: number }
-  | { type: "buy"; item: FurnitureType; x: number; y: number; rot: number }
+  | { type: "buy"; item: FurnitureType; x: number; y: number; rot: number; lvl?: number }   // lvl 1: upstairs
   | { type: "move"; uid: number; x: number; y: number; rot: number }
   | { type: "sell"; uid: number }
   | { type: "payRent" }
@@ -704,8 +704,9 @@ function step(s: GameState, cmd: Command): GameState {
       if (!spec) return s;
       const problem = itemBlocker(s, cmd.item);
       if (problem) return say(s, `❌ ${tx(s).furniture(cmd.item)}: ${problem}`);
-      const obj: Placed = { uid: s.home.nextUid, type: cmd.item, x: cmd.x, y: cmd.y, rot: cmd.rot % 4 };
-      if (!canPlace(homePlan(wingLevel(s.property), s.home.walls, s.home.floors), s.home.objects, obj)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(cmd.item) }));
+      const lvl = cmd.lvl === 1 && s.property?.floor2 ? 1 : 0;
+      const obj: Placed = { uid: s.home.nextUid, type: cmd.item, x: cmd.x, y: cmd.y, rot: cmd.rot % 4, ...(lvl ? { lvl } : {}) };
+      if (!canPlace(planOf(s, lvl), onFloor(s.home.objects, lvl), obj)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(cmd.item) }));
       const next = bump(charge(s, spec.price, "home", tx(s).furniture(cmd.item)), "buy");
       return say(
         { ...next, home: { ...next.home, objects: [...next.home.objects, obj], nextUid: obj.uid + 1 } },
@@ -718,7 +719,7 @@ function step(s: GameState, cmd: Command): GameState {
       if (!obj || CATALOG[obj.type].fixed) return s;
       if (s.location !== "mushin") return say(s, `❌ ${msg(s, "problem.goHome")}`);
       const moved = { ...obj, x: cmd.x, y: cmd.y, rot: cmd.rot % 4 };
-      if (!canPlace(homePlan(wingLevel(s.property), s.home.walls), s.home.objects, moved)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(obj.type) }));
+      if (!canPlace(planOf(s, obj.lvl ?? 0), onFloor(s.home.objects, obj.lvl ?? 0), moved)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(obj.type) }));
       return { ...s, home: { ...s.home, objects: s.home.objects.map(o => (o.uid === obj.uid ? moved : o)) } };
     }
 

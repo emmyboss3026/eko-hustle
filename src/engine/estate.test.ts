@@ -170,11 +170,12 @@ describe("land", () => {
   });
 
   it("the big extensions need the right plot", () => {
-    const s = { ...rich(), property: { wing: true, wing2: true } };
-    expect(buildBlocker(s, "wing3")).toMatch(/Quarter plot/);
-    expect(buildBlocker({ ...s, property: { ...s.property, land: 1 } }, "wing3")).toBeNull();
-    expect(buildBlocker({ ...s, property: { ...s.property, land: 1, wing3: true } }, "wing4")).toMatch(/Half plot/);
+    const s = { ...rich(), property: { wing: true } };
+    expect(buildBlocker(s, "wing")).toMatch(/already/);
+    expect(buildBlocker(s, "wing2")).toMatch(/Quarter plot/);
+    expect(buildBlocker({ ...s, property: { ...s.property, land: 1 } }, "wing2")).toBeNull();
+    expect(buildBlocker({ ...s, property: { ...s.property, land: 1, wing2: true } }, "wing3")).toMatch(/Half plot/);
     expect(wingLevel({ wing: true, wing2: true, wing3: true })).toBe(3);
-    expect(homePlan(6).size).toBe(20);
+    expect(homePlan(5).size).toBe(20);
   });
 });

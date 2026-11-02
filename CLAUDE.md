@@ -20,6 +20,17 @@ it's inspired by Lagos Life but must not copy its text, art, characters or brand
 - Database updates: `supabase/*.sql` (run by hand in the Supabase SQL Editor)
 - Legal pages: `public/*.html`, business details in `public/legal.js`
 
+## Growing the map (do this with every update or fix)
+The owner wants the town to get bigger with every update, fix included. Each time, add one entry at the END of `GROWTH` in
+`src/three/growth.js`: it grows the land by one ring (roads and lots 60 further out) and adds TWO new places. Then:
+1. Pick two free lots in the new ring (centres at ±(150 + 60 × level)); the door must face the inner road. Give each a `solids` list.
+2. Add both ids to `SpotId` and `spots` in `src/data/spots.ts` (`lot: true`, a district, opening hours, a blurb).
+3. Add 2 to 4 actions per place in `src/data/actions.ts` (give them something useful: supplies, fun, skills, money).
+4. Add a `case` for each id in `buildPlace` (`src/three/street.js`): lot plane, building, sign, matching `solids`.
+5. Add German and Pidgin text: `MISSING_OUT=/tmp/missing.json npx vitest run scripts/missing-i18n.test.ts`, then add every key it lists.
+6. Run the usual checks. The "map growth" test checks spots, lots, doors and the new size. Restart the multiplayer server (it shares the world).
+Never reorder or remove older growth entries: the seeded town depends on their order. Say what you added in your closing message.
+
 ## Rules
 - Push every update to GitHub (`emmyboss3026/eko-hustle`). Commit as emmyboss3026 /
   152133906+emmyboss3026@users.noreply.github.com.

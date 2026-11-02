@@ -3,9 +3,9 @@
 
 import type { GameState } from "./game";
 import type { Kit } from "./phone";
-import { FLOOR_PRICE, WALL_PRICE, defaultEdges, edgeKey, floorById, homePlan, roomNames, tidyEdges, wallsToEdges, wingLevel } from "../data/home";
+import { CATALOG, FLOOR_PRICE, WALL_PRICE, defaultEdges, flatSize, onFloor, stairsFor, edgeKey, floorById, homePlan, roomNames, tidyEdges, wallsToEdges, wingLevel } from "../data/home";
 import { blueprintById } from "../data/blueprints";
-import { allReachable, footprint } from "./path";
+import { allReachable, footprint, tilesOf } from "./path";
 import { HOME_GOALS, homeGoalById, type HomeGoal } from "../data/homeGoals";
 import { applyEffect, chapterOf, taskProgress } from "./story";
 import {
@@ -38,7 +38,7 @@ export function homeGoalState(s: GameState, g: HomeGoal) {
   return { tasks, open, claimed, ready: open && !claimed && tasks.every(t => t.done) };
 }
 
-const sizeOf = (s: GameState) => 8 + 2 * wingLevel(s.property);
+const sizeOf = (s: GameState) => flatSize(wingLevel(s.property));
 const edgesNow = (s: GameState) => s.home.walls ?? defaultEdges(wingLevel(s.property));
 
 /** Does a piece of furniture stand across this wall? A wall between its tiles would cut it in two. */
@@ -46,7 +46,7 @@ export function straddles(s: GameState, e: string): boolean {
   const [axis, at, i] = e.split(":");
   const a = axis === "v" ? { x: +at - 1, y: +i } : { x: +i, y: +at - 1 };
   const b = axis === "v" ? { x: +at, y: +i } : { x: +i, y: +at };
-  return s.home.objects.some(o => {
+  return onFloor(s.home.objects, 0).some(o => {
     const [w, d] = footprint(o);
     const covers = (t: { x: number; y: number }) => t.x >= o.x && t.x < o.x + w && t.y >= o.y && t.y < o.y + d;
     return covers(a) && covers(b);
@@ -56,7 +56,7 @@ export function straddles(s: GameState, e: string): boolean {
 /** Why a set of walls cannot be built (a short sentence), or null. */
 export function wallsProblem(s: GameState, edges: string[]): string | null {
   if (edges.some(e => straddles(s, e))) return "Furniture is in the way of a wall.";
-  if (!allReachable(homePlan(wingLevel(s.property), edges))) return "A wall would shut a room in. Leave a gap for a door.";
+  if (!allReachable(homePlan(wingLevel(s.property), edges, undefined, !!s.property?.floor2))) return "A wall would shut a room in. Leave a gap for a door.";
   return null;
 }
 
@@ -115,14 +115,23 @@ export function estateStep(s: GameState, cmd: EstateCommand, kit: Kit): GameStat
     case "build": {
       if (buildBlocker(s, cmd.id)) return s;
       const u = upgradeById(cmd.id)!;
-      const next = kit.charge(s, u.price, "home", u.name);
-      return kit.say({ ...next, property: { ...next.property, [u.id]: true } }, `🏗️ ${u.name} ${kit.money(u.price)}`);
+      let next = kit.charge(s, u.price, "home", u.name);
+      next = { ...next, property: { ...next.property, [u.id]: true } };
+      if (u.id === "floor2") {
+        // The stairs take up three tiles beside the front wall (and the space at their foot): furniture standing there is sold back in full
+        const st = stairsFor(sizeOf(next));
+        const blocked = [...st.tiles, st.entry];
+        const gone = next.home.objects.filter(o => (o.lvl ?? 0) === 0 && !CATALOG[o.type].fixed && tilesOf(o).some(t => blocked.some(b => b.x === t.x && b.y === t.y)));
+        for (const o of gone) next = kit.move(next, CATALOG[o.type].price, "home", `${CATALOG[o.type].name} (moved out for the stairs)`);
+        next = { ...next, home: { ...next.home, objects: next.home.objects.filter(o => !gone.includes(o)) } };
+      }
+      return kit.say(next, `🏗️ ${u.name} ${kit.money(u.price)}`);
     }
 
     case "wall": {
       // Add or take away one piece of wall between two tiles. Removing is free; a new piece costs WALL_PRICE.
       const level = wingLevel(s.property);
-      const now = homePlan(level, s.home.walls);
+      const now = homePlan(level, s.home.walls, undefined, !!s.property?.floor2);
       const { axis, at, i } = cmd;
       if ((axis !== "v" && axis !== "h") || !Number.isInteger(at) || !Number.isInteger(i)) return s;
       if (at < 1 || at >= now.size || i < 0 || i >= now.size) return s;

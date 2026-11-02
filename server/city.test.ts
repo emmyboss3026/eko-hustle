@@ -174,7 +174,7 @@ describe("homes", () => {
     expect(guest!.instance).toBe("home:owner");
     expect(last(s.inbox, "guest", "welcome")).toMatchObject({ home: "owner" });
     expect((last(s.inbox, "guest", "welcome")!.players as unknown[]).length).toBe(1);
-    expect(last(s.inbox, "owner", "join")!.p).toMatchObject({ id: "guest", x: 2, z: 7 });
+    expect(last(s.inbox, "owner", "join")!.p).toMatchObject({ id: "guest", x: 2, z: 9 });
     // the city player hears nothing from the home
     s.advance(500);
     s.cities.move("guest", 3, 7, 0, 1);
@@ -185,7 +185,8 @@ describe("homes", () => {
 
   it("homes hold six people, and moves are checked against the room, not the street", () => {
     const s = inHome();
-    for (let i = 0; i < 6; i++) expect(s.enter(`p${i}`, "o")).not.toBeNull();
+    expect(s.enter("o", "o")).not.toBeNull();                       // the owner, who has to be home first
+    for (let i = 0; i < 5; i++) expect(s.enter(`p${i}`, "o")).not.toBeNull();
     expect(s.enter("p7", "o")).toBeNull();
     s.advance(2000);
     expect(s.cities.move("p0", 13, 7, 0, 1)).toBe(false);      // outside the biggest (12-tile) room
@@ -284,5 +285,33 @@ describe("cars", () => {
     s.cities.joinHome({ id: "o", name: "o", send: () => {} }, "o");
     s.cities.setCars("o", [sedan]);
     expect(s.cities.drive("o", sedan)).toBe(false);
+  });
+});
+
+describe("visiting a home", () => {
+  const room = () => {
+    const s = setup();
+    const send = (id: string) => (m: Msg) => s.inbox.get(id)!.push(m);
+    const enter = (id: string, owner: string) => { s.inbox.set(id, []); return s.cities.joinHome({ id, name: id, send: send(id) }, owner); };
+    return { ...s, enter };
+  };
+
+  it("a guest cannot come in while the owner is away", () => {
+    const s = room();
+    expect(s.enter("guest", "owner")).toBeNull();            // nobody home
+    expect(s.cities.hostHome("owner")).toBe(false);
+    s.enter("owner", "owner");
+    expect(s.cities.hostHome("owner")).toBe(true);
+    expect(s.enter("guest", "owner")).not.toBeNull();       // owner is in: welcome
+  });
+
+  it("guests are shown out when the owner leaves, and the home is empty", () => {
+    const s = room();
+    s.enter("owner", "owner");
+    s.enter("guest", "owner");
+    s.cities.leave("owner");
+    expect(last(s.inbox, "guest", "removed")).toBeTruthy();
+    expect(s.cities.get("guest")).toBeUndefined();
+    expect(s.cities.list()).toEqual([]);
   });
 });

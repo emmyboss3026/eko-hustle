@@ -1,6 +1,6 @@
 import type { Command, GameState } from "../engine/game";
 import { BLUEPRINTS, type Blueprint } from "../data/blueprints";
-import { defaultEdges, tidyEdges, wingLevel } from "../data/home";
+import { defaultEdges, flatSize, tidyEdges, wingLevel } from "../data/home";
 import { naira } from "../engine/economy";
 import { useLang } from "../i18n/react";
 
@@ -23,7 +23,7 @@ function Plan({ edges, size }: { edges: string[]; size: number }) {
 /** House blueprints: buy a layout once, use it any time. Using one replaces your walls and floors; you can go back. */
 export default function BlueprintSheet({ state, dispatch }: { state: GameState; dispatch: (c: Command) => void }) {
   const { t, tx } = useLang();
-  const size = 8 + 2 * wingLevel(state.property);
+  const size = flatSize(wingLevel(state.property));
   const owned = state.home.blueprints ?? [];
   const now = tidyEdges(state.home.walls ?? defaultEdges(wingLevel(state.property)), size);
 

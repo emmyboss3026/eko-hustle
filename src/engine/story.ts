@@ -8,7 +8,7 @@ import { addMessage, addRep, bond, contactState } from "./phone";
 import { dayNumber, netWorth, portfolioValue, seedOf } from "./progress";
 import { rand } from "./rng";
 import { careers } from "../data/careers";
-import { CATALOG, wingLevel } from "../data/home";
+import { CATALOG, flatSize, wingLevel } from "../data/home";
 import { meets } from "../data/skills";
 import { STORY, storyById, CHALLENGES, WEEKS, type Challenge } from "../data/story";
 import { castById } from "../data/story/cast";
@@ -140,7 +140,7 @@ export function taskProgress(s: GameState, t: Task, p: Progress | undefined, ind
     case "invested": return r(portfolioValue(s), x.invested as number);
     case "item": return r(s.home.objects.some(o => o.type === x.item) ? 1 : 0, 1);
     case "built": return r((s.property as Record<string, boolean> | undefined)?.[x.built as string] ? 1 : 0, 1);
-    case "homeSize": return r(8 + 2 * wingLevel(s.property), x.homeSize as number);
+    case "homeSize": return r(flatSize(wingLevel(s.property)), x.homeSize as number);
     case "cars": return r((s.vehicles ?? []).length, x.cars as number);
     case "furnish": return r(s.home.objects.filter(o => !CATALOG[o.type]?.fixed).length, x.furnish as number);
     case "floors": return r(Object.keys(s.home.floors ?? {}).length, x.floors as number);

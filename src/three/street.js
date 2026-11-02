@@ -327,6 +327,45 @@ export function buildPlace(id, labelFor, property) {
       }
       break;
     }
+    case 'station': {
+      add(plane(48, 48, '#8f9298', 0, 0.07, 0));
+      const [, slz, sw, sd, sh] = solids[0];
+      add(box(sw, sh, sd, '#f2efe6', 0, sh / 2, slz));                      // the shop
+      add(box(sw + 1, 0.4, sd + 1, '#c0392b', 0, sh + 0.2, slz));
+      add(box(2, 2.6, 0.15, GLOW.window, -3, 1.8, slz - sd / 2 - 0.05, false));
+      add(box(1.8, 2.6, 0.15, '#6d4c41', 3, 1.3, slz - sd / 2 - 0.05, false));
+      // the canopy over the pumps
+      add(box(22, 0.5, 12, '#e8e1d2', 0, 5.2, -14));
+      add(box(22.4, 0.5, 12.4, '#c0392b', 0, 5.6, -14));
+      for (const [px, pz] of [[-10, -19], [10, -19], [-10, -9], [10, -9]]) add(box(0.6, 5, 0.6, '#9aa0a6', px, 2.5, pz));
+      for (const px of [-6, -2, 2, 6]) {
+        add(box(0.9, 1.7, 0.7, '#2d3436', px, 0.85, -14));
+        add(box(0.95, 0.5, 0.75, ['#e74c3c', '#27ae60', '#f1c40f', '#2980b9'][Math.abs(px / 4 | 0) % 4], px, 1.95, -14));
+        add(box(2.4, 0.08, 4.4, '#f4f4f4', px, 0.13, -14, false));          // the marked bay
+      }
+      for (const x of [-9, 9]) add(box(0.6, 6.5, 0.6, '#5d4037', x, 3.25, -24));
+      sign('NAIJA FUEL', 14, 2.4, 6.2, -24, { bg: '#c0392b' });
+      add(cyl(1.2, 1.2, 2.6, '#1e1e1e', 0, sh + 1.8, slz));                  // the roof tank
+      height = sh + 6;
+      break;
+    }
+    case 'cinema': {
+      add(plane(48, 48, '#a9a3b8', 0, 0.07, 0));
+      const [, clz, cw, cd, ch] = solids[0];
+      add(box(cw, ch, cd, '#4b3f72', 0, ch / 2, clz));
+      add(box(cw + 1, 0.5, cd + 1, '#2a2147', 0, ch + 0.25, clz));
+      add(box(cw - 2, 1.6, 0.6, '#f1c40f', 0, ch - 1.4, clz - cd / 2 - 0.4));   // the marquee
+      sign('GIDI CINEMA', 16, 2.8, ch + 1.6, clz - cd / 2 - 0.2, { bg: '#2a2147' });
+      for (const x of [-7, -2.5, 2.5, 7]) {                                      // film posters
+        add(box(3, 4.2, 0.12, ['#e63946', '#2a9d8f', '#f4a261', '#457b9d'][Math.abs(Math.round(x / 2.5)) % 4], x, 3.2, clz - cd / 2 - 0.1, false));
+        add(box(2.5, 0.5, 0.14, '#fffaf0', x, 1.4, clz - cd / 2 - 0.12, false));
+      }
+      add(box(2.6, 3.2, 0.15, '#1e1e1e', 0, 1.6, clz - cd / 2 - 0.05, false));  // the doors
+      add(box(3.6, 2.6, 2.2, '#8d6e63', -12, 1.3, clz - cd / 2 - 3));            // ticket booth
+      for (const x of [-4, 0, 4]) add(cyl(0.12, 0.12, 2.4, '#d4a017', x, 1.2, clz - cd / 2 - 3, 8));   // queue posts
+      height = ch + 6;
+      break;
+    }
     case 'buka': {
       add(plane(48, 48, '#b89a6c', 0, 0.07, 0));
       const [, lz, w, d, h] = solids[0];
@@ -728,7 +767,7 @@ export class StreetView {
       const lane = lanes[(i * 5) % lanes.length];
       const kind = i % 3 === 0 ? 'danfo' : i % 3 === 1 ? 'keke' : 'car';
       const g = kind === 'danfo' ? buildDanfo() : kind === 'keke' ? buildKeke() : buildCar(colours[i % colours.length]);
-      const car = { g, lane, t: -180 + ((i * 97) % 360), speed: kind === 'keke' ? 9 : kind === 'danfo' ? 12 : 14, base: 0 };
+      const car = { g, lane, t: -(LAND_HALF - 6) + ((i * 97) % (2 * (LAND_HALF - 6))), speed: kind === 'keke' ? 9 : kind === 'danfo' ? 12 : 14, base: 0 };
       car.base = car.speed;
       this.cars.push(car);
       this.scene.add(g);
@@ -1086,8 +1125,8 @@ export class StreetView {
       }
       c.speed += ((blockedAhead || paused ? 0 : c.base) - c.speed) * Math.min(1, dt * 4);
       c.t += dir * c.speed * dt;
-      if (c.t > 196) c.t = -196;
-      if (c.t < -196) c.t = 196;
+      if (c.t > LAND_HALF + 10) c.t = -(LAND_HALF + 10);
+      if (c.t < -(LAND_HALF + 10)) c.t = LAND_HALF + 10;
       if (axis === 'x') c.g.position.set(c.t, 0, line + offset);
       else c.g.position.set(line + offset, 0, c.t);
       c.g.rotation.y = axis === 'x' ? (dir > 0 ? Math.PI / 2 : -Math.PI / 2) : (dir > 0 ? 0 : Math.PI);

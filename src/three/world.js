@@ -7,10 +7,13 @@
 // edges; the beach lot touches it.
 
 export const ROAD_SPACING = 60;
-export const ROAD_LINES = [-180, -120, -60, 0, 60, 120, 180];
+import { GROWN_PLACES, MAP_LEVEL } from './growth.js';
+
+const ROADS_HALF = 180 + ROAD_SPACING * MAP_LEVEL;   // the outer roads: 60 further out for each growth of the map
+export const ROAD_LINES = Array.from({ length: (2 * ROADS_HALF) / ROAD_SPACING + 1 }, (_, k) => -ROADS_HALF + ROAD_SPACING * k);
 export const ROAD_HALF = 4;          // tarmac is 8 wide
 export const LOT_HALF = 24;          // a lot runs from road line + 6 to the next line − 6
-export const LAND_HALF = 186;        // the land ends just past the outer roads
+export const LAND_HALF = ROADS_HALF + 6;   // the land ends just past the outer roads
 export const ENTER_RADIUS = 5;       // how close you must be to a door to go in
 export const WALK_SPEED = 7;         // world units per real second
 export const RUN_SPEED = 12;
@@ -32,6 +35,7 @@ export const PLACE_LOTS = {
   park:   { cx: -150, cz: 30,   face: 'e' },
   beach:  { cx: 150,  cz: 150,  face: 'n' },
   club:   { cx: 90,   cz: -30,  face: 'w' },
+  ...Object.fromEntries(Object.entries(GROWN_PLACES).map(([id, p]) => [id, { cx: p.cx, cz: p.cz, face: p.face }])),   // places added by growth.js
 };
 
 // ---------------------------------------------------------------- the estate: land you can buy
@@ -79,6 +83,7 @@ export const PLACE_SOLIDS = {
   park:   [[0, 2, 6, 6, 2], [-14, -10, 1, 1, 6], [14, -10, 1, 1, 6], [-14, 14, 1, 1, 6], [14, 14, 1, 1, 6]],
   beach:  [[-10, 6, 1, 1, 4], [10, 6, 1, 1, 4], [0, 14, 1, 1, 4]],
   club:   [[0, -2, 26, 18, 10]],
+  ...Object.fromEntries(Object.entries(GROWN_PLACES).map(([id, p]) => [id, p.solids])),
 };
 
 function solidToWorld(lot, [lx, lz, w, d, h], extra = {}) {
@@ -119,6 +124,11 @@ function rng(seed) {
 
 export const LOT_CENTERS = [];
 for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) LOT_CENTERS.push([-150 + i * 60, -150 + j * 60]);
+// Each growth adds a ring of lots round the outside. They come AFTER the original ones so the seeded buildings do not change.
+for (let ring = 1; ring <= MAP_LEVEL; ring++) {
+  const edge = 150 + 60 * ring;
+  for (let cx = -edge; cx <= edge; cx += 60) for (let cz = -edge; cz <= edge; cz += 60) if (Math.max(Math.abs(cx), Math.abs(cz)) === edge) LOT_CENTERS.push([cx, cz]);
+}
 
 const placeAt = (cx, cz) => Object.keys(PLACE_LOTS).find((id) => PLACE_LOTS[id].cx === cx && PLACE_LOTS[id].cz === cz) ?? null;
 

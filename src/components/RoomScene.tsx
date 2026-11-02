@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { generatorOn, powered, type GameState } from "../engine/game";
-import { CATALOG, homePlan, wingLevel, type FurnitureType } from "../data/home";
+import { CATALOG, homePlan, onFloor, planOf, wingLevel, type FurnitureType } from "../data/home";
 import { canPlace } from "../engine/path";
 import { HouseView } from "../three/HouseView";
 import { useLang } from "../i18n/react";
@@ -29,7 +29,7 @@ function runOf(edges: string[], axis: "v" | "h", at: number, i: number): number[
   return Array.from({ length: hi - lo + 1 }, (_, k) => lo + k);
 }
 
-export type Placing = { type: FurnitureType; uid: number | null; x: number | null; y: number | null; rot: number };
+export type Placing = { type: FurnitureType; uid: number | null; x: number | null; y: number | null; rot: number; lvl: number };
 
 type Props = {
   state: GameState;
@@ -45,6 +45,7 @@ type Props = {
   firstPerson: boolean; // see through the Sim eyes
   userId: string | null; // signed in: friends you invite can visit, and you see them here
   net: boolean;          // false while you are visiting someone else (you can only be in one place)
+  onLevel?: (level: number) => void;   // the floor on view changed (you went up or down the stairs)
 };
 
 const shirts: Record<string, string> = {
@@ -53,12 +54,12 @@ const shirts: Record<string, string> = {
 
 export function placingValid(state: GameState, p: Placing | null): boolean {
   if (!p || p.x === null || p.y === null) return false;
-  return canPlace(homePlan(wingLevel(state.property), state.home.walls, state.home.floors), state.home.objects, { type: p.type, uid: p.uid ?? undefined, x: p.x, y: p.y, rot: p.rot })
+  return canPlace(planOf(state, p.lvl), onFloor(state.home.objects, p.lvl), { type: p.type, uid: p.uid ?? undefined, x: p.x, y: p.y, rot: p.rot })
     && (p.uid !== null || state.money >= CATALOG[p.type].price);
 }
 
 /** Your room in 3D, filling the whole screen. Tap furniture to use it, tap the floor to walk. */
-export default function RoomScene({ state, viewRef, selected, onSelect, placing, editor, floorMode, onFloorTile, onPlaceTile, shift, firstPerson, userId, net: netOn }: Props) {
+export default function RoomScene({ state, viewRef, selected, onSelect, placing, editor, floorMode, onFloorTile, onPlaceTile, shift, firstPerson, userId, net: netOn, onLevel }: Props) {
   const { t } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const [noGl, setNoGl] = useState(false);
@@ -86,9 +87,17 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
   const wing = wingLevel(state.property);
   const walls = editor ? editor.edges : state.home.walls;
   const floors = state.home.floors;
+  const floor2 = !!state.property?.floor2;
   useEffect(() => {
-    viewRef.current?.setPlan(homePlan(wing, walls, floors));
-  }, [wing, walls, floors, viewRef]);
+    // The ground floor (with your wall edits while you make them) and, once built, the floor above
+    const ground = editor ? homePlan(wing, walls, floors, floor2) : planOf(state, 0);
+    viewRef.current?.setPlans(ground, floor2 ? planOf(state, 1) : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wing, walls, floors, floor2, viewRef]);
+
+  useEffect(() => {
+    if (viewRef.current) viewRef.current.onLevel = l => onLevel?.(l);
+  }, [onLevel, viewRef]);
 
   const alone = (state.property?.land ?? 0) > 0;
   useEffect(() => {
@@ -109,7 +118,7 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
   const net = useHomeNet(viewRef, userId, { name: state.sim.name, look: (state.sim.look ?? {}) as Record<string, unknown> }, netOn && !!userId);
   useEffect(() => {
     if (!userId || !multiplayerUrl) return;
-    const h = setTimeout(() => void publishHome(objects, { wing, walls, floors }), 1_500);
+    const h = setTimeout(() => void publishHome(onFloor(objects, 0), { wing, walls, floors }), 1_500);   // visitors see the ground floor
     return () => clearTimeout(h);
   }, [objects, userId, wing, walls, floors]);
 
@@ -214,7 +223,10 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
     const hit = v.pick(e.clientX, e.clientY);
     if (!hit) return;
     if (hit.kind === "object") onSelect(hit.uid);
-    else {
+    else if (hit.kind === "stairs") {
+      onSelect(null);
+      v.goLevel(v.level === 0 ? 1 : 0);   // tap the stairs to go up or down
+    } else {
       onSelect(null);
       v.walkTo(hit.x, hit.y);
     }

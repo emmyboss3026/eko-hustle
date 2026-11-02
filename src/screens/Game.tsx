@@ -40,7 +40,7 @@ import { actionById } from "../data/actions";
 import { initAds } from "../lib/ads";
 import PaymentNotice from "../components/PaymentNotice";
 import { currentMission, type Mission } from "../data/missions";
-import { CATALOG, FLOORS, FLOOR_PRICE, defaultEdges, homePlan, roomAt, tidyEdges, wingLevel, type FurnitureType } from "../data/home";
+import { CATALOG, FLOORS, FLOOR_PRICE, defaultEdges, flatSize, homePlan, roomAt, tidyEdges, wingLevel, type FurnitureType } from "../data/home";
 import { spots, type SpotId } from "../data/spots";
 import { skylineStrip, skyFor } from "../art/art.js";
 import type { HouseView } from "../three/HouseView";
@@ -134,6 +134,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const [placing, setPlacing] = useState<Placing | null>(null);
   // The wall editor: walls as drawn so far (nothing is paid until Apply), with undo and redo
   const [draft, setDraft] = useState<{ tool: "move" | "draw" | "erase"; edges: string[]; committed: string[]; past: string[][]; future: string[][]; note: string | null } | null>(null);
+  const [floorLevel, setFloorLevel] = useState(0);   // 0 ground floor, 1 upstairs
   const [sideMenu, setSideMenu] = useState(false);   // the ⋯ menu on the right: Help, Feedback, Speed
   const [floorStyle, setFloorStyle] = useState<string | null>(null);   // set while you are laying floors
   const [toast, setToast] = useState<string | null>(null);
@@ -276,7 +277,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const endRide = useCallback(() => setRide(null), []);
 
   // ----- the wall editor
-  const wallSize = 8 + 2 * wingLevel(state.property);
+  const wallSize = flatSize(wingLevel(state.property));
   const wallEdges = draft ? tidyEdges(draft.edges, wallSize) : [];
   const wallCost = draft ? wallsCost(state, wallEdges) : 0;
   const startWalls = () => {
@@ -365,13 +366,13 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
     setPanel(null);
     setSelected(null);
     setWalking(false);
-    setPlacing({ type, uid, x: current?.x ?? null, y: current?.y ?? null, rot: current?.rot ?? 0 });
+    setPlacing({ type, uid, x: current?.x ?? null, y: current?.y ?? null, rot: current?.rot ?? 0, lvl: current ? (current.lvl ?? 0) : (viewRef.current?.level ?? 0) });
   }
 
   function confirmPlacing() {
     if (!placing || placing.x === null || placing.y === null || !placingValid(state, placing)) return;
-    const { x, y, rot } = placing;
-    dispatch(placing.uid !== null ? { type: "move", uid: placing.uid, x, y, rot } : { type: "buy", item: placing.type, x, y, rot });
+    const { x, y, rot, lvl } = placing;
+    dispatch(placing.uid !== null ? { type: "move", uid: placing.uid, x, y, rot } : { type: "buy", item: placing.type, x, y, rot, lvl });
     setPlacing(null);
   }
 
@@ -401,7 +402,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
               if (uid !== null) setPanel(null);
             }}
             placing={placing}
-            editor={draft ? { tool: draft.tool, edges: draft.edges, size: 8 + 2 * wingLevel(state.property), onEdit: editWalls } : null}
+            editor={draft ? { tool: draft.tool, edges: draft.edges, size: flatSize(wingLevel(state.property)), onEdit: editWalls } : null}
             floorMode={floorStyle !== null}
             onFloorTile={(x, y) => {
               if (floorStyle === null) return;
@@ -413,6 +414,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             firstPerson={firstPerson}
             userId={userId}
             net={visiting === null}
+            onLevel={setFloorLevel}
           />
         )}
         {showStreet && (
@@ -529,6 +531,11 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
         {toast && !ride && !panel && <div className="toast2" aria-live="polite">{toast}</div>}
         {!placing && !walking && !panel && selected === null && (
           <div className="quick">
+            {showRoom && state.property?.floor2 && (
+              <button className="btn plain" onClick={() => viewRef.current?.goLevel(floorLevel ? 0 : 1)}>
+                {floorLevel ? `⬇ ${t("floor.down")}` : `⬆ ${t("floor.up")}`}
+              </button>
+            )}
             {canWork && (
               <button className="btn big" disabled={state.needs.energy < 15} onClick={() => dispatch({ type: "work" })}>
                 {state.needs.energy < 15 ? t("work.tooTired") : t("work.goTo", { hours: job!.hours })}
@@ -663,8 +670,8 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
                 <button className="menu-tile" onClick={() => openPanel("land")}><span aria-hidden>🌍</span>{t("builder.land")}</button>
                 <button className="menu-tile" onClick={() => openPanel("plans")}><span aria-hidden>📐</span>{t("builder.plans")}</button>
                 <button className="menu-tile" onClick={() => openPanel("build")}><span aria-hidden>🏗️</span>{t("shop.build")}</button>
-                <button className="menu-tile" disabled={!showRoom} onClick={() => { setPanel(null); startWalls(); }}><span aria-hidden>🧱</span>{t("walls.tool")}</button>
-                <button className="menu-tile" disabled={!showRoom} onClick={() => { setPanel(null); setFloorStyle("oak"); }}><span aria-hidden>🎨</span>{t("floors.tool")}</button>
+                <button className="menu-tile" disabled={!showRoom || floorLevel === 1} onClick={() => { setPanel(null); startWalls(); }}><span aria-hidden>🧱</span>{t("walls.tool")}</button>
+                <button className="menu-tile" disabled={!showRoom || floorLevel === 1} onClick={() => { setPanel(null); setFloorStyle("oak"); }}><span aria-hidden>🎨</span>{t("floors.tool")}</button>
                 <button className="menu-tile" onClick={() => openPanel("cars")}><span aria-hidden>🚗</span>{t("shop.cars")}</button>
               </div>
               {!showRoom && <p className="note">{t("builder.home")}</p>}

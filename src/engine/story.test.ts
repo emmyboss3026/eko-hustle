@@ -194,7 +194,7 @@ function satisfy(s: GameState, t: Task, missionId: string, index: number): GameS
     case "invested": return reduce(rich(s, (x.invested as number) * 2), { type: "invest", fund: "savings", amount: (x.invested as number) * 1.2 });
     case "item": return s.home.objects.some(o => o.type === x.item) ? s : { ...s, home: { ...s.home, objects: [...s.home.objects, { uid: 900 + s.home.objects.length, type: x.item as never, x: 0, y: 0, rot: 0 }] } };
     case "built": return { ...s, property: { ...s.property, [x.built as string]: true } };
-    case "homeSize": return { ...s, property: { ...s.property, wing: true, wing2: (x.homeSize as number) > 10 } };
+    case "homeSize": return { ...s, property: { ...s.property, wing: true, wing2: (x.homeSize as number) > 12, wing3: (x.homeSize as number) > 14 } };
     case "cars": return { ...s, vehicles: Array.from({ length: x.cars as number }, (_, i) => ({ uid: i + 1, model: "compact" as const, color: "#f1c40f", x: 0, z: 0, yaw: 0 })) };
     case "furnish": return { ...s, home: { ...s.home, objects: [...s.home.objects, ...Array.from({ length: x.furnish as number }, (_, i) => ({ uid: 800 + i, type: "chair" as const, x: 0, y: 0, rot: 0 }))] } };
     case "floors": return { ...s, home: { ...s.home, floors: { Kitchen: "oak", Bedroom: "oak", Bathroom: "oak", "Living room": "oak" } } };

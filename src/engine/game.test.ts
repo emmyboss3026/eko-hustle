@@ -6,7 +6,7 @@ import { newGame, reduce, passTime, shiftPay, mood, earnings, upgrade, canRevive
 import { actionById } from "../data/actions";
 import { STORY } from "../data/story";
 import { RENT } from "./economy";
-import { HOME, CATALOG, homePlan, wingLevel, levelForObjects, WALL_PRICE, FLOOR_PRICE, floorById, tidyEdges, defaultEdges } from "../data/home";
+import { HOME, CATALOG, homePlan, wingLevel, levelForObjects, WALL_PRICE, FLOOR_PRICE, floorById, tidyEdges, defaultEdges, upperPlan, planOf, stairsFor } from "../data/home";
 import { canPlace, findPath, wallBetween, allReachable } from "./path";
 import { wallsCost } from "./estate";
 import { ARCADE_PAID_PLAYS, ARCADE_TOP_PRIZE, GRAM_MILESTONES, arcadeLeft, gramPostedToday } from "./apps";
@@ -165,7 +165,7 @@ describe("your room", () => {
 
   it("placement checks edges, overlap, walls and the door", () => {
     const objs = [{ uid: 1, type: "chair" as const, x: 2, y: 2, rot: 0 }];
-    expect(canPlace(HOME, objs, { type: "sofa", x: 7, y: 6, rot: 0 })).toBe(false);
+    expect(canPlace(HOME, objs, { type: "sofa", x: 9, y: 6, rot: 0 })).toBe(false);   // runs off the edge of the 10 x 10 flat
     expect(canPlace(HOME, objs, { type: "sofa", x: 1, y: 2, rot: 0 })).toBe(false);
     expect(canPlace(HOME, objs, { type: "sofa", x: 4, y: 0, rot: 0 })).toBe(false);
     expect(canPlace(HOME, objs, { type: "chair", x: HOME.door.x, y: HOME.door.y, rot: 0 })).toBe(false);
@@ -410,8 +410,10 @@ describe("gem packs", () => {
 describe("home extensions", () => {
   it("the plan grows with the wings and keeps the old tiles where they were", () => {
     expect(homePlan(0)).toBe(HOME);
-    expect(homePlan(1).size).toBe(10);
-    expect(homePlan(2).size).toBe(12);
+    expect(HOME.size).toBe(10);
+    expect(homePlan(1).size).toBe(12);
+    expect(homePlan(2).size).toBe(14);
+    expect(homePlan(5).size).toBe(20);
     expect(homePlan(1).rooms.slice(0, HOME.rooms.length)).toEqual(HOME.rooms);
     expect(wingLevel({ wing: true })).toBe(1);
     expect(wingLevel({ wing: true, wing2: true })).toBe(2);
@@ -419,11 +421,11 @@ describe("home extensions", () => {
   });
 
   it("furniture fits in the new rooms only after you build them", () => {
-    const sofa = { type: "chair" as const, x: 9, y: 2, rot: 0 };
+    const sofa = { type: "chair" as const, x: 11, y: 2, rot: 0 };
     expect(canPlace(HOME, [], sofa)).toBe(false);
     expect(canPlace(homePlan(1), [], sofa)).toBe(true);
-    expect(canPlace(homePlan(1), [], { ...sofa, x: 11 })).toBe(false);
-    expect(canPlace(homePlan(2), [], { ...sofa, x: 11 })).toBe(true);
+    expect(canPlace(homePlan(1), [], { ...sofa, x: 13 })).toBe(false);
+    expect(canPlace(homePlan(2), [], { ...sofa, x: 13 })).toBe(true);
   });
 
   it("every room of a bigger flat can be reached from the front door", () => {
@@ -437,8 +439,8 @@ describe("home extensions", () => {
 
   it("a visitor sees the wing that matches the furniture", () => {
     expect(levelForObjects([{ x: 3, y: 3 }])).toBe(0);
-    expect(levelForObjects([{ x: 8, y: 1 }])).toBe(1);
-    expect(levelForObjects([{ x: 3, y: 10 }])).toBe(2);
+    expect(levelForObjects([{ x: 10, y: 1 }])).toBe(1);
+    expect(levelForObjects([{ x: 3, y: 12 }])).toBe(2);
   });
 });
 
@@ -472,9 +474,9 @@ describe("moving walls", () => {
   it("ignores edges outside the room and keeps the flat reachable", () => {
     const s = fresh({ money: 100_000 });
     expect(wall(s, "v", 0, 2).home.walls).toBeUndefined();
-    expect(wall(s, "v", 8, 2).home.walls).toBeUndefined();
+    expect(wall(s, "v", 10, 2).home.walls).toBeUndefined();
     expect(wall(s, "h", 3, 99).home.walls).toBeUndefined();
-    for (const level of [0, 1, 2]) expect(allReachable(homePlan(level))).toBe(true);
+    for (const level of [0, 1, 2, 3, 4, 5]) expect(allReachable(homePlan(level))).toBe(true);
   });
 });
 
@@ -528,7 +530,7 @@ describe("home goals", () => {
 });
 
 describe("wall editor and blueprints", () => {
-  const level = (n: number) => (n - 8) / 2;
+  const level = (n: number) => (n - 10) / 2;
 
   it("a piece floating in the middle of a room is useless and gets tidied away; half-walls stay", () => {
     expect(tidyEdges(["v:4:3"], 8)).toEqual([]);
@@ -549,10 +551,10 @@ describe("wall editor and blueprints", () => {
 
   it("applies drawn walls, charges once, and drops floating pieces", () => {
     const s = fresh({ money: 100_000 });
-    const edges = [...defaultEdges(0), "h:4:0", "h:4:1", "v:6:6"];   // the last one floats
+    const edges = [...defaultEdges(0), "h:4:0", "h:4:1", "v:3:6"];   // the last one floats
     const next = reduce(s, { type: "walls", edges });
     expect(next.home.walls).toContain("h:4:1");
-    expect(next.home.walls).not.toContain("v:6:6");
+    expect(next.home.walls).not.toContain("v:3:6");
     expect(next.money).toBe(100_000 - 2 * WALL_PRICE);
   });
 
@@ -562,10 +564,10 @@ describe("wall editor and blueprints", () => {
     expect(reduce(s, { type: "walls", edges: sealed }).home.walls).toBeUndefined();
     const bed = { uid: 99, type: "bed" as const, x: 6, y: 5, rot: 0 };
     const withBed = { ...s, home: { ...s.home, objects: [...s.home.objects, bed] } };
-    expect(reduce(withBed, { type: "walls", edges: [...defaultEdges(0), "v:7:5", "v:7:6", "v:7:7"] }).home.walls).toBeUndefined();
+    expect(reduce(withBed, { type: "walls", edges: [...defaultEdges(0), "v:7:5", "v:7:6", "v:7:7", "v:7:8", "v:7:9"] }).home.walls).toBeUndefined();
   });
 
-  it.each([8, 10, 12])("every blueprint fits a %i-tile flat: all of it reachable, nothing floating", n => {
+  it.each([10, 12, 14, 16, 18, 20])("every blueprint fits a %i-tile flat: all of it reachable, nothing floating", n => {
     for (const b of BLUEPRINTS) {
       const edges = b.walls(n);
       expect(tidyEdges(edges, n).length, `${b.id} has floating pieces at ${n}`).toBe(new Set(edges).size);
@@ -648,5 +650,87 @@ describe("town map data", () => {
       expect(Math.abs(d.x)).toBeLessThanOrEqual(186);
       expect(Math.abs(d.z)).toBeLessThanOrEqual(186);
     }
+  });
+});
+
+describe("map growth", () => {
+  it("each growth adds a ring of land and two places, with spots, doors on roads, and no overlapping lots", async () => {
+    const { GROWTH, MAP_LEVEL } = await import("../three/growth.js");
+    const w = await import("../three/world.js");
+    const { spots } = await import("../data/spots");
+    expect(MAP_LEVEL).toBe(GROWTH.length);
+    expect(w.LAND_HALF).toBe(186 + 60 * MAP_LEVEL);
+    expect(w.ROAD_LINES.at(-1)).toBe(180 + 60 * MAP_LEVEL);
+    const used = new Set<string>();
+    for (const g of GROWTH) {
+      expect(Object.keys(g.places), `growth ${g.level}`).toHaveLength(2);
+      for (const [id, p] of Object.entries(g.places) as [string, { cx: number; cz: number; face: string }][]) {
+        expect(spots[id as keyof typeof spots], `${id} needs a spot in spots.ts`).toBeTruthy();
+        expect(spots[id as keyof typeof spots].lot).toBe(true);
+        const key = `${p.cx},${p.cz}`;
+        expect(used.has(key), `${id} shares a lot`).toBe(false);
+        used.add(key);
+        expect(w.LOT_CENTERS.some(([x, z]: number[]) => x === p.cx && z === p.cz), `${id} must be on a lot`).toBe(true);
+        const door = (w.DOORS as Record<string, { x: number; z: number }>)[id];
+        // the door stands beside a road: one of its coordinates is within a road's width of a road line
+        const nearRoad = [door.x, door.z].some(v => w.ROAD_LINES.some((r: number) => Math.abs(r - v) <= 12));
+        expect(nearRoad, `${id} door is not by a road`).toBe(true);
+        expect(Math.abs(door.x)).toBeLessThan(w.LAND_HALF);
+        expect(Math.abs(door.z)).toBeLessThan(w.LAND_HALF);
+      }
+    }
+    for (const id of Object.keys(w.PLACE_LOTS)) { const k = `${(w.PLACE_LOTS as Record<string, { cx: number; cz: number }>)[id].cx},${(w.PLACE_LOTS as Record<string, { cx: number; cz: number }>)[id].cz}`; if (id !== "flats") used.add(k); }
+    expect(used.size).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe("upstairs", () => {
+  it("the stairs and the floor above fit every size of flat, and every tile of both floors can be reached", () => {
+    for (const level of [0, 1, 2, 3, 4, 5]) {
+      const ground = homePlan(level, undefined, undefined, true);
+      const upper = upperPlan(level);
+      const st = ground.stairs!;
+      for (const t of [...st.tiles, st.entry, st.exit]) expect(t.x >= 0 && t.y >= 0 && t.x < ground.size && t.y < ground.size, `level ${level}`).toBe(true);
+      expect(st.tiles.some(t => t.x === st.entry.x && t.y === st.entry.y)).toBe(false);
+      expect(st.tiles.some(t => t.x === st.exit.x && t.y === st.exit.y)).toBe(false);
+      expect(allReachable(ground), `ground floor at level ${level}`).toBe(true);
+      expect(allReachable(upper), `upstairs at level ${level}`).toBe(true);
+      expect(upper.door).toEqual(st.exit);
+    }
+  });
+
+  it("nothing can stand or walk on the steps", () => {
+    const ground = homePlan(0, undefined, undefined, true);
+    const step = ground.stairs!.tiles[1];
+    expect(canPlace(ground, [], { type: "chair", x: step.x, y: step.y, rot: 0 })).toBe(false);
+    expect(canPlace(ground, [], { type: "rug", x: step.x, y: step.y, rot: 0 })).toBe(false);
+    expect(findPath(ground, [], ground.door, step)).toBeNull();
+  });
+
+  it("you can only furnish upstairs once the second floor is built, and floors do not share space", () => {
+    const base = fresh({ money: 50_000_000 });
+    const none = reduce(base, { type: "buy", item: "chair", x: 4, y: 2, rot: 0, lvl: 1 });
+    expect(none.home.objects.find(o => o.uid === base.home.nextUid)?.lvl).toBeUndefined();   // it went downstairs
+    const built = { ...base, property: { floor2: true } };
+    const up = reduce(built, { type: "buy", item: "chair", x: 4, y: 2, rot: 0, lvl: 1 });
+    const placed = up.home.objects.find(o => o.uid === built.home.nextUid)!;
+    expect(placed.lvl).toBe(1);
+    // the same tile downstairs is still free (a chair at (4,2) is not on the ground floor)
+    const both = reduce(up, { type: "buy", item: "chair", x: 4, y: 2, rot: 0 });
+    expect(both.home.objects.filter(o => o.x === 4 && o.y === 2)).toHaveLength(2);
+    // and the steps are off limits upstairs too
+    const st = planOf(built, 1).stairs!.tiles[0];
+    expect(reduce(built, { type: "buy", item: "chair", x: st.x, y: st.y, rot: 0, lvl: 1 }).home.objects).toHaveLength(built.home.objects.length);
+  });
+
+  it("building the second floor sells back anything standing where the stairs go", () => {
+    const base = fresh({ money: 100_000_000, property: { balcony: true } });
+    const st = stairsFor(10);
+    const blocker = { uid: 90, type: "sofa" as const, x: st.tiles[0].x, y: st.tiles[0].y, rot: 0 };
+    const withSofa = { ...base, home: { ...base.home, objects: [...base.home.objects, blocker] } };
+    const before = withSofa.money;
+    const next = reduce(withSofa, { type: "build", id: "floor2" });
+    expect(next.home.objects.some(o => o.uid === 90)).toBe(false);
+    expect(next.money).toBe(before - 1_500_000 + CATALOG.sofa.price);
   });
 });

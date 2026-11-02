@@ -24,7 +24,7 @@ export const HOME_GOALS: HomeGoal[] = [
   { id: "wheels", emoji: "🚗", name: "First wheels", desc: "Buy your first vehicle and park it at home.",
     tasks: [{ cars: 1 }], reward: { xp: 200, rep: 3, bond: { tunde: 5 } } },
   { id: "extend", emoji: "🧱", name: "Room to grow", desc: "Build an extension: a study, a guest room, a dining area.",
-    tasks: [{ built: "wing" }, { homeSize: 10 }], reward: { money: 50_000, xp: 300, rep: 3 }, ch: 3 },
+    tasks: [{ built: "wing" }, { homeSize: 12 }], reward: { money: 50_000, xp: 300, rep: 3 }, ch: 3 },
   { id: "duplex", emoji: "🏢", name: "Duplex living", desc: "A balcony, then a whole second floor.",
     tasks: [{ built: "balcony" }, { built: "floor2" }], reward: { money: 100_000, xp: 400, rep: 5 }, ch: 5 },
   { id: "garage", emoji: "🏠", name: "A proper garage", desc: "A covered garage, and two vehicles to fill the drive.",
