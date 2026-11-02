@@ -557,3 +557,10 @@ button.hud2-avatar:active { transform: scale(0.94); }
 .room-joy { position: absolute; left: 14px; bottom: calc(138px + env(safe-area-inset-bottom)); width: 92px; height: 92px; z-index: 6; }
 .room-joy .joy-knob { width: 42px; height: 42px; margin: -21px 0 0 -21px; }
 .room-run { position: absolute; left: 112px; bottom: calc(138px + env(safe-area-inset-bottom)); z-index: 6; }
+
+/* the 24 citizens in the character creator */
+.citizen-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 8px 0; }
+.citizen-card { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); aspect-ratio: 1; padding: 0; overflow: hidden; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.25); background: #1a1650; }
+.citizen-card i { display: block; height: 100%; }
+.citizen-card small { position: absolute; left: 0; right: 0; bottom: 0; padding: 1px 0; font-size: 10px; font-weight: 900; color: #fff; background: rgba(10, 8, 40, 0.7); text-align: center; }
+.citizen-card[aria-checked="true"] { border-color: var(--nv-teal); box-shadow: 0 0 0 2px var(--nv-teal); }

@@ -8,6 +8,7 @@ import LangPicker from "../components/LangPicker";
 import { naira, RENT, START_MONEY } from "../engine/economy";
 import { loadLives } from "../lib/lives";
 import { useLang, Rich } from "../i18n/react";
+import { CITIZEN_COUNT_PLAIN, CITIZEN_CLIPS, CITIZEN_OUTFITS, CITIZEN_STATURES, citizenLook } from "../data/citizens";
 
 // The 3D preview loads in the background so the first screen opens fast.
 const CharacterPreview = lazy(() => import("../components/CharacterPreview"));
@@ -47,9 +48,10 @@ export default function CreateSim({ onDone }: { onDone: (sim: Sim) => void }) {
   }
   const change = (part: Partial<Look>) => setLook(l => ({ ...l, ...part }));
 
-  const TABS = ["style", "face", "hair", "outfit", "acc", "body"] as const;
+  const TABS = ["style", "citizen", "face", "hair", "outfit", "acc", "body"] as const;
+  const [clip, setClip] = useState<string>("Idle");
   const [tab, setTab] = useState<(typeof TABS)[number]>("style");
-  const TAB_EMOJI = { style: "✨", face: "🙂", hair: "💇🏾", outfit: "👕", acc: "🕶️", body: "🧍🏾" };
+  const TAB_EMOJI = { style: "✨", citizen: "👥", face: "🙂", hair: "💇🏾", outfit: "👕", acc: "🕶️", body: "🧍🏾" };
   const toggleAcc = (id: AccId) => setLook(l => ({ ...l, acc: l.acc?.includes(id) ? l.acc.filter(x => x !== id) : [...(l.acc ?? []), id] }));
 
   return (
@@ -66,7 +68,7 @@ export default function CreateSim({ onDone }: { onDone: (sim: Sim) => void }) {
         <section className="nv-stage">
           <div className="nv-viewer">
             <Suspense fallback={<div className="char-preview" />}>
-              <CharacterPreview look={look} />
+              <CharacterPreview look={look} clip={look.model === "citizen" ? clip : null} />
             </Suspense>
             <div className="nv-viewer-info">
               <b>{avatar} {name || preset.name}</b>
@@ -97,6 +99,49 @@ export default function CreateSim({ onDone }: { onDone: (sim: Sim) => void }) {
                     ))}
                   </div>
                   <p className="nv-story">“{tx.presetStory(preset.id)}”</p>
+                </>
+              )}
+              {tab === "citizen" && (
+                <>
+                  <div className="swatch-row" role="radiogroup" aria-label={t("citizen.model")}>
+                    <span>{t("citizen.model")}</span>
+                    <button role="radio" className="text-choice" aria-checked={look.model !== "citizen"} onClick={() => change({ model: "classic" })}>🧸 {t("citizen.classic")}</button>
+                    <button role="radio" className="text-choice" aria-checked={look.model === "citizen"} onClick={() => change({ model: "citizen", cz: look.cz ?? "1" })}>🧍🏾 {t("citizen.skinned")}</button>
+                  </div>
+                  <p className="note">{look.model === "citizen" ? t("citizen.hint") : t("citizen.classicHint")}</p>
+                  {look.model === "citizen" && (
+                    <>
+                      <div className="citizen-grid" role="radiogroup" aria-label={t("citizen.pick")}>
+                        {Array.from({ length: CITIZEN_COUNT_PLAIN }, (_, i) => i + 1).map(n => {
+                          const c = citizenLook(n);
+                          return (
+                            <button key={n} role="radio" aria-checked={look.cz === String(n)} aria-label={t("citizen.number", { n })} className="citizen-card" onClick={() => change(c)}>
+                              <i style={{ background: c.skin }} /><i style={{ background: c.outfit }} /><i style={{ background: c.bottom }} />
+                              <small>{n}</small>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="swatch-row" role="radiogroup" aria-label={t("citizen.style")}>
+                        <span>{t("citizen.style")}</span>
+                        {CITIZEN_OUTFITS.map(o => (
+                          <button key={o} role="radio" className="text-choice" aria-checked={(look.style ?? "tee") === o} onClick={() => change({ style: o })}>{t(`citizen.outfit.${o}`)}</button>
+                        ))}
+                      </div>
+                      <div className="swatch-row" role="radiogroup" aria-label={t("citizen.stature")}>
+                        <span>{t("citizen.stature")}</span>
+                        {CITIZEN_STATURES.map(s => (
+                          <button key={s} role="radio" className="text-choice" aria-checked={(look.stature ?? "average") === s} onClick={() => change({ stature: s })}>{t(`citizen.stature.${s}`)}</button>
+                        ))}
+                      </div>
+                      <div className="swatch-row" role="radiogroup" aria-label={t("citizen.move")}>
+                        <span>{t("citizen.move")}</span>
+                        {CITIZEN_CLIPS.map(c => (
+                          <button key={c} role="radio" className="text-choice" aria-checked={clip === c} onClick={() => setClip(c)}>{t(`citizen.clip.${c}`)}</button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </>
               )}
               {tab === "face" && (

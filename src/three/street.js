@@ -351,6 +351,44 @@ export function buildPlace(id, labelFor, property) {
       height = sh + 6;
       break;
     }
+    case 'chapel': {
+      add(plane(48, 48, '#a8b59c', 0, 0.07, 0));
+      const [, hlz, hw, hd, hh] = solids[0];
+      add(box(hw, hh, hd, '#f7f3ea', 0, hh / 2, hlz));                              // the hall
+      const roofC = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 4).rotateY(Math.PI / 4), mat('#8a4b38'));
+      roofC.scale.set((hw + 2) / Math.SQRT2, 4, (hd + 2) / Math.SQRT2);
+      roofC.position.set(0, hh + 2, hlz);
+      roofC.castShadow = true;
+      add(roofC);
+      add(box(4.4, 14, 4.4, '#f7f3ea', 0, 7, hlz - hd / 2 - 1));                     // the steeple
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(2.6, 5, 4).rotateY(Math.PI / 4), mat('#8a4b38'));
+      spire.position.set(0, 16.5, hlz - hd / 2 - 1);
+      add(spire);
+      add(box(0.3, 2.4, 0.3, '#d4a017', 0, 20.2, hlz - hd / 2 - 1));                // the cross
+      add(box(1.4, 0.3, 0.3, '#d4a017', 0, 20.6, hlz - hd / 2 - 1));
+      add(box(2.6, 3.6, 0.2, '#5d4037', 0, 1.8, hlz - hd / 2 - 3.3, false));        // the doors
+      for (const x of [-5, 5]) add(box(1.6, 3, 0.15, GLOW.window, x, 4, hlz - hd / 2 - 0.05, false));
+      sign('GRACE CHAPEL', 11, 2.2, 5.2, -22, { bg: '#5d4037' });
+      height = 22;
+      break;
+    }
+    case 'plaza': {
+      add(plane(48, 48, '#b7ad9c', 0, 0.07, 0));
+      const [, plz, pw, pd, ph] = solids[0];
+      add(box(pw, ph, pd, '#f1e3cf', 0, ph / 2, plz));                              // the market hall
+      add(box(pw + 1, 0.5, pd + 1, '#7e57c2', 0, ph + 0.25, plz));
+      sign('OJA FASHION PLAZA', 16, 2.6, ph + 1.7, plz - pd / 2 - 0.3, { bg: '#7e57c2' });
+      const awn = ['#e74c3c', '#f1c40f', '#27ae60', '#3498db', '#e67e22'];
+      for (let i = 0; i < 5; i++) {                                                  // stalls along the front, each with a coloured awning
+        const x = -9 + i * 4.5;
+        add(box(3.4, 0.2, 2.4, awn[i], x, 3, plz - pd / 2 - 1.4));
+        add(box(0.12, 3, 0.12, '#5d4037', x - 1.6, 1.5, plz - pd / 2 - 2.4));
+        add(box(0.12, 3, 0.12, '#5d4037', x + 1.6, 1.5, plz - pd / 2 - 2.4));
+        add(box(3, 0.9, 1.1, '#8d6e63', x, 0.45, plz - pd / 2 - 1.8));
+      }
+      height = ph + 6;
+      break;
+    }
     case 'mart': {
       add(plane(48, 48, '#a9b0a5', 0, 0.07, 0));
       const [, mlz, mw, md, mh] = solids[0];

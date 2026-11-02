@@ -548,23 +548,14 @@ export function buildPiece(type: FurnitureType, { powered, active }: { powered: 
   return { group: g, tick };
 }
 
-/** The Sim: a stylised rounded figure about 1.1 units tall, facing +z. The look sets skin, hair, clothes, shoes,
- *  body shape and accessories. Joints (legL, legR, armL, armR, head) are groups, so every pose still works. */
-export function buildSim(look: Partial<Look> | string = {}) {
-  const l: Look = typeof look === 'string' ? { ...BASE_LOOK, outfit: look } : { ...BASE_LOOK, ...look };
+/** The head with its face, hair and head accessories, added to `body` with the head centred at (0, 1.03, 0). Used for both kinds of figure:
+ *  the little procedural one, and the skinned citizens (which attach this group to their Head bone). Returns the head sphere. */
+export function addHead(body: THREE.Group, l: Look): THREE.Mesh {
   const acc = new Set(l.acc ?? []);
-  const wide = l.fit === 'strong' ? 1.22 : l.fit === 'slim' ? 0.9 : 1;
-  const root = new THREE.Group();
-  const body = new THREE.Group();
-  root.add(body);
   const skin = mat(l.skin, { roughness: 0.65 });
-  const shirt = mat(l.outfit, { roughness: 0.7 });
-  const trousers = mat(l.bottom, { roughness: 0.75 });
-  const shoeMat = mat(l.shoes ?? '#f4f4f4', { roughness: 0.5 });
   const hairMat = mat(l.hairColor, { roughness: 0.9 });
   const gold = mat('#f2c94c', { roughness: 0.25, metalness: 0.8 });
   const dark = mat('#14151f', { roughness: 0.3 });
-
   const part = (geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0) => {
     const mesh = new THREE.Mesh(geo, m);
     mesh.position.set(x, y, z);
@@ -573,52 +564,6 @@ export function buildSim(look: Partial<Look> | string = {}) {
     return mesh;
   };
   const cap = (r: number, h: number) => new THREE.CapsuleGeometry(r, h, 5, 12);
-
-  // legs: thigh + shin in trousers, a shoe at the bottom
-  const mkLeg = (x: number) => {
-    const g = new THREE.Group();
-    g.position.set(x, 0.46, 0);
-    g.add(part(cap(0.058 * wide, 0.3), trousers, 0, -0.22, 0));
-    g.add(part(new THREE.BoxGeometry(0.105 * wide, 0.055, 0.19), shoeMat, 0, -0.455, 0.035));
-    g.add(part(new THREE.SphereGeometry(0.052, 10, 8), shoeMat, 0, -0.44, 0.125));
-    return g;
-  };
-  const legL = mkLeg(-0.085 * wide);
-  const legR = mkLeg(0.085 * wide);
-
-  // arms: sleeve, bare arm, hand
-  const mkArm = (x: number) => {
-    const g = new THREE.Group();
-    g.position.set(x, 0.84, 0);
-    g.add(part(cap(0.05 * wide, 0.08), shirt, 0, -0.07, 0));
-    g.add(part(cap(0.04 * wide, 0.2), skin, 0, -0.22, 0));
-    g.add(part(new THREE.SphereGeometry(0.045, 10, 8), skin, 0, -0.38, 0));
-    return g;
-  };
-  const armL = mkArm(-0.205 * wide);
-  const armR = mkArm(0.205 * wide);
-  if (acc.has('watch')) armL.add(part(new THREE.CylinderGeometry(0.05, 0.05, 0.035, 12), gold, 0, -0.34, 0));
-  body.add(legL, legR, armL, armR);
-
-  // torso with shoulders and hips, neck
-  const torso = part(cap(0.115, 0.26), shirt, 0, 0.7, 0);
-  torso.scale.set(1.25 * wide, 1, 0.82);
-  body.add(torso);
-  body.add(part(new THREE.CylinderGeometry(0.04, 0.045, 0.08, 10), skin, 0, 0.9, 0));
-  if (l.build === 'f') {
-    // a wrapper skirt over the top of the legs
-    const skirt = part(new THREE.CylinderGeometry(0.15, 0.25, 0.36, 18), trousers, 0, 0.36, 0);
-    body.add(skirt);
-  } else {
-    body.add(part(cap(0.1, 0.06), trousers, 0, 0.5, 0)).scale.set(1.5 * wide, 1, 0.9);
-  }
-  if (acc.has('chain')) {
-    const c = part(new THREE.TorusGeometry(0.085, 0.012, 8, 20), gold, 0, 0.86, 0.03);
-    c.rotation.x = Math.PI / 2 + 0.25;
-    body.add(c);
-    body.add(part(new THREE.SphereGeometry(0.02, 8, 6), gold, 0, 0.77, 0.1));
-  }
-
   // head: a face, not a ball
   const head = part(new THREE.SphereGeometry(0.14, 20, 16), skin, 0, 1.03, 0);
   head.scale.set(0.96, 1.05, 0.98);
@@ -695,6 +640,97 @@ export function buildSim(look: Partial<Look> | string = {}) {
     body.add(part(new THREE.BoxGeometry(0.2, 0.014, 0.12), mat('#e63946', { roughness: 0.6 }), 0, 1.07, 0.17));
   }
   if (acc.has('earrings')) for (const x of [-0.138, 0.138]) body.add(part(new THREE.TorusGeometry(0.018, 0.005, 6, 12), gold, x, 0.97, 0));
+
+  return head;
+}
+
+/** The Sim: a stylised rounded figure about 1.1 units tall, facing +z. The look sets skin, hair, clothes, shoes,
+ *  body shape and accessories. Joints (legL, legR, armL, armR, head) are groups, so every pose still works. */
+/** What a figure is made of: a body group, the joints the Animator moves, and the root you place in the world. */
+export type Sim = {
+  root: THREE.Group; body: THREE.Group;
+  legL: THREE.Object3D; legR: THREE.Object3D; armL: THREE.Object3D; armR: THREE.Object3D; head: THREE.Object3D;
+  kneeL?: THREE.Object3D; kneeR?: THREE.Object3D; elbowL?: THREE.Object3D; elbowR?: THREE.Object3D;   // skinned citizens only
+};
+
+let citizenBuilder: ((l: Partial<Look>) => Sim | null) | null = null;
+/** The skinned citizens register themselves here (three/citizen.ts), so this file does not need to load their code. */
+export function registerCitizenBuilder(fn: (l: Partial<Look>) => Sim | null) {
+  citizenBuilder = fn;
+}
+
+export function buildSim(look: Partial<Look> | string = {}): Sim {
+  const l: Look = typeof look === 'string' ? { ...BASE_LOOK, outfit: look } : { ...BASE_LOOK, ...look };
+  if (l.model === 'citizen') {
+    const c = citizenBuilder?.(l);   // null until the library has loaded: the classic figure stands in
+    if (c) return c;
+  }
+  const acc = new Set(l.acc ?? []);
+  const wide = l.fit === 'strong' ? 1.22 : l.fit === 'slim' ? 0.9 : 1;
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const skin = mat(l.skin, { roughness: 0.65 });
+  const shirt = mat(l.outfit, { roughness: 0.7 });
+  const trousers = mat(l.bottom, { roughness: 0.75 });
+  const shoeMat = mat(l.shoes ?? '#f4f4f4', { roughness: 0.5 });
+  const gold = mat('#f2c94c', { roughness: 0.25, metalness: 0.8 });
+
+  const part = (geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0) => {
+    const mesh = new THREE.Mesh(geo, m);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+  };
+  const cap = (r: number, h: number) => new THREE.CapsuleGeometry(r, h, 5, 12);
+
+  // legs: thigh + shin in trousers, a shoe at the bottom
+  const mkLeg = (x: number) => {
+    const g = new THREE.Group();
+    g.position.set(x, 0.46, 0);
+    g.add(part(cap(0.058 * wide, 0.3), trousers, 0, -0.22, 0));
+    g.add(part(new THREE.BoxGeometry(0.105 * wide, 0.055, 0.19), shoeMat, 0, -0.455, 0.035));
+    g.add(part(new THREE.SphereGeometry(0.052, 10, 8), shoeMat, 0, -0.44, 0.125));
+    return g;
+  };
+  const legL = mkLeg(-0.085 * wide);
+  const legR = mkLeg(0.085 * wide);
+
+  // arms: sleeve, bare arm, hand
+  const mkArm = (x: number) => {
+    const g = new THREE.Group();
+    g.position.set(x, 0.84, 0);
+    g.add(part(cap(0.05 * wide, 0.08), shirt, 0, -0.07, 0));
+    g.add(part(cap(0.04 * wide, 0.2), skin, 0, -0.22, 0));
+    g.add(part(new THREE.SphereGeometry(0.045, 10, 8), skin, 0, -0.38, 0));
+    return g;
+  };
+  const armL = mkArm(-0.205 * wide);
+  const armR = mkArm(0.205 * wide);
+  if (acc.has('watch')) armL.add(part(new THREE.CylinderGeometry(0.05, 0.05, 0.035, 12), gold, 0, -0.34, 0));
+  body.add(legL, legR, armL, armR);
+
+  // torso with shoulders and hips, neck
+  const torso = part(cap(0.115, 0.26), shirt, 0, 0.7, 0);
+  torso.scale.set(1.25 * wide, 1, 0.82);
+  body.add(torso);
+  body.add(part(new THREE.CylinderGeometry(0.04, 0.045, 0.08, 10), skin, 0, 0.9, 0));
+  if (l.build === 'f') {
+    // a wrapper skirt over the top of the legs
+    const skirt = part(new THREE.CylinderGeometry(0.15, 0.25, 0.36, 18), trousers, 0, 0.36, 0);
+    body.add(skirt);
+  } else {
+    body.add(part(cap(0.1, 0.06), trousers, 0, 0.5, 0)).scale.set(1.5 * wide, 1, 0.9);
+  }
+  if (acc.has('chain')) {
+    const c = part(new THREE.TorusGeometry(0.085, 0.012, 8, 20), gold, 0, 0.86, 0.03);
+    c.rotation.x = Math.PI / 2 + 0.25;
+    body.add(c);
+    body.add(part(new THREE.SphereGeometry(0.02, 8, 6), gold, 0, 0.77, 0.1));
+  }
+
+  const head = addHead(body, l);
 
   return { root, body, legL, legR, armL, armR, head };
 }
