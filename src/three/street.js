@@ -9,6 +9,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { spots } from '../data/spots';
 import { buildSim, daylight } from './pieces';
 import { buildVehicle, setLights } from './vehicles';
+import { Animator } from './animator';
+import { QualityGovernor } from './quality';
 import { PLOTS, carById, homeSolids, inRect, plotTier, plotWidth } from '../data/estate';
 import { PERSONAS } from '../data/chatter';
 import {
@@ -349,6 +351,40 @@ export function buildPlace(id, labelFor, property) {
       height = sh + 6;
       break;
     }
+    case 'mart': {
+      add(plane(48, 48, '#a9b0a5', 0, 0.07, 0));
+      const [, mlz, mw, md, mh] = solids[0];
+      add(box(mw, mh, md, '#f4efe2', 0, mh / 2, mlz));                              // the shop
+      add(box(mw + 1, 0.5, md + 1, '#2e9e5b', 0, mh + 0.25, mlz));
+      add(box(mw - 6, 3.2, 0.2, mat('#bfe3ff', { transparent: true, opacity: 0.55, roughness: 0.2 }), 0, 2, mlz - md / 2 - 0.1, false));   // the glass front
+      add(box(2.4, 3.4, 0.25, '#37474f', 0, 1.7, mlz - md / 2 - 0.12, false));
+      sign('FRESHMART', 15, 2.6, mh + 1.7, mlz - md / 2 - 0.3, { bg: '#2e9e5b' });
+      for (let i = -3; i <= 3; i++) add(box(0.1, 0.02, 4.4, '#f4f4f4', i * 3.4, 0.14, -18, false));   // the car park bays
+      for (const x of [-9, -5, 5, 9]) {                                              // shopping trolleys
+        add(box(1.1, 0.7, 0.7, '#9aa0a6', x, 0.55, -10));
+        add(box(1.1, 0.06, 0.06, '#37474f', x, 1.0, -10.35));
+      }
+      add(cyl(0.9, 0.9, 2.4, '#27ae60', 12, 1.2, -9, 12));                           // the juice stand's tank
+      height = mh + 6;
+      break;
+    }
+    case 'stadium': {
+      add(plane(48, 48, '#8f9e8a', 0, 0.07, 0));
+      const [, slz, sw, sd, sh] = solids[0];
+      add(box(sw, sh * 0.5, sd, '#c9c4b8', 0, sh * 0.25, slz));                      // the stands, a tiered block
+      add(box(sw - 6, sh * 0.5, sd - 6, '#b3ada0', 0, sh * 0.5 + sh * 0.25, slz));
+      add(box(sw + 1, 0.4, sd + 1, '#37474f', 0, sh + 0.1, slz));
+      const pitch = box(sw - 14, 0.06, sd - 14, '#3fa34d', 0, sh + 0.34, slz);       // the pitch, seen from above
+      add(pitch);
+      add(box(0.15, 0.08, sd - 14, '#f4f4f4', 0, sh + 0.4, slz, false));
+      add(cyl(2.4, 2.4, 0.08, '#f4f4f4', 0, sh + 0.4, slz, 24));
+      for (const [px, pz] of [[-18, -10], [18, -10], [-18, 14], [18, 14]]) add(box(0.5, 16, 0.5, '#9aa0a6', px, 8, pz));   // floodlights
+      for (const [px, pz] of [[-18, -10], [18, -10], [-18, 14], [18, 14]]) add(box(3, 1.2, 0.5, GLOW.window, px, 16.4, pz, false));
+      sign('UNITY STADIUM', 16, 2.8, sh + 2.4, slz - sd / 2 - 0.2, { bg: '#2c3e50' });
+      add(box(6, 4, 0.3, '#1e1e1e', 0, 2, slz - sd / 2 - 0.15, false));              // the gate
+      height = sh + 10;
+      break;
+    }
     case 'cinema': {
       add(plane(48, 48, '#a9a3b8', 0, 0.07, 0));
       const [, clz, cw, cd, ch] = solids[0];
@@ -568,6 +604,10 @@ export class StreetView {
     this.buildTown();
     this.places = Object.keys(PLACE_LOTS).map((id) => buildPlace(id, hooks.labelFor));
     this.places.forEach((g) => this.scene.add(g));
+    this.animators = new WeakMap();   // blended animation, one per figure
+    this.quality = new QualityGovernor(Math.min(devicePixelRatio || 1, 1.5));   // drops sharpness if the frame rate stays low
+    this.buildRain();
+    this.frameDt = 0.016;
     this.homeCx = PLACE_LOTS.home.cx;
     this.estateSale = buildEstateSale();
     this.scene.add(this.estateSale);
@@ -753,6 +793,41 @@ export class StreetView {
       this.rings.push(ring);
       S.add(ring);
     }
+  }
+
+  /** Rain: streaks that fall around you, and a thicker, greyer air. Off unless it is raining (see data/weather.ts). */
+  buildRain() {
+    const n = 900;
+    this.rainDrops = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      this.rainDrops[i * 3] = (Math.random() - 0.5) * 80;
+      this.rainDrops[i * 3 + 1] = Math.random() * 30;
+      this.rainDrops[i * 3 + 2] = (Math.random() - 0.5) * 80;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 6), 3));
+    this.rain = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: '#d6e8ff', transparent: true, opacity: 0.4 }));
+    this.rain.frustumCulled = false;
+    this.rain.visible = false;
+    this.scene.add(this.rain);
+  }
+
+  updateRain(dt, strength) {
+    const on = strength > 0.02;
+    this.rain.visible = on && this.mode === 'street';
+    this.scene.fog.far = 340 - 140 * strength;
+    if (!on) return;
+    this.rain.material.opacity = 0.12 + 0.4 * strength;
+    this.rain.position.set(this.player.x, 0, this.player.z);
+    const pos = this.rain.geometry.attributes.position.array;
+    const d = this.rainDrops;
+    for (let i = 0; i < d.length / 3; i++) {
+      d[i * 3 + 1] -= 28 * dt;
+      if (d[i * 3 + 1] < 0) d[i * 3 + 1] += 30;
+      const x = d[i * 3], y = d[i * 3 + 1], z = d[i * 3 + 2];
+      pos.set([x, y, z, x - 0.12, y + 0.9, z], i * 6);
+    }
+    this.rain.geometry.attributes.position.needsUpdate = true;
   }
 
   buildTraffic() {
@@ -1070,6 +1145,14 @@ export class StreetView {
   // ---------------------------------------------------------------- frame
 
   update(dt, { paused = false } = {}) {
+    this.frameDt = Math.min(dt, 0.1);
+    if (this.quality.sample(dt * 1000)) {
+      const size = this.renderer.getSize(new THREE.Vector2());
+      this.renderer.setPixelRatio(this.quality.pixelRatio);
+      this.renderer.setSize(size.x, size.y);
+      this.sun.castShadow = this.quality.shadows;
+    }
+    this.updateRain(dt, this.info?.rain ?? 0);
     this.time += dt;
     const t = this.time;
     const info = this.info ?? { hour: 12, grid: true };
@@ -1371,13 +1454,10 @@ export class StreetView {
     }
   }
 
+  /** Poses a figure with blending: it eases between standing, walking and running instead of snapping. `rate` 16 is a run. */
   animate(figure, rate, t, moving) {
-    const { body, legL, legR, armL, armR } = figure;
-    const sw = moving ? Math.sin(t * rate) * (this.running ? 0.9 : 0.6) : 0;
-    legL.rotation.x = sw;
-    legR.rotation.x = -sw;
-    armL.rotation.x = -sw * 0.8;
-    armR.rotation.x = sw * 0.8;
-    body.position.y = moving ? Math.abs(Math.sin(t * rate)) * 0.03 : Math.sin(t * 2) * 0.004;
+    let a = this.animators.get(figure);
+    if (!a) { a = new Animator(figure); this.animators.set(figure, a); }
+    a.update(this.frameDt ?? 0.016, moving ? (rate >= 16 ? 'run' : 'walk') : 'idle', t);
   }
 }

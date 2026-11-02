@@ -603,6 +603,7 @@ export const en: Dict = {
   "friends.waiting": "Waiting for an answer",
   "friends.cancel": "Cancel",
   "friends.cancelled": "Request cancelled.",
+  "camera.toThird": "Third-person view (behind you)",
   "floor.up": "Upstairs",
   "floor.down": "Downstairs",
   "map.open": "Open the map",

@@ -642,13 +642,14 @@ describe("phone apps: arcade and Gram", () => {
 
 describe("town map data", () => {
   it("every door is on the map and has a road route from your home", async () => {
-    const { DOORS, roadPath } = await import("../three/world.js");
+    const w = await import("../three/world.js");
+    const { DOORS, roadPath } = w;
     for (const id of Object.keys(DOORS)) {
       const d = (DOORS as Record<string, { x: number; z: number }>)[id];
       const route = roadPath([DOORS.home.x, DOORS.home.z], [d.x, d.z]);
       expect(route.length, id).toBeGreaterThan(0);
-      expect(Math.abs(d.x)).toBeLessThanOrEqual(186);
-      expect(Math.abs(d.z)).toBeLessThanOrEqual(186);
+      expect(Math.abs(d.x)).toBeLessThanOrEqual(w.LAND_HALF);
+      expect(Math.abs(d.z)).toBeLessThanOrEqual(w.LAND_HALF);
     }
   });
 });
@@ -660,6 +661,7 @@ describe("map growth", () => {
     const { spots } = await import("../data/spots");
     expect(MAP_LEVEL).toBe(GROWTH.length);
     expect(w.LAND_HALF).toBe(186 + 60 * MAP_LEVEL);
+    expect(MAP_LEVEL).toBeGreaterThanOrEqual(2);
     expect(w.ROAD_LINES.at(-1)).toBe(180 + 60 * MAP_LEVEL);
     const used = new Set<string>();
     for (const g of GROWTH) {

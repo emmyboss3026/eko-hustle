@@ -43,6 +43,8 @@ type Props = {
   onPlaceTile: (x: number, y: number) => void;
   shift: number;   // how far to draw the room up the screen (when a panel covers the bottom)
   firstPerson: boolean; // see through the Sim eyes
+  thirdPerson: boolean; // a camera behind the Sim
+  controls: boolean;    // show the walking stick (not while you are placing furniture, in a menu and so on)
   userId: string | null; // signed in: friends you invite can visit, and you see them here
   net: boolean;          // false while you are visiting someone else (you can only be in one place)
   onLevel?: (level: number) => void;   // the floor on view changed (you went up or down the stairs)
@@ -59,7 +61,7 @@ export function placingValid(state: GameState, p: Placing | null): boolean {
 }
 
 /** Your room in 3D, filling the whole screen. Tap furniture to use it, tap the floor to walk. */
-export default function RoomScene({ state, viewRef, selected, onSelect, placing, editor, floorMode, onFloorTile, onPlaceTile, shift, firstPerson, userId, net: netOn, onLevel }: Props) {
+export default function RoomScene({ state, viewRef, selected, onSelect, placing, editor, floorMode, onFloorTile, onPlaceTile, shift, firstPerson, thirdPerson, controls, userId, net: netOn, onLevel }: Props) {
   const { t } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const [noGl, setNoGl] = useState(false);
@@ -127,8 +129,66 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
   }, [shift, viewRef]);
 
   useEffect(() => {
-    viewRef.current?.setFirstPerson(firstPerson);
-  }, [firstPerson, viewRef]);
+    viewRef.current?.setViewMode(firstPerson ? "first" : thirdPerson ? "third" : "iso");
+  }, [firstPerson, thirdPerson, viewRef]);
+
+  // Walk by hand: the keys (WASD or the arrows, Shift to run) and the on-screen stick
+  const keys = useRef(new Set<string>());
+  const [running, setRunning] = useState(false);
+  useEffect(() => {
+    if (!controls) { viewRef.current?.setMoveInput(0, 0); return; }
+    const send = () => {
+      const k = keys.current;
+      const x = (k.has("d") || k.has("arrowright") ? 1 : 0) - (k.has("a") || k.has("arrowleft") ? 1 : 0);
+      const z = (k.has("s") || k.has("arrowdown") ? 1 : 0) - (k.has("w") || k.has("arrowup") ? 1 : 0);
+      const l = Math.hypot(x, z) || 1;
+      if (x || z) viewRef.current?.setMoveInput(x / l, z / l);
+      else if (!stickOn.current) viewRef.current?.setMoveInput(0, 0);
+    };
+    const down = (e: KeyboardEvent) => {
+      if (/input|textarea|select/i.test((e.target as HTMLElement)?.tagName ?? "")) return;
+      const key = e.key.toLowerCase();
+      if (!["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) return;
+      e.preventDefault();
+      keys.current.add(key);
+      if (viewRef.current) viewRef.current.run = e.shiftKey || running;
+      send();
+    };
+    const up = (e: KeyboardEvent) => { keys.current.delete(e.key.toLowerCase()); send(); };
+    addEventListener("keydown", down);
+    addEventListener("keyup", up);
+    return () => {
+      removeEventListener("keydown", down);
+      removeEventListener("keyup", up);
+      keys.current.clear();
+      viewRef.current?.setMoveInput(0, 0);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controls, running, viewRef]);
+  useEffect(() => {
+    if (viewRef.current) viewRef.current.run = running;
+  }, [running, viewRef]);
+
+  const stickOn = useRef(false);
+  const stick = useRef<HTMLDivElement>(null);
+  const knob = useRef<HTMLDivElement>(null);
+  const stickId = useRef<number | null>(null);
+  function stickMove(e: React.PointerEvent) {
+    const r = stick.current!.getBoundingClientRect();
+    const R = r.width / 2;
+    let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
+    const len = Math.hypot(dx, dy);
+    if (len > R) { dx = (dx / len) * R; dy = (dy / len) * R; }
+    if (knob.current) knob.current.style.transform = `translate(${dx}px, ${dy}px)`;
+    stickOn.current = true;
+    viewRef.current?.setMoveInput(dx / R, dy / R);
+  }
+  function stickEnd() {
+    stickId.current = null;
+    stickOn.current = false;
+    if (knob.current) knob.current.style.transform = "";
+    viewRef.current?.setMoveInput(0, 0);
+  }
 
   const valid = placingValid(state, placing);
   useEffect(() => {
@@ -247,7 +307,7 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
           if (gesture.current) { moveGesture(e); return; }
           // First person: drag to look around
           const v = viewRef.current;
-          if (!down.current || !v?.firstPerson) return;
+          if (!down.current || !(v?.firstPerson || v?.viewMode === "third")) return;
           v.look(e.clientX - last.current.x, e.clientY - last.current.y);
           last.current = { x: e.clientX, y: e.clientY };
         }}
@@ -256,6 +316,28 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
         aria-label={t("room.aria")}
       />
       {noGl && <div className="scene-msg">{t("room.noGl")}</div>}
+      {controls && (
+        <>
+          <button className="round-btn room-run" aria-pressed={running} aria-label={running ? t("street.running") : t("street.run")} onClick={() => setRunning(r => !r)}>
+            {running ? "🏃🏾" : "🚶🏾"}<small>{running ? t("street.runShort") : t("street.walkShort")}</small>
+          </button>
+          <div
+            ref={stick}
+            className="joy room-joy"
+            aria-label={t("street.stick")}
+            onPointerDown={e => {
+              stickId.current = e.pointerId;
+              try { stick.current?.setPointerCapture(e.pointerId); } catch { /* the stick still works */ }
+              stickMove(e);
+            }}
+            onPointerMove={e => { if (e.pointerId === stickId.current) stickMove(e); }}
+            onPointerUp={stickEnd}
+            onPointerCancel={stickEnd}
+          >
+            <div ref={knob} className="joy-knob" />
+          </div>
+        </>
+      )}
       {net.peers.length > 0 && (
         <div className="visit-guests" role="status">
           <b>{t("visit.guests")}</b>
