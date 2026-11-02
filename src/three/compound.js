@@ -173,7 +173,6 @@ export function buildCompound() {
 
   // ------------------------------------------------------- the building
   const wall = '#eadcc2';
-  const band = '#cdb894';
   const roof = '#9a9184';
   const W = [-12.2, -4.12];   // the unit to the left of yours
   const N = [-12.2, -4.12];   // the units behind yours
@@ -183,20 +182,9 @@ export function buildCompound() {
     [-4, 4, 0, STOREY, N[0], N[1], wall],
     [W[0], W[1], 0, STOREY, N[0], N[1], wall],
   ]));
-  // Upper floor over the neighbours (never over your flat, so you can see in).
-  rearW.add(slabs([
-    [W[0] - 0.1, W[1] + 0.1, STOREY, STOREY + 0.12, -4.1, 4.4, band],
-    [W[0], W[1], STOREY + 0.12, STOREY * 2, -4, 4, wall],
-    [W[0] - 0.1, W[1] + 0.1, STOREY * 2, STOREY * 2 + 0.1, -4.1, 4.1, roof],
-    [W[0] - 0.1, W[1] + 0.1, STOREY * 2 + 0.1, STOREY * 2 + 0.35, 3.98, 4.1, band],
-  ]));
-  rearN.add(slabs([
-    [-4.1, 4.4, STOREY, STOREY + 0.12, N[0] - 0.1, N[1] + 0.1, band],
-    [-4, 4, STOREY + 0.12, STOREY * 2, N[0], N[1], wall],
-    [W[0], W[1], STOREY + 0.12, STOREY * 2, N[0], N[1], wall],
-    [W[0] - 0.1, 4.1, STOREY * 2, STOREY * 2 + 0.1, N[0] - 0.1, N[1] + 0.1, roof],
-    [3.98, 4.1, STOREY * 2 + 0.1, STOREY * 2 + 0.35, N[0], N[1], band],
-  ]));
+  // Flat roofs over the neighbours. There is no upper floor, stair or balcony: nobody could use them.
+  rearW.add(slabs([[W[0] - 0.1, W[1] + 0.1, STOREY, STOREY + 0.1, -4.1, 4.1, roof]]));
+  rearN.add(slabs([[W[0] - 0.1, 4.1, STOREY, STOREY + 0.1, N[0] - 0.1, N[1] + 0.1, roof]]));
 
   // Windows and doors on the faces you can see. Their glow follows the clock.
   const glow = new THREE.MeshStandardMaterial({ color: '#bfe3ff', roughness: 0.3, emissive: '#ffcf7a', emissiveIntensity: 0 });
@@ -209,38 +197,12 @@ export function buildCompound() {
     g.add(box(0.05, 0.7, 1.2, glow, x, y, z, false));
     g.add(box(0.1, 0.08, 1.3, frame, x, y - 0.38, z, false));
   };
-  // Left unit: door and window at the front, two windows upstairs, a balcony.
+  // Left unit: a door and a window at the front.
   rearW.add(box(0.8, 1.15, 0.06, '#6d4c41', -9.6, 0.58, 4.03, false));
   winFront(rearW, -6.6, 0.85, 4.03);
-  winFront(rearW, -10.6, 2.3, 4.03);
-  winFront(rearW, -6.6, 2.3, 4.03);
-  rearW.add(slabs([[W[0], W[1], STOREY + 0.12, STOREY + 0.16, 4.0, 5.0, '#b9ad99']], false));
-  for (let x = W[0] + 0.2; x <= W[1] - 0.1; x += 0.5) rearW.add(box(0.04, 0.45, 0.04, '#2d3436', x, STOREY + 0.38, 4.95, false));
-  rearW.add(box(W[1] - W[0], 0.05, 0.05, '#2d3436', (W[0] + W[1]) / 2, STOREY + 0.6, 4.95, false));
-  // Clothes hanging on the balcony rail.
-  const balconyClothes = [];
-  ['#e74c3c', '#f1c40f', '#3498db', '#ffffff'].forEach((c, i) => {
-    const cloth = box(0.4, 0.5, 0.03, c, -11 + i * 0.6, STOREY + 0.35, 5.0, false);
-    balconyClothes.push(cloth);
-    rearW.add(cloth);
-  });
   // Back units: windows on the side facing the yard, upstairs and down.
   winSide(rearN, 4.03, 0.85, -6.5);
   winSide(rearN, 4.03, 0.85, -10);
-  winSide(rearN, 4.03, 2.3, -6.5);
-  winSide(rearN, 4.03, 2.3, -10);
-  // An outside staircase up the side of the back units.
-  const steps = [];
-  for (let i = 0; i < 10; i++) steps.push([4.2, 5.4, 0, (i + 1) * (STOREY / 10), -4.6 - i * 0.6, -4.0 - i * 0.6, '#b9ad99']);
-  steps.push([4.2, 5.4, 0, STOREY, -12.2, -10.5, '#b9ad99']);
-  rearN.add(slabs(steps));
-  const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 6.3, 6), mat('#2d3436'));
-  rail.position.set(5.45, STOREY / 2 + 0.55, -7.3);
-  rail.rotation.x = Math.atan2(STOREY, 6);
-  rearN.add(rail);
-  // A black water tank on the roof.
-  rearN.add(cyl(0.7, 0.7, 1.1, '#1e1e1e', -8, STOREY * 2 + 0.65, -8, 14));
-
   // ------------------------------------------------------ fence and gate
   const fence = '#d8cfc0';
   const H = 1.0;
@@ -412,7 +374,6 @@ export function buildCompound() {
     smoke.scale.setScalar(0.6 + puff * 1.4);
     // Washing in the breeze.
     washing.forEach((w, i) => { w.rotation.x = Math.sin(t * 1.6 + i) * 0.18; });
-    balconyClothes.forEach((c, i) => { c.rotation.x = Math.sin(t * 1.3 + i * 0.7) * 0.12; });
     // The two neighbours gisting under the tree.
     chatA.head.rotation.y = Math.sin(t * 0.9) * 0.3;
     chatA.armR.rotation.x = -0.6 + Math.sin(t * 3) * 0.4;
@@ -460,5 +421,10 @@ export function buildCompound() {
     }
   }
 
-  return { group, rearN, rearW, update };
+  // Where the neighbours' blocks stand (for deciding whether one is in the way of the camera)
+  const blockers = {
+    rearN: new THREE.Box3(new THREE.Vector3(N[0] - 0.1, 0, N[0] - 0.1), new THREE.Vector3(4.1, STOREY + 0.1, N[1] + 0.1)),
+    rearW: new THREE.Box3(new THREE.Vector3(W[0] - 0.1, 0, -4.1), new THREE.Vector3(W[1] + 0.1, STOREY + 0.1, 4.1)),
+  };
+  return { group, rearN, rearW, blockers, update };
 }

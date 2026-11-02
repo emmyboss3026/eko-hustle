@@ -540,9 +540,17 @@ export class HouseView {
     const cam = this.camera.position;
     this.backWall.visible = cam.z > -HALF;
     this.leftWall.visible = cam.x > -HALF;
-    // The neighbours' units behind and to the left fold away when the camera swings behind them.
-    this.compound.rearN.visible = cam.z > -HALF - 0.2;
-    this.compound.rearW.visible = cam.x > -HALF - 0.2;
+    // A neighbour's block folds away only when it really stands between the camera and your rooms. (It used to vanish as soon
+    // as the camera moved left of the flat, even when it blocked nothing, leaving a hole in the compound.)
+    const mid = this.plan.size / 2 - HALF;
+    const aim = new THREE.Vector3(mid, 0.4, mid);
+    const toward = aim.clone().sub(cam);
+    const reach = toward.length();
+    const ray = new THREE.Ray(cam.clone(), toward.normalize());
+    const hit = new THREE.Vector3();
+    const blocks = (box: THREE.Box3) => !!ray.intersectBox(box, hit) && hit.distanceTo(cam) < reach;
+    this.compound.rearN.visible = !blocks(this.compound.blockers.rearN);
+    this.compound.rearW.visible = !blocks(this.compound.blockers.rearW);
     this.compound.update(dt, t, { night: day < 0.35, grid: this.info.grid });
 
     // Redraw furniture when an activity ends, so the TV switches off and so on.
