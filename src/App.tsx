@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import "./App.css";
+import "./naija.css";
 import { newGame, reduce, type Command, type GameState } from "./engine/game";
 import { loadGame, saveGame, clearSave, localSavedAt } from "./engine/save";
 import type { Sim } from "./data/traits";

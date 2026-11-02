@@ -6,6 +6,8 @@ import type { TraitId } from "./traits";
 
 export type HairId = "short" | "afro" | "braids" | "bald" | "gele" | "hijab" | "kufi" | "locs";
 export type Build = "m" | "f";
+export type Fit = "slim" | "regular" | "strong";
+export type AccId = "shades" | "cap" | "chain" | "earrings" | "watch";
 
 export type Look = {
   skin: string;     // a colour from skinTones
@@ -14,11 +16,23 @@ export type Look = {
   outfit: string;   // top colour
   bottom: string;   // trousers or wrapper colour
   build: Build;     // "f" adds a wrapper skirt
+  shoes?: string;   // shoe colour
+  fit?: Fit;        // body shape
+  acc?: AccId[];    // accessories
 };
 
 export const skinTones = ["#3b2219", "#5a3825", "#7b4a2d", "#9c6644", "#c68a5e", "#e0b48c"];
 export const hairColors = ["#1e1e1e", "#3d2314", "#6b4423", "#b5651d", "#d9d9d9"];
 export const outfitColors = ["#e67e22", "#2ecc71", "#2980b9", "#8e44ad", "#e84393", "#f1c40f", "#c0392b", "#16a085", "#ecf0f1", "#2d3436"];
+export const shoeColors = ["#f4f4f4", "#1e1e1e", "#c0392b", "#2980b9", "#f1c40f", "#6d4c41"];
+export const fits: Fit[] = ["slim", "regular", "strong"];
+export const accessories: { id: AccId; emoji: string }[] = [
+  { id: "shades", emoji: "🕶️" },
+  { id: "cap", emoji: "🧢" },
+  { id: "chain", emoji: "📿" },
+  { id: "earrings", emoji: "💍" },
+  { id: "watch", emoji: "⌚" },
+];
 export const bottomColors = ["#34495e", "#2c3e50", "#7f8c8d", "#6d4c41", "#1e3799", "#b33939"];
 
 export const hairStyles: { id: HairId; emoji: string }[] = [
