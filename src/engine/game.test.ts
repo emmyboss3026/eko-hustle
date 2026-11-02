@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { HOME_GOALS } from "../data/homeGoals";
+import { SIDES } from "./story";
 import { newGame, reduce, passTime, shiftPay, mood, earnings, upgrade, canRevive, type GameState } from "./game";
 import { actionById } from "../data/actions";
 import { STORY } from "../data/story";
@@ -489,5 +491,34 @@ describe("floors", () => {
     expect(reduce(fresh({ money: 0 }), { type: "floor", room: "Kitchen", style: "oak" }).home.floors).toBeUndefined();
     const once = reduce(rich, { type: "floor", room: "Living room", style: "oak" });
     expect(reduce(once, { type: "floor", room: "Living room", style: "oak" }).money).toBe(once.money);
+  });
+});
+
+describe("home goals", () => {
+  const claim = (s: GameState, id: string) => reduce(s, { type: "homeGoal", id });
+
+  it("a finished goal pays out once and sets the flag that opens its side mission", () => {
+    const s0 = fresh({ money: 0 });
+    const objs = Array.from({ length: 8 }, (_, i) => ({ uid: 700 + i, type: "chair" as const, x: 0, y: 0, rot: 0 }));
+    const ready = { ...s0, home: { ...s0.home, objects: [...s0.home.objects, ...objs] } };
+    const s1 = claim(ready, "settle");
+    expect(s1.homeGoals).toEqual(["settle"]);
+    expect(s1.money).toBeGreaterThan(0);
+    expect(s1.story?.flags).toContain("home:settle");
+    expect(claim(s1, "settle").money).toBe(s1.money);   // not twice
+  });
+
+  it("will not pay for a goal that is not finished or not yet open in the story", () => {
+    const s = fresh({ money: 0 });
+    expect(claim(s, "settle").homeGoals).toBeUndefined();
+    const big = { ...s, property: { floor2: true, garage: true, pool: true, wing2: true } };
+    expect(claim(big, "mansion").homeGoals).toBeUndefined();   // chapter 7 first
+    expect(claim(s, "nope").homeGoals).toBeUndefined();
+  });
+
+  it("every goal's side mission exists and is opened by its flag", () => {
+    const opened = new Set(SIDES.flatMap(m => (Array.isArray(m.if) ? m.if : m.if ? [m.if] : [])).filter(f => f.startsWith("home:")));
+    for (const f of opened) expect(HOME_GOALS.some(g => `home:${g.id}` === f), f).toBe(true);
+    expect(opened.size).toBeGreaterThanOrEqual(4);
   });
 });

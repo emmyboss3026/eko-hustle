@@ -33,11 +33,17 @@ export type Task =
   | { bizLevel: number }                    // your businesses' levels add up to this
   | { invested: number }                    // investments worth at least
   | { item: FurnitureType }                 // own this furniture
+  | { built: string }                       // you built this on your property (an upgrade id from data/estate.ts)
+  | { homeSize: number }                    // your flat is at least this many tiles across
+  | { cars: number }                        // you own this many vehicles
+  | { furnish: number }                     // this many pieces of furniture in your flat (not counting what came with it)
+  | { floors: number }                      // you laid floors in this many rooms
+  | { rearranged: true }                    // you moved a wall in your flat
   | { flag: string }                        // something that happened in the story
   | { days: number }                        // let this many game days pass
   | { pay: number };                        // pay this much (a button on the mission card)
 
-export type TaskKind = "do" | "count" | "total" | "visit" | "skill" | "anySkill" | "money" | "worth" | "rep" | "bond" | "career" | "anyJob" | "biz" | "bizId" | "bizLevel" | "invested" | "item" | "flag" | "days" | "pay";
+export type TaskKind = "do" | "count" | "total" | "visit" | "skill" | "anySkill" | "money" | "worth" | "rep" | "bond" | "career" | "anyJob" | "biz" | "bizId" | "bizLevel" | "invested" | "item" | "built" | "homeSize" | "cars" | "furnish" | "floors" | "rearranged" | "flag" | "days" | "pay";
 export const taskKind = (t: Task): TaskKind => Object.keys(t)[0] as TaskKind;
 
 /** What a choice, a reward or a failure does to your life. */

@@ -7,6 +7,7 @@ import { taskKind } from "../data/story/types";
 import { actionById } from "../data/actions";
 import { careers } from "../data/careers";
 import { CATALOG } from "../data/home";
+import { upgradeById } from "../data/estate";
 import { naira } from "../engine/economy";
 import type { SpotId } from "../data/spots";
 
@@ -46,6 +47,12 @@ export function taskLabel(t: T, tx: Text, task: Task): string {
     case "bizLevel": return t("task.bizLevel", { n: x.bizLevel as number });
     case "invested": return t("task.invested", { money: naira(x.invested as number) });
     case "item": return t("task.item", { item: tx.furniture(x.item as keyof typeof CATALOG) });
+    case "built": return t("task.built", { what: upgradeById(x.built as string)?.name ?? "" });
+    case "homeSize": return t("task.homeSize", { n: x.homeSize as number });
+    case "cars": return t((x.cars as number) > 1 ? "task.cars" : "task.car", { n: x.cars as number });
+    case "furnish": return t("task.furnish", { n: x.furnish as number });
+    case "floors": return t((x.floors as number) > 1 ? "task.floors" : "task.floor", { n: x.floors as number });
+    case "rearranged": return t("task.rearranged");
     case "flag": return t("task.flag");
     case "days": return t((x.days as number) > 1 ? "task.days" : "task.day", { n: x.days as number });
     case "pay": return t("task.pay", { money: naira(x.pay as number) });

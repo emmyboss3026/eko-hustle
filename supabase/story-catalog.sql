@@ -233,6 +233,10 @@ insert into public.story_catalog (id, chapter, route, side, reward_naira, reward
   ('side-tunde-wedding', 6, null, true, 10000, 300),
   ('side-abeokuta', 8, null, true, 10000, 400),
   ('side-legacy-circle', 10, null, true, 100000, 500),
-  ('side-legacy-danfo', 10, null, true, 50000, 500)
+  ('side-legacy-danfo', 10, null, true, 50000, 500),
+  ('side-housewarming', 2, null, true, 10000, 150),
+  ('side-garden', 3, null, true, 25000, 250),
+  ('side-roadtrip', 3, null, true, 8000, 200),
+  ('side-guestroom', 4, null, true, 30000, 300)
 on conflict (id) do update set chapter = excluded.chapter, route = excluded.route, side = excluded.side,
   reward_naira = excluded.reward_naira, reward_xp = excluded.reward_xp;

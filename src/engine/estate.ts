@@ -5,6 +5,8 @@ import type { GameState } from "./game";
 import type { Kit } from "./phone";
 import { FLOOR_PRICE, WALL_PRICE, edgeKey, floorById, homePlan, roomNames, wallsToEdges, wingLevel } from "../data/home";
 import { allReachable, footprint } from "./path";
+import { HOME_GOALS, homeGoalById, type HomeGoal } from "../data/homeGoals";
+import { applyEffect, chapterOf, taskProgress } from "./story";
 import {
   CARS, CAR_RESALE, REPAINT_PRICE, SLOTS, UPGRADES, carById, freeSlot, slotNear, upgradeById,
   type CarId, type SlotId, type Vehicle,
@@ -14,12 +16,23 @@ export type EstateCommand =
   | { type: "build"; id: string }
   | { type: "wall"; axis: "v" | "h"; at: number; i: number }
   | { type: "floor"; room: string; style: string }
+  | { type: "homeGoal"; id: string }
   | { type: "buyCar"; model: string; color: string }
   | { type: "sellCar"; uid: number }
   | { type: "paintCar"; uid: number; color: string }
   | { type: "parkCar"; uid: number; x: number; z: number; yaw: number };
 
 export const MAX_CARS = 4;
+
+/** Where a home goal stands: its tasks, whether the story has opened it, and whether it is done or claimed. */
+export function homeGoalState(s: GameState, g: HomeGoal) {
+  const tasks = g.tasks.map((t, i) => taskProgress(s, t, undefined, i));
+  const open = !g.ch || chapterOf(s) >= g.ch;
+  const claimed = !!s.homeGoals?.includes(g.id);
+  return { tasks, open, claimed, ready: open && !claimed && tasks.every(t => t.done) };
+}
+
+export const homeGoalsDone = (s: GameState) => HOME_GOALS.filter(g => s.homeGoals?.includes(g.id)).length;
 
 /** Why you cannot build this yet (a short sentence), or null. */
 export function buildBlocker(s: GameState, id: string): string | null {
@@ -90,6 +103,14 @@ export function estateStep(s: GameState, cmd: EstateCommand, kit: Kit): GameStat
       if (s.money < FLOOR_PRICE) return kit.say(s, "Not enough money for a new floor.");
       const paid = kit.charge(s, FLOOR_PRICE, "home", "Floor");
       return { ...paid, home: { ...paid.home, floors: { ...paid.home.floors, [cmd.room]: cmd.style } } };
+    }
+
+    case "homeGoal": {
+      // Claim a finished goal: its reward, and a story flag that opens the side mission that follows
+      const g = homeGoalById(cmd.id);
+      if (!g || !homeGoalState(s, g).ready) return s;
+      const next = applyEffect({ ...s, homeGoals: [...(s.homeGoals ?? []), g.id] }, { ...g.reward, flag: `home:${g.id}` }, g.name, kit);
+      return kit.say(next, `${g.emoji} ${g.name}`);
     }
 
     case "buyCar": {

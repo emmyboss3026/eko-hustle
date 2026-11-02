@@ -201,4 +201,68 @@ export const sides: StoryMission[] = [
     ],
     reward: { money: 50_000, xp: 500 },
   },
+  // ---- they open when you claim a home goal (see data/homeGoals.ts): your flat and your story grow together
+  {
+    id: "side-housewarming", ch: 2, side: true, if: "home:settle", emoji: "🎉", title: "Housewarming", place: "home", cast: ["mummy"],
+    intro: "The flat finally looks lived in. Mummy hears about it before you tell her, the way mothers do, and says she is coming with a pot of jollof.",
+    goal: "Fill your flat with ten more things and accept an invitation for the weekend.",
+    tasks: [{ furnish: 10 }, { count: "invite", n: 1 }],
+    lines: [
+      { who: "mummy", text: "A sofa, a lamp, a proper table. Look at you, building a life. Your father would have sat on that sofa all day." },
+      { who: "you", text: "Mummy, please, the sofa is for guests." },
+    ],
+    choices: [
+      { label: "Ask Mummy to bless the flat", result: "She walks every room, humming, touching each wall. The flat feels like it has been here for years.", fx: { bond: { mummy: 8 }, flag: "flat_blessed" } },
+      { label: "Throw a small party for the neighbours", result: "Forty minutes in, half the compound is in your parlour. The speaker is borrowed, the rice is not enough, and nobody cares.", fx: { rep: 2, bond: { tunde: 4 } } },
+    ],
+    reward: { money: 10_000, xp: 150, bond: { mummy: 5 } },
+  },
+  {
+    id: "side-garden", ch: 3, side: true, if: "home:yard", emoji: "🌿", title: "The gate and the garden party", place: "home", cast: ["tobi"],
+    intro: "You met Tobi the architect on the Island. He sees your new garden and winces and smiles at the same time. \"Lovely lawn. But anybody can walk in. Give the compound a wall and a gate, and I will help you host.\"",
+    goal: "Build the compound wall and gate, then accept two invitations.",
+    tasks: [{ built: "gate" }, { count: "invite", n: 2 }],
+    lines: [
+      { who: "tobi", text: "A gate is not about keeping people out. It is about deciding who you let in. That is the whole of architecture." },
+      { who: "you", text: "That sounds like something you say at a wedding." },
+    ],
+    choices: [
+      { label: "Let Tobi design the party layout", result: "Lanterns along the drive, chairs in a curve, a path of light to the gate. Guests keep asking who did it.", fx: { rep: 3, skill: { charisma: 0.2 } } },
+      { label: "Keep it simple: grill, music, neighbours", result: "Suya smoke over the new lawn, someone's cousin on the speakers. Simple and perfect.", fx: { rep: 1, bond: { tunde: 5 } } },
+    ],
+    reward: { money: 25_000, xp: 250, rep: 2 },
+  },
+  {
+    id: "side-roadtrip", ch: 3, side: true, if: "home:wheels", emoji: "🛣️", title: "First road trip", place: "beach", cast: ["tunde"],
+    intro: "A car in the drive, and Tunde cannot stop looking at it. \"We are not letting it sit there. Sunset Beach. Three stops on the way. I will pay for the roasted corn.\"",
+    goal: "Take three trips across town and do something at Sunset Beach.",
+    tasks: [{ count: "travel", n: 3 }, { visit: "beach" }],
+    lines: [
+      { who: "tunde", text: "Windows down, music up, no go-slow in sight. This is what the money was for." },
+      { who: "you", text: "The money was for rent, Tunde." },
+      { who: "tunde", text: "Rent is for tomorrow. Today we have a sea." },
+    ],
+    choices: [
+      { label: "Drive home slowly and carefully", result: "Tunde complains for the first ten minutes, then falls asleep. You park without a scratch.", fx: { bond: { tunde: 4 }, skill: { fitness: 0.1 } } },
+      { label: "Race the sunset back", result: "You make it to the gate with the last of the orange light and a very loud engine. Neighbours remember it for weeks.", fx: { rep: 2, mood: "payday" } },
+    ],
+    reward: { money: 8_000, xp: 200, bond: { tunde: 6 } },
+  },
+  {
+    id: "side-guestroom", ch: 4, side: true, if: "home:extend", emoji: "🛏️", title: "The guest room", place: "home", cast: ["mummy"],
+    intro: "With the extension done, Mummy takes one look at the new room and her eyes light up. \"Now Kunle can stop sleeping on that mat at his friend's place. And I can visit for a whole week.\"",
+    goal: "Furnish the flat with fourteen things in total and bring Mummy closer.",
+    tasks: [{ furnish: 14 }, { bond: "mummy", min: 40 }],
+    lines: [
+      { who: "mummy", text: "A bed for guests, a place for Kunle to study, and a window that opens. You have done well, my child." },
+      { who: "you", text: "It was not cheap, Mummy." },
+      { who: "mummy", text: "Nothing worth keeping is." },
+    ],
+    choices: [
+      { label: "Offer the room to Kunle for his exams", result: "Kunle studies there for a month. He passes. He never stops talking about the table by the window.", fx: { bond: { kunle: 10, mummy: 4 } } },
+      { label: "Keep it as a study for your own hustle", result: "A desk, a lamp, a door that closes. You get more done in a week than in the month before.", fx: { skill: { study: 0.3, hustle: 0.2 } } },
+    ],
+    reward: { money: 30_000, xp: 300, bond: { mummy: 6 } },
+  },
+
 ];

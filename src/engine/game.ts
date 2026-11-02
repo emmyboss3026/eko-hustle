@@ -101,6 +101,7 @@ export type GameState = {
   camera?: "top" | "first"; // overhead or first-person view
   revives?: { ad: number; gem: number; refs: string[] }; // times you came back after collapsing (refs: gems used)
   property?: Property;     // what you have built on your home lot (see data/estate.ts)
+  homeGoals?: string[];     // home goals you have claimed (see data/homeGoals.ts)
   vehicles?: Vehicle[];    // cars you own and where they are parked
   nextVehicle?: number;    // next id for a car
   story?: StoryState;       // the story: missions done, choices, flags, career route (see engine/story.ts)
@@ -774,6 +775,7 @@ function step(s: GameState, cmd: Command): GameState {
     case "build":
     case "wall":
     case "floor":
+    case "homeGoal":
     case "buyCar":
     case "sellCar":
     case "paintCar":

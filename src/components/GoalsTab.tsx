@@ -5,6 +5,10 @@ import { naira } from "../engine/economy";
 import { useLang } from "../i18n/react";
 import { duration, Progress } from "./ui";
 import Leaderboard from "./Leaderboard";
+import { HOME_GOALS } from "../data/homeGoals";
+import { homeGoalState, homeGoalsDone } from "../engine/estate";
+import { progressText, taskLabel } from "../lib/storyText";
+import { Fragment } from "react";
 
 type Props = { state: GameState; dispatch: (c: Command) => void };
 
@@ -45,6 +49,57 @@ function Step({ id, n, state, dispatch }: { id: GoalStepId; n: number } & Props)
   );
 }
 
+/** Your flat, yard and cars as a ladder of goals. Claiming one pays a reward and opens a side mission in the 📖 Story app. */
+function HomeGoals({ state, dispatch }: Props) {
+  const { t, tx } = useLang();
+  return (
+    <>
+      <h3>🏠 {t("homegoals.title", { done: homeGoalsDone(state), n: HOME_GOALS.length })}</h3>
+      <p className="note">{t("homegoals.lede")}</p>
+      <div className="group">
+        {HOME_GOALS.map(g => {
+          const st = homeGoalState(state, g);
+          const gt = tx.homeGoal(g.id);
+          return (
+            <div className={`step ${st.claimed ? "done" : ""}`} key={g.id}>
+              <span className="step-mark">{st.claimed ? "✓" : g.emoji}</span>
+              <div className="step-body">
+                <div className="row-title">{g.emoji} {gt.name}</div>
+                <div className="note">{gt.desc}</div>
+                {!st.claimed && st.open && (
+                  <ul className="story-tasks">
+                    {g.tasks.map((task, i) => {
+                      const pr = st.tasks[i];
+                      return (
+                        <li key={i} className={pr.done ? "done" : ""}>
+                          <span className="story-check" aria-hidden>{pr.done ? "✅" : "⬜"}</span>
+                          <span className="story-task-text">
+                            <span>{taskLabel(t, tx, task)}</span>
+                            {!pr.done && progressText(task, pr.have, pr.need) && <small>{progressText(task, pr.have, pr.need)}</small>}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {!st.open && <div className="note bad">{t("homegoals.locked", { n: g.ch ?? 0 })}</div>}
+                {st.ready && (
+                  <Fragment>
+                    <button className="btn" style={{ marginTop: 8 }} onClick={() => dispatch({ type: "homeGoal", id: g.id })}>
+                      {t("homegoals.claim")}
+                    </button>
+                  </Fragment>
+                )}
+                {st.claimed && <div className="note">{t("homegoals.claimed")}</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 export default function GoalsTab({ state, dispatch }: Props) {
   const { t } = useLang();
   return (
@@ -67,6 +122,8 @@ export default function GoalsTab({ state, dispatch }: Props) {
       <div className="group" style={{ marginTop: 8 }}>
         <Step id="house" n={1} state={state} dispatch={dispatch} />
       </div>
+
+      <HomeGoals state={state} dispatch={dispatch} />
 
       <Leaderboard ending="japa" title={t("goals.boardJapa")} />
       <Leaderboard ending="landlord" title={t("goals.boardHome")} />

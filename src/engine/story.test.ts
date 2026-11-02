@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { HOME_GOALS } from "../data/homeGoals";
 import { newGame, reduce, type GameState } from "./game";
 import { currentStory, playthrough, storyOf, tasksDone, choiceState, MAIN, SIDES, condOk } from "./story";
 import { STORY, CHALLENGES, WEEKS } from "../data/story";
@@ -27,6 +28,8 @@ for (const m of STORY) {
     fxFlags(c.chance?.winFx).forEach(f => settable.add(f));
   }
 }
+// Claiming a home goal sets its flag
+for (const g of HOME_GOALS) settable.add(`home:${g.id}`);
 // Flags used in conditions
 const condFlags = new Set<string>();
 for (const m of STORY) {
@@ -190,6 +193,12 @@ function satisfy(s: GameState, t: Task, missionId: string, index: number): GameS
     }
     case "invested": return reduce(rich(s, (x.invested as number) * 2), { type: "invest", fund: "savings", amount: (x.invested as number) * 1.2 });
     case "item": return s.home.objects.some(o => o.type === x.item) ? s : { ...s, home: { ...s.home, objects: [...s.home.objects, { uid: 900 + s.home.objects.length, type: x.item as never, x: 0, y: 0, rot: 0 }] } };
+    case "built": return { ...s, property: { ...s.property, [x.built as string]: true } };
+    case "homeSize": return { ...s, property: { ...s.property, wing: true, wing2: (x.homeSize as number) > 10 } };
+    case "cars": return { ...s, vehicles: Array.from({ length: x.cars as number }, (_, i) => ({ uid: i + 1, model: "compact" as const, color: "#f1c40f", x: 0, z: 0, yaw: 0 })) };
+    case "furnish": return { ...s, home: { ...s.home, objects: [...s.home.objects, ...Array.from({ length: x.furnish as number }, (_, i) => ({ uid: 800 + i, type: "chair" as const, x: 0, y: 0, rot: 0 }))] } };
+    case "floors": return { ...s, home: { ...s.home, floors: { Kitchen: "oak", Bedroom: "oak", Bathroom: "oak", "Living room": "oak" } } };
+    case "rearranged": return { ...s, home: { ...s.home, walls: [] } };
     case "flag": return s;
     case "days": return { ...s, time: s.time + (x.days as number) * 1440 };
     case "pay": return reduce(rich(s, x.pay as number), { type: "story", act: "pay", id: missionId, task: index });
