@@ -38,7 +38,8 @@ import type { HouseView } from "../three/HouseView";
 import FeedbackSheet from "../components/FeedbackSheet";
 import DiarySheet from "../components/DiarySheet";
 import { useLang } from "../i18n/react";
-import { flushFeedback } from "../lib/cloud";
+import { flushFeedback, recordMission } from "../lib/cloud";
+import { seedOf } from "../engine/progress";
 import Phone, { type AppId } from "../components/phone/Phone";
 import { openInvites, unreadCount } from "../engine/phone";
 import { claimDaily, getDailyStatus, type DailyStatus } from "../lib/daily";
@@ -189,6 +190,19 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
     if (unreadNow > lastUnread.current) play("ping");
     lastUnread.current = unreadNow;
   }, [unreadNow]);
+
+  // Finished missions go to the server (signed-in players), one at a time, a few seconds apart
+  const sentStory = useRef(storyOf(state).done.length);
+  useEffect(() => {
+    const st = storyOf(state);
+    if (!userId) {
+      sentStory.current = st.done.length;
+      return;
+    }
+    const fresh = st.done.slice(sentStory.current);
+    sentStory.current = st.done.length;
+    fresh.forEach((id, i) => window.setTimeout(() => void recordMission(seedOf(state), id, st.picks[id]), i * 3500));
+  }, [state, userId]);
 
   useEffect(() => {
     initAds();
