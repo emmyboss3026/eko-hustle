@@ -12,6 +12,8 @@ import WorkTab from "../components/WorkTab";
 import GoalsTab from "../components/GoalsTab";
 import MeTab from "../components/MeTab";
 import ShopSheet from "../components/ShopSheet";
+import BuildSheet from "../components/BuildSheet";
+import DealershipSheet from "../components/DealershipSheet";
 import ItemCard from "../components/ItemCard";
 import HelpSheet from "../components/HelpSheet";
 import Sheet from "../components/Sheet";
@@ -50,7 +52,7 @@ const RoomScene = lazy(() => import("../components/RoomScene"));
 const StreetScene = lazy(() => import("../components/StreetScene"));
 const VisitScene = lazy(() => import("../components/VisitScene"));
 
-type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story";
+type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story" | "build" | "cars";
 
 const dock: { id: Panel | "phone"; emoji: string }[] = [
   { id: "do", emoji: "📍" },
@@ -540,9 +542,12 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             />
           )}
           {panel === "work" && <WorkTab state={state} dispatch={dispatch} goTo={() => openPanel("go")} />}
+          {panel === "build" && <BuildSheet state={state} dispatch={dispatch} />}
+          {panel === "cars" && <DealershipSheet state={state} dispatch={dispatch} />}
           {panel === "shop" && (
             <ShopSheet
               state={state}
+              onOpen={p => openPanel(p)}
               onBuy={t => startPlacing(t)}
               onPick={uid => {
                 setPanel(null);

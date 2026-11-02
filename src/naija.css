@@ -334,3 +334,29 @@ body { background: radial-gradient(120% 90% at 50% 0%, #26186b 0%, #0d1030 55%, 
 .phone .txn { border-color: rgba(255, 255, 255, 0.1); }
 .phone .good-text, .phone .row-price.earn { color: #7df0b4; }
 .phone .bad-text { color: #ffb4a6; }
+
+/* ---------- driving ---------- */
+.drive-hud { position: absolute; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 6; display: grid; justify-items: center; padding: 8px 22px; border-radius: 22px; background: var(--nv-glass-strong); border: 1px solid var(--nv-line); color: #fff; box-shadow: 0 8px 24px rgba(5, 6, 30, 0.6); pointer-events: none; }
+.drive-hud b { font-family: var(--display); font-size: 34px; line-height: 1; text-shadow: 0 0 14px rgba(46, 230, 197, 0.8); }
+.drive-hud small { color: var(--nv-soft); font-weight: 800; }
+
+/* ---------- build mode and the car dealership ---------- */
+.lot-preview, .car-preview { width: 100%; border-radius: 20px; overflow: hidden; margin-bottom: 10px; box-shadow: 0 6px 18px rgba(30, 20, 90, 0.25); }
+.lot-preview { height: 230px; background: #9fcbef; }
+.car-preview { height: 230px; background: radial-gradient(70% 60% at 50% 70%, rgba(46, 230, 197, 0.3), transparent 70%), linear-gradient(180deg, #2a1c7a, #0f1038); }
+.lot-preview canvas, .car-preview canvas { display: block; width: 100% !important; height: 100% !important; }
+.shop-big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.shop-big .btn { padding: 14px 8px; text-align: center; }
+.build-confirm { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; margin-bottom: 10px; border-radius: 16px; background: #fff; border: 2px solid var(--nv-teal); box-shadow: 0 4px 14px rgba(46, 230, 197, 0.3); }
+.row-picked { background: #e8fbf6; }
+.car-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px; }
+.car-tabs button { flex: 0 0 auto; display: grid; justify-items: center; padding: 6px 10px; border-radius: 14px; border: 1px solid rgba(60, 50, 140, 0.2); background: #fff; font-size: 22px; }
+.car-tabs button small { font-size: 10.5px; font-weight: 700; }
+.car-tabs button[aria-selected="true"] { background: linear-gradient(135deg, #2ee6c5, #3be08a); border-color: transparent; }
+.car-info { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.car-price { font-family: var(--display); font-size: 18px; white-space: nowrap; color: #241a6b; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.3); vertical-align: -1px; }
+.panel-sheet .swatch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.panel-sheet .swatch-row > span { width: 100%; font-weight: 800; font-size: 13px; }
+.panel-sheet .swatch-row button[role="radio"] { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(0, 0, 0, 0.2); }
+.panel-sheet .swatch-row button[aria-checked="true"] { border-color: #fff; box-shadow: 0 0 0 3px var(--nv-teal); }

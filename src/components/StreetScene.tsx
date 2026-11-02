@@ -7,7 +7,8 @@ import { StreetView } from "../three/street.js";
 import { DOORS } from "../three/world.js";
 import { useLang } from "../i18n/react";
 import { chatterKey, PERSONAS, type Persona } from "../data/chatter";
-import { footstep, play } from "../lib/audio";
+import { engine, footstep, play, stopEngine } from "../lib/audio";
+import { carById, type Property, type Vehicle } from "../data/estate";
 import { Multiplayer, multiplayerUrl, type Say } from "../lib/multiplayer";
 
 type Props = {
@@ -37,7 +38,9 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
   const live = useRef({ state, t });
   live.current = { state, t };
   const view = useRef<StreetView | null>(null);
-  const info = useRef({ hour: 12, grid: true });
+  const info = useRef<{ hour: number; grid: boolean; property?: Property; vehicles?: Vehicle[] }>({ hour: 12, grid: true });
+  const [car, setCar] = useState<{ uid: number; model: string } | null>(null);   // a car of yours you can get into
+  const [drive, setDrive] = useState<{ uid: number; model: string; kmh: number } | null>(null);
   const [near, setNear] = useState<SpotId | null>(null);
   const [run, setRun] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -58,7 +61,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
   // What the 3D view is told: on the street at a spot, or looking at a place
   const scene = useRef<{ sim: { away: Record<string, unknown> } }>({ sim: { away: { kind: "place", place: focus ?? "hub" } } });
 
-  info.current = { hour: (state.time % 1440) / 60, grid: state.power.grid };
+  info.current = { hour: (state.time % 1440) / 60, grid: state.power.grid, property: state.property, vehicles: state.vehicles };
   // While an event card is open you stand still (and can't go in anywhere) until you choose.
   const blocked = useRef(false);
   blocked.current = state.eventId !== null;
@@ -100,6 +103,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       look: state.sim.look ?? {},
       labelFor: (id: string) => `${spots[id as SpotId]?.emoji ?? "🏠"} ${tx.spot(id as SpotId)}`,
       // A passer-by says something (only while you're walking about)
+      onEngine: (speed: number, throttle: number) => engine(speed, throttle),
       onChatter: (persona: Persona) => {
         if (!walkingRef.current || blocked.current) return null;
         const { state: st, t: tt } = live.current;
@@ -108,6 +112,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       },
     });
     view.current = sv;
+    if (import.meta.env.DEV) (window as unknown as { __eko?: unknown }).__eko = { sv }; // for testing in the browser console
 
     const fit = () => {
       const w = el.clientWidth || innerWidth;
@@ -121,6 +126,9 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
     let last = performance.now();
     let raf = 0;
     let lastNear: string | null = null;
+    let lastCar: string | null = null;
+    let lastKmh = -1;
+    let lastDrive: number | null = null;
     let stepClock = 0;
     let shownBubble: number | null = null;
     const frame = (now: number) => {
@@ -151,6 +159,15 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
         el.style.transform = `translate(${Math.round(b.screen.x)}px, ${Math.round(b.screen.y)}px) translate(-50%, -100%)`;
         el.style.visibility = b.screen.visible ? "visible" : "hidden";
       }
+      // Cars: one you can get into, or the speed of the one you are driving
+      const nc = sv.nearCar();
+      const ncKey = nc ? `${nc.uid}` : null;
+      if (ncKey !== lastCar) { lastCar = ncKey; setCar(nc ? { uid: nc.uid, model: nc.model } : null); }
+      if (sv.drive) {
+        const d = sv.drive;
+        const kmh = Math.round((Math.abs(d.speed) / d.top) * (carById(d.e.model)?.topKmh ?? 150));
+        if (kmh !== lastKmh || lastDrive !== d.uid) { lastKmh = kmh; lastDrive = d.uid; setDrive({ uid: d.uid, model: d.e.model, kmh }); }
+      } else if (lastDrive !== null) { lastDrive = null; lastKmh = -1; setDrive(null); }
       const n = sv.near?.id ?? null;
       if (n !== lastNear) {
         lastNear = n;
@@ -262,7 +279,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
     const start = down.current;
     down.current = null;
     const v = view.current;
-    if (!v || !start || !walking || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 7) return;
+    if (!v || !start || !walking || v.drive || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 7) return;
     const hit = v.pick(e.clientX, e.clientY);
     if (!hit) return;
     if (hit.kind === "door") walkToDoor(hit.id as SpotId);
@@ -378,8 +395,37 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
               : <>{t("street.help")}</>}
           </div>
 
+          {drive && (
+            <div className="drive-hud" role="status" aria-label={t("drive.speed")}>
+              <b>{drive.kmh}</b><small>km/h</small>
+            </div>
+          )}
+
           <div className="walk-actions">
-            {near ? (
+            {drive ? (
+              <>
+                <button
+                  className="btn plain big"
+                  onPointerDown={() => { if (view.current) view.current.brake = true; }}
+                  onPointerUp={() => { if (view.current) view.current.brake = false; }}
+                  onPointerLeave={() => { if (view.current) view.current.brake = false; }}
+                >🛑 {t("drive.brake")}</button>
+                <button
+                  className="btn big"
+                  disabled={drive.kmh > 6}
+                  onClick={() => {
+                    const r = view.current?.stopDrive();
+                    stopEngine();
+                    if (r) dispatch({ type: "parkCar", uid: r.uid, x: r.x, z: r.z, yaw: r.yaw });
+                  }}
+                >🅿️ {t("drive.park")}</button>
+              </>
+            ) : car && (
+              <button className="btn big" onClick={() => view.current?.startDrive(car.uid)}>
+                🚗 {t("drive.start", { car: carById(car.model)?.name ?? "" })}
+              </button>
+            )}
+            {drive ? null : near ? (
               <button className="btn big" onClick={() => enterRef.current(near)}>
                 🚪 {t("street.goInto", { place: `${spots[near].emoji} ${tx.spot(near)}` })}
                 {!spotOpen(near, state.time) && <small> ({t("street.closedNow")})</small>}

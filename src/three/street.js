@@ -8,10 +8,12 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { spots } from '../data/spots';
 import { buildSim, daylight } from './pieces';
+import { buildVehicle, setLights } from './vehicles';
+import { SLOTS, carById, homeSolids, inRect } from '../data/estate';
 import { PERSONAS } from '../data/chatter';
 import {
   BUILDINGS, DOORS, ENTER_RADIUS, LAND_HALF, LOT_CENTERS, LOT_HALF, PLACE_LOTS, PLACE_SOLIDS,
-  ROAD_HALF, ROAD_LINES, RUN_SPEED, WALK_SPEED, doorNear, faceYaw, resolve, roadPath,
+  ROAD_HALF, ROAD_LINES, RUN_SPEED, WALK_SPEED, blocked, doorNear, faceYaw, resolve, roadPath,
 } from './world.js';
 
 const SIM_SCALE = 1.75;
@@ -182,7 +184,7 @@ function buildCar(color) {
 
 // ----------------------------------------------------------------- places
 
-function buildPlace(id, labelFor) {
+export function buildPlace(id, labelFor, property) {
   const lot = PLACE_LOTS[id];
   const g = new THREE.Group();
   g.position.set(lot.cx, 0, lot.cz);
@@ -199,20 +201,90 @@ function buildPlace(id, labelFor) {
 
   switch (id) {
     case 'home': {
-      add(plane(48, 48, '#9bb06a', 0, 0.07, 0));
+      const pr = property ?? {};
+      const up = pr.floor2 ? 3.4 : 0; // a second floor adds a storey
+      add(plane(48, 48, pr.garden ? '#58b05c' : '#9bb06a', 0, 0.07, 0));
       const [, lz, w, d, h] = solids[0];
       add(box(w, h, d, '#efe4d0', 0, h / 2, lz));
+      if (pr.floor2) {
+        add(box(w, up, d, '#f6ecd9', 0, h + up / 2, lz));
+        add(box(w + 0.6, 0.25, d + 0.6, '#cfc3ae', 0, h + 0.1, lz)); // the slab between the floors
+        for (const x of [-5, 0, 5]) add(box(2.2, 1.6, 0.12, GLOW.window, x, h + 1.8, lz - d / 2 - 0.08, false));
+      }
       const roof = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 4).rotateY(Math.PI / 4), mat('#b5523b'));
       roof.scale.set((w + 1.5) / Math.SQRT2, 4, (d + 1.5) / Math.SQRT2);
-      roof.position.set(0, h + 2, lz);
+      roof.position.set(0, h + up + 2, lz);
       roof.castShadow = true;
       add(roof);
       add(box(2, 2.8, 0.15, '#6d4c41', 0, 1.4, lz - d / 2 - 0.05, false));
       for (const x of [-5, 5]) add(box(2.6, 1.6, 0.12, GLOW.window, x, 2.8, lz - d / 2 - 0.05, false));
-      add(cyl(1, 1, 1.8, '#1e1e1e', 4, h + 2.4, lz + 2));
+      add(cyl(1, 1, 1.8, '#1e1e1e', 4, h + up + 2.4, lz + 2));
       add(box(1.2, 1, 1, '#f1c40f', 9.5, 0.5, lz - 2));
       for (const x of [-3.5, 3.5]) add(box(0.8, 1.8, 0.8, '#d8cfc0', x, 0.9, -23.5));
-      height = h + 6;
+      height = h + up + 6;
+
+      // ---- what you have built (see data/estate.ts; solid parts are listed in homeSolids)
+      if (pr.driveway) {
+        add(box(7, 0.1, 12.5, '#8d8d96', 0, 0.12, -18));
+        for (const [bx, bz, bw, bd] of [[-1.35, -17.5, 0.12, 5.2], [1.35, -17.5, 0.12, 5.2], [0, -20.1, 2.82, 0.12]]) add(box(bw, 0.02, bd === undefined ? 0.12 : bd, '#f4f4f4', bx, 0.18, bz, false));
+      }
+      if (pr.gate) {
+        for (const sx of [-1, 1]) {
+          add(box(20.5, 1.9, 0.5, '#efe9dc', sx * 13.75, 0.95, -23.6));
+          add(box(20.7, 0.16, 0.7, '#b5523b', sx * 13.75, 1.95, -23.6));
+        }
+        // an iron gate, swung open
+        for (const sx of [-1, 1]) {
+          const leaf = new THREE.Group();
+          leaf.position.set(sx * 3.4, 0, -23.6);
+          leaf.rotation.y = sx * 1.25;
+          for (let i = 0; i < 6; i++) leaf.add(box(0.08, 1.7, 0.08, '#1a1a1d', -sx * (0.2 + i * 0.5), 0.95, 0, false));
+          leaf.add(box(3.1, 0.1, 0.1, '#1a1a1d', -sx * 1.7, 1.7, 0, false));
+          leaf.add(box(3.1, 0.1, 0.1, '#1a1a1d', -sx * 1.7, 0.3, 0, false));
+          add(leaf);
+        }
+      }
+      if (pr.garden) {
+        const green = ['#3f9d4a', '#2f8a3d', '#58b05c'];
+        const bush = (x, z, r, c) => { const b = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), mat(c)); b.position.set(x, r * 0.8, z); b.castShadow = true; add(b); };
+        [[-8, -14], [-12, -14], [-19, -14], [8, -14], [12, -14], [-20, -4], [20, 6], [-20, 8]].forEach(([x, z], i) => bush(x, z, 0.8 + (i % 3) * 0.25, green[i % 3]));
+        const flowers = ['#ff5f6d', '#ffd23d', '#ff8fb1', '#9b6bff'];
+        for (let i = 0; i < 12; i++) add(box(0.35, 0.35, 0.35, flowers[i % 4], -19 + (i % 6) * 1.1, 0.35, -21 + Math.floor(i / 6) * 1.2, false));
+        add(cyl(0.35, 0.45, 4, '#7a5230', -16, 2, -17, 8));
+        const canopy = new THREE.Mesh(new THREE.SphereGeometry(3.2, 12, 10), mat('#2f8a3d'));
+        canopy.position.set(-16, 5.6, -17);
+        canopy.castShadow = true;
+        add(canopy);
+      }
+      if (pr.garage) {
+        const wall = '#efe4d0';
+        add(box(10.4, 0.15, 9.4, '#9a9aa2', 15.5, 0.12, -7));
+        add(box(10.4, 3.6, 0.4, wall, 15.5, 1.8, -2.4));
+        add(box(0.4, 3.6, 9, wall, 10.5, 1.8, -7));
+        add(box(0.4, 3.6, 9, wall, 20.5, 1.8, -7));
+        add(box(11, 0.3, 10.2, '#b5523b', 15.5, 3.75, -7));
+        add(box(10.4, 0.9, 0.4, '#e7dccb', 15.5, 3.15, -11.5)); // lintel over the open front
+        add(box(9.6, 0.5, 0.12, '#cfd8dc', 15.5, 2.7, -11.3, false)); // the rolled-up door
+      }
+      if (pr.balcony) {
+        const by = 3.4, bz = lz - d / 2 - 1.35;
+        add(box(8, 0.3, 2.7, '#d8cfc0', 0, by, bz));
+        for (const x of [-3.7, 3.7]) add(box(0.3, by, 0.3, '#d8cfc0', x, by / 2, bz - 1.1));
+        add(box(8, 0.08, 0.08, '#1a1a1d', 0, by + 1.05, bz - 1.3, false));
+        for (let i = 0; i <= 16; i++) add(box(0.05, 1.0, 0.05, '#1a1a1d', -3.9 + i * 0.49, by + 0.55, bz - 1.3, false));
+        for (const sx of [-1, 1]) add(box(0.08, 1.0, 2.6, '#1a1a1d', sx * 3.95, by + 0.55, bz, false));
+      }
+      if (pr.pool) {
+        add(box(12.8, 0.18, 7.8, '#ecebf0', 0, 0.13, 11));
+        const water = new THREE.Mesh(new THREE.BoxGeometry(12, 0.06, 7), new THREE.MeshStandardMaterial({ color: '#2bc6e6', emissive: '#0a8fb0', emissiveIntensity: 0.35, roughness: 0.1, metalness: 0.2 }));
+        water.position.set(0, 0.24, 11);
+        add(water);
+        for (const lx of [-5, 5]) add(box(1.4, 0.35, 0.7, '#ffcf5c', lx, 0.35, 15.3)); // loungers
+      }
+      // the marked space on the kerb outside, for the car you keep on the street
+      for (const [mx, mz, mw, md] of [[-13.1, -26.3, 5.4, 0.1], [-8.9, -26.3, 5.4, 0.1], [-11, -27.45, 0.1, 2.4], [-11, -25.15, 0.1, 2.4]]) {
+        add(box(mw, 0.02, md, '#f4f4f4', mx, 0.14, mz, false));
+      }
       break;
     }
     case 'buka': {
@@ -425,6 +497,12 @@ export class StreetView {
     sim.root.scale.setScalar(SIM_SCALE);
     this.scene.add(sim.root);
     this.remotes = new Map(); // other real players, by id (see lib/multiplayer.ts)
+    this.parked = new Map();  // cars you own, by uid: { v3d, model, color }
+    this.drive = null;        // the car you are driving, if any
+    this.estateKey = '';
+    this.propKey = '';
+    this.extraSolids = [];
+    this.brake = false;
     this.player = new THREE.Vector3(DOORS.home.x, 0, DOORS.home.z);
     this.yaw = 0;
     // First-person view: the camera sits at the Sim's eyes and you drag to look around.
@@ -639,6 +717,7 @@ export class StreetView {
   setState(state, info) {
     this.state = state;
     this.info = info;
+    this.syncEstate(info);
     const a = state.sim.away;
     const mode = a?.kind === 'street' ? 'street' : 'place';
     if (mode === 'street' && (this.mode !== 'street' || this.syncedFrom !== a)) {
@@ -665,6 +744,145 @@ export class StreetView {
       this.placeShown = null;
     }
     this.mode = mode;
+  }
+
+  // ---------------------------------------------------------------- your property and cars
+
+  /** Redraw the home lot when you build something, and park your cars where they are saved. */
+  syncEstate(info) {
+    const key = JSON.stringify([info?.property ?? null, info?.vehicles ?? []]);
+    if (key === this.estateKey) return;
+    this.estateKey = key;
+    const pk = JSON.stringify(info?.property ?? null);
+    if (pk !== this.propKey) {
+      this.propKey = pk;
+      const i = this.places.findIndex((g) => g.userData.door === 'home');
+      if (i >= 0) {
+        const old = this.places[i];
+        this.scene.remove(old);
+        old.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+        const g = buildPlace('home', this.hooks.labelFor, info?.property);
+        this.scene.add(g);
+        this.places[i] = g;
+      }
+      this.extraSolids = homeSolids(info?.property);
+    }
+    const list = info?.vehicles ?? [];
+    for (const [uid, e] of [...this.parked]) {
+      if (!list.some((v) => v.uid === uid) && this.drive?.uid !== uid) { this.scene.remove(e.v3d.group); this.parked.delete(uid); }
+    }
+    for (const v of list) {
+      let e = this.parked.get(v.uid);
+      if (e && (e.model !== v.model || e.color !== v.color)) {
+        this.scene.remove(e.v3d.group);
+        this.parked.delete(v.uid);
+        e = undefined;
+      }
+      if (!e) {
+        e = { v3d: buildVehicle(v.model, v.color), model: v.model, color: v.color };
+        this.scene.add(e.v3d.group);
+        this.parked.set(v.uid, e);
+      }
+      if (this.drive?.uid !== v.uid) {
+        e.v3d.group.position.set(v.x, 0, v.z);
+        e.v3d.group.rotation.y = v.yaw;
+      }
+    }
+  }
+
+  /** The car of yours parked close enough to get into, or null. */
+  nearCar() {
+    if (this.drive || this.mode !== 'street') return null;
+    let best = null;
+    for (const [uid, e] of this.parked) {
+      const d = Math.hypot(e.v3d.group.position.x - this.player.x, e.v3d.group.position.z - this.player.z);
+      if (d < 6 && (!best || d < best.d)) best = { uid, model: e.model, d };
+    }
+    return best;
+  }
+
+  startDrive(uid) {
+    const e = this.parked.get(uid);
+    if (!e || this.drive || this.mode !== 'street') return false;
+    const g = e.v3d.group;
+    this.route = [];
+    this.drive = { uid, e, x: g.position.x, z: g.position.z, yaw: g.rotation.y, speed: 0, steer: 0, top: (carById(e.model)?.topKmh ?? 150) / 3.6 * 0.36 };
+    this.player.set(g.position.x, 0, g.position.z);
+    return true;
+  }
+
+  /** Get out. Returns where the car stands, so the game can save it. */
+  stopDrive() {
+    const d = this.drive;
+    if (!d) return null;
+    const out = { uid: d.uid, x: d.x, z: d.z, yaw: d.yaw };
+    const [px, pz] = resolve(d.x - Math.cos(d.yaw) * 2.7, d.z + Math.sin(d.yaw) * 2.7); // out of the driver's side
+    this.player.set(px, 0, pz);
+    this.yaw = d.yaw + Math.PI / 2;
+    setLights(d.e.v3d, false, false);
+    this.drive = null;
+    this.frameCamera(this.player, 18, this.yaw);
+    return out;
+  }
+
+  /** Where a car would hit something: houses and walls, your garage and pool, other cars. */
+  carHits(d, x, z) {
+    const r = d.e.v3d.width / 2 + 0.1;
+    const half = d.e.v3d.length / 2 - 0.4;
+    const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw);
+    for (const k of [-half, 0, half]) {
+      const px = x + fx * k, pz = z + fz * k;
+      if (Math.abs(px) > LAND_HALF - 1.5 || Math.abs(pz) > LAND_HALF - 1.5 || blocked(px, pz, r)) return true;
+      for (const rect of this.extraSolids) if (inRect(rect, px, pz, r)) return true;
+      for (const [uid, o] of this.parked) {
+        if (uid === d.uid) continue;
+        if (Math.hypot(o.v3d.group.position.x - px, o.v3d.group.position.z - pz) < r + 1.5) return true;
+      }
+    }
+    return false;
+  }
+
+  driveStep(dt, paused) {
+    const d = this.drive;
+    const v3d = d.e.v3d;
+    let throttle = 0, steer = 0;
+    if (!paused) {
+      if (this.keys.has('w') || this.keys.has('arrowup')) throttle += 1;
+      if (this.keys.has('s') || this.keys.has('arrowdown')) throttle -= 1;
+      if (this.keys.has('d') || this.keys.has('arrowright')) steer -= 1;
+      if (this.keys.has('a') || this.keys.has('arrowleft')) steer += 1;
+      throttle += this.joy.y;
+      steer -= this.joy.x;
+      throttle = Math.max(-1, Math.min(1, throttle));
+      steer = Math.max(-1, Math.min(1, steer));
+    }
+    const braking = this.brake || this.keys.has(' ');
+    if (braking) d.speed -= Math.sign(d.speed) * Math.min(Math.abs(d.speed), 28 * dt);
+    else if (throttle > 0) d.speed += (d.speed < 0 ? 22 : 8 + d.top * 0.45) * throttle * dt;
+    else if (throttle < 0) d.speed -= (d.speed > 0 ? 22 : 6) * -throttle * dt;
+    else d.speed -= Math.sign(d.speed) * Math.min(Math.abs(d.speed), 5 * dt);
+    d.speed = Math.max(-5, Math.min(d.top, d.speed));
+    d.steer += (steer - d.steer) * Math.min(1, dt * 8);
+    d.yaw += d.steer * 1.7 * Math.max(-1, Math.min(1, d.speed / 4)) * dt;
+    const nx = d.x + Math.sin(d.yaw) * d.speed * dt;
+    const nz = d.z + Math.cos(d.yaw) * d.speed * dt;
+    if (this.carHits(d, nx, nz)) d.speed *= -0.25; // bump and stop
+    else { d.x = nx; d.z = nz; }
+    const g = v3d.group;
+    g.position.set(d.x, 0, d.z);
+    g.rotation.y = d.yaw;
+    for (const w of v3d.wheels) w.rotation.x += (d.speed * dt) / v3d.wheelR;
+    for (const w of v3d.front) w.rotation.y = d.steer * 0.5;
+    const night = daylight(this.info?.hour ?? 12) < 0.4;
+    setLights(v3d, night, braking || (throttle < 0 && d.speed > 0.5));
+    this.player.set(d.x, 0, d.z);
+    this.yaw = d.yaw;
+    this.hooks.onEngine?.(Math.abs(d.speed) / d.top, throttle);
+    // chase camera: behind the car and a little above, easing round as it turns
+    const want = new THREE.Vector3(d.x - Math.sin(d.yaw) * 10, 7.2, d.z - Math.cos(d.yaw) * 10);
+    this.camera.position.lerp(want, Math.min(1, dt * 4));
+    this.controls.target.set(d.x + Math.sin(d.yaw) * 3, 1.2, d.z + Math.cos(d.yaw) * 3);
+    this.camera.lookAt(this.controls.target);
   }
 
   /** Put the camera behind a point, looking at it. */
@@ -786,10 +1004,12 @@ export class StreetView {
     }
 
     // The Sim.
-    const moving = this.mode === 'street' && !paused ? this.step(dt) : false;
+    const driving = !!this.drive && this.mode === 'street';
+    if (driving) this.driveStep(dt, paused);
+    const moving = !driving && this.mode === 'street' && !paused ? this.step(dt) : false;
     this.moving = moving;
-    const firstPerson = this.fp && this.mode === 'street';
-    this.sim.root.visible = this.mode === 'street' && !firstPerson;
+    const firstPerson = this.fp && this.mode === 'street' && !driving;
+    this.sim.root.visible = this.mode === 'street' && !firstPerson && !driving;
     this.sim.root.position.copy(this.player);
     this.sim.root.rotation.y = this.yaw;
     this.animate(this.sim, moving ? (this.running ? 16 : 11) : 0, t, moving);
@@ -846,7 +1066,9 @@ export class StreetView {
     }
 
     // Camera follows the Sim: from behind and above, or from its eyes.
-    if (firstPerson) {
+    if (driving) {
+      // the chase camera was set in driveStep
+    } else if (firstPerson) {
       // Walking a tapped route turns your head the way you're going.
       if (moving && !this.manual) {
         let d = this.yaw - this.fpYaw;

@@ -10,15 +10,20 @@ type Props = {
   state: GameState;
   onBuy: (type: FurnitureType) => void;
   onPick: (uid: number) => void;
+  onOpen: (panel: "build" | "cars") => void;
 };
 
 /** The furniture shop, and everything already in your room. */
-export default function ShopSheet({ state, onBuy, onPick }: Props) {
+export default function ShopSheet({ state, onBuy, onPick, onOpen }: Props) {
   const { t, tx } = useLang();
   const tags = missionTags(state);
   const atHome = state.location === "mushin";
   return (
     <>
+      <div className="shop-big">
+        <button className="btn" onClick={() => onOpen("build")}>🏗️ {t("shop.build")}</button>
+        <button className="btn" onClick={() => onOpen("cars")}>🚗 {t("shop.cars")}</button>
+      </div>
       {!atHome && <p className="note bad">{t("shop.awayNote")}</p>}
       <p className="lede">{t("shop.lede")}</p>
       <div className="group">

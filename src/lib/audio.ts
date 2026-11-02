@@ -216,6 +216,37 @@ export function play(sfx: Sfx) {
   }
 }
 
+// A simple engine: one low saw wave whose pitch and brightness follow the speed.
+let eng: { osc: OscillatorNode; filter: BiquadFilterNode; gain: GainNode } | null = null;
+export function engine(speed: number, throttle: number) {
+  const m = ready();
+  if (!m || !prefs.sfx) return;
+  if (!eng) {
+    const osc = m.ctx.createOscillator();
+    osc.type = "sawtooth";
+    const filter = m.ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    const gain = m.ctx.createGain();
+    gain.gain.value = 0;
+    osc.connect(filter).connect(gain).connect(m.sfx);
+    osc.start();
+    eng = { osc, filter, gain };
+  }
+  const t = m.ctx.currentTime;
+  const push = Math.max(0, throttle);
+  eng.osc.frequency.setTargetAtTime(46 + speed * 120 + push * 16, t, 0.08);
+  eng.filter.frequency.setTargetAtTime(260 + speed * 900 + push * 250, t, 0.1);
+  eng.gain.gain.setTargetAtTime(0.035 + speed * 0.045 + push * 0.025, t, 0.1);
+}
+export function stopEngine() {
+  const m = ready();
+  if (!eng || !m) return;
+  const e = eng;
+  eng = null;
+  e.gain.gain.setTargetAtTime(0, m.ctx.currentTime, 0.05);
+  setTimeout(() => { try { e.osc.stop(); } catch { /* already stopped */ } }, 300);
+}
+
 let stepFlip = false;
 /** A footstep (slightly different every time). */
 export function footstep() {

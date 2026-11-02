@@ -33,6 +33,8 @@ import type { ContactId } from "../data/contacts";
 import { REVIVE, type ReviveHow } from "../data/revive";
 import { storyFlag } from "./progress";
 import { syncStory, storyStep, type StoryCommand, type StoryState } from "./story";
+import { estateStep, type EstateCommand } from "./estate";
+import type { Property, Vehicle } from "../data/estate";
 
 export type EndingKind = "japa" | "landlord" | "evicted" | "collapsed";
 export type Ending = { kind: EndingKind; day: number; final?: boolean }; // final: no more revive offer
@@ -96,6 +98,9 @@ export type GameState = {
   daily?: DailyClaim[];     // daily login rewards credited to this life
   camera?: "top" | "first"; // overhead or first-person view
   revives?: { ad: number; gem: number; refs: string[] }; // times you came back after collapsing (refs: gems used)
+  property?: Property;     // what you have built on your home lot (see data/estate.ts)
+  vehicles?: Vehicle[];    // cars you own and where they are parked
+  nextVehicle?: number;    // next id for a car
   story?: StoryState;       // the story: missions done, choices, flags, career route (see engine/story.ts)
 };
 
@@ -123,6 +128,7 @@ export type Command =
   | { type: "revive"; how: ReviveHow; ref?: string } // back from hospital (ref: the server's id for the gem used)
   | { type: "finalize" }  // the player chose to end this life instead of reviving
   | StoryCommand
+  | EstateCommand
   | PhoneCommand;
 
 export const AD_REWARD = 3_000;
@@ -762,6 +768,13 @@ function step(s: GameState, cmd: Command): GameState {
 
     case "story":
       return storyStep(s, cmd, kit);
+
+    case "build":
+    case "buyCar":
+    case "sellCar":
+    case "paintCar":
+    case "parkCar":
+      return estateStep(s, cmd, kit);
 
     default:
       // Everything on the phone (bank, invest, business, contacts, invites, messages, daily rewards, camera)
