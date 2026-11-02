@@ -18,10 +18,10 @@ describe("story data", () => {
     }
   });
 
-  it("has 50 missions on one path across chapters 1-5, plus the extra branch versions", () => {
-    expect(STORY.length).toBe(70); // 50 slots; mission 13 has 3 versions, 33/35/38/42/45/48 have 4 each
-    expect(storyProgress(fresh()).total).toBe(50);
-    expect(new Set(STORY.map(m => m.n)).size).toBe(50);
+  it("has 60 missions on one path across chapters 1-6, plus the extra branch versions", () => {
+    expect(STORY.length).toBe(89); // 60 slots; mission 13 has 3 versions, 33/35/38/42/45/48/52/55/58 have 4 each
+    expect(storyProgress(fresh()).total).toBe(60);
+    expect(new Set(STORY.map(m => m.n)).size).toBe(60);
   });
 
   it("every mission has real content", () => {
@@ -102,9 +102,9 @@ describe("story engine", () => {
 
   // Walk every mission in order, satisfying each one's tasks and picking option 0 (except the path choice at mission 29).
   const PATHS = [["business", "pos"], ["tech", "tech"], ["creative", "fashion"], ["professional", "pos"]] as const;
-  it.each(PATHS)("the whole story to mission 50 can be played on the %s path", (path, job) => {
+  it.each(PATHS)("the whole story to mission 60 can be played on the %s path", (path, job) => {
     let s = fresh({ money: 500_000, rep: 20, career: { id: job, level: 2, shifts: 0 }, time: 60 * 1440, skills: { hustle: 8, study: 8, charisma: 8, fitness: 8, cooking: 8 } });
-    s = { ...s, businesses: [{ id: "water", level: 1, staff: 0, invested: 0, since: 1 }, { id: "suya", level: 1, staff: 0, invested: 0, since: 1 }], trades: [{ t: 0, fund: "bank" as never, side: "buy", amount: 1 }], contacts: { mummy: { rel: 90, last: 0 } } };
+    s = { ...s, businesses: [{ id: "water", level: 1, staff: 0, invested: 0, since: 1 }, { id: "suya", level: 1, staff: 0, invested: 0, since: 1 }, { id: "keke", level: 1, staff: 0, invested: 0, since: 1 }], trades: [1, 2, 3].map(t => ({ t, fund: "bank" as never, side: "buy" as const, amount: 1 })), contacts: { mummy: { rel: 90, last: 0 } } };
     const played: string[] = [];
     for (let guard = 0; guard < 80; guard++) {
       const open = offered(s);
@@ -117,15 +117,15 @@ describe("story engine", () => {
       s = reduce({ ...s, counts }, { type: "tick", minutes: 1, roll: 1, pick: 0 });
       if (storyOf(s).choosing) s = reduce(s, { type: "storyChoose", index: m.id === "s29-lane" ? PATHS.findIndex(p => p[0] === path) : 0 });
     }
-    expect(storyOf(s).done).toContain("s50-recognition");
+    expect(storyOf(s).done).toContain("s60-threshold");
     expect(storyOf(s).active).toBeNull();
-    expect(played.length).toBe(50); // one mission per slot: no repeats, no skipped slots
+    expect(played.length).toBe(60); // one mission per slot: no repeats, no skipped slots
     expect(storyOf(s).flags.path).toBe(path);
   });
 
   it("changing course at mission 38 never repeats a slot and the story still reaches the end", () => {
     let s = fresh({ money: 500_000, rep: 20, career: { id: "pos", level: 2, shifts: 0 }, time: 60 * 1440, skills: { hustle: 8, study: 8, charisma: 8, fitness: 8, cooking: 8 } });
-    s = { ...s, businesses: [{ id: "water", level: 1, staff: 0, invested: 0, since: 1 }, { id: "suya", level: 1, staff: 0, invested: 0, since: 1 }], trades: [{ t: 0, fund: "bank" as never, side: "buy", amount: 1 }], contacts: { mummy: { rel: 90, last: 0 } } };
+    s = { ...s, businesses: [{ id: "water", level: 1, staff: 0, invested: 0, since: 1 }, { id: "suya", level: 1, staff: 0, invested: 0, since: 1 }, { id: "keke", level: 1, staff: 0, invested: 0, since: 1 }], trades: [1, 2, 3].map(t => ({ t, fund: "bank" as never, side: "buy" as const, amount: 1 })), contacts: { mummy: { rel: 90, last: 0 } } };
     for (let guard = 0; guard < 80; guard++) {
       const open = offered(s);
       if (!open.length) break;
@@ -137,7 +137,7 @@ describe("story engine", () => {
       // a player who changes course takes up the new trade
       if (storyOf(s).flags.path === "creative") s = { ...s, career: { id: "fashion", level: 2, shifts: 0 } };
     }
-    expect(storyOf(s).done).toContain("s50-recognition");
+    expect(storyOf(s).done).toContain("s60-threshold");
     expect(storyOf(s).done.filter(id => id.startsWith("s38")).length).toBe(1);
     expect(storyOf(s).flags.path).toBe("creative");
   });

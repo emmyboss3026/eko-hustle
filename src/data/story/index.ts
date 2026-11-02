@@ -4,6 +4,7 @@ import { ch2 } from "./ch2";
 import { ch3 } from "./ch3";
 import { ch4 } from "./ch4";
 import { ch5 } from "./ch5";
+import { ch6 } from "./ch6";
 
 /** All ten chapters of the planned 100-mission story. Only the ones with missions below are playable so far. */
 export const CHAPTERS: Chapter[] = [
@@ -19,6 +20,6 @@ export const CHAPTERS: Chapter[] = [
   { n: 10, emoji: "👑", title: "Your Legacy", focus: "Long-term accomplishments and future ambitions", planned: [91, 100] },
 ];
 
-export const STORY: StoryMission[] = [...ch1, ...ch2, ...ch3, ...ch4, ...ch5];
+export const STORY: StoryMission[] = [...ch1, ...ch2, ...ch3, ...ch4, ...ch5, ...ch6];
 
 export const storyById = (id: string) => STORY.find(m => m.id === id);
