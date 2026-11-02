@@ -637,3 +637,16 @@ describe("phone apps: arcade and Gram", () => {
     expect(headlinesFor(1)).not.toEqual(headlinesFor(2));
   });
 });
+
+describe("town map data", () => {
+  it("every door is on the map and has a road route from your home", async () => {
+    const { DOORS, roadPath } = await import("../three/world.js");
+    for (const id of Object.keys(DOORS)) {
+      const d = (DOORS as Record<string, { x: number; z: number }>)[id];
+      const route = roadPath([DOORS.home.x, DOORS.home.z], [d.x, d.z]);
+      expect(route.length, id).toBeGreaterThan(0);
+      expect(Math.abs(d.x)).toBeLessThanOrEqual(186);
+      expect(Math.abs(d.z)).toBeLessThanOrEqual(186);
+    }
+  });
+});

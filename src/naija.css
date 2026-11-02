@@ -505,3 +505,50 @@ button.hud2-avatar:active { transform: scale(0.94); }
 .plot-card { grid-template-columns: 64px 1fr; }
 .plot-emoji { font-size: 44px; text-align: center; }
 .plot-yours { color: #0b7a55; }
+
+/* ---------- walking: minimap, big map, and controls beside the stick (clear of the view) ---------- */
+.game .walk-actions {
+  right: auto; left: calc(18px + 116px + 10px);
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  flex-direction: column-reverse; align-items: center; gap: 6px;   /* a slim column between the stick and the map */
+}
+.round-btn {
+  display: grid; place-items: center; align-content: center; gap: 0;
+  width: 48px; height: 48px; border-radius: 50%;
+  font-size: 20px; line-height: 1;
+  border: 1px solid var(--nv-line); background: var(--nv-glass-strong); color: var(--nv-text);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 16px rgba(5, 6, 30, 0.5);
+}
+.round-btn small { font-size: 9.5px; font-weight: 800; color: var(--nv-soft); margin-top: 1px; }
+.round-btn[aria-pressed="true"] { background: linear-gradient(135deg, #2ee6c5, #3be08a); color: #06241d; }
+.round-btn[aria-pressed="true"] small { color: #06241d; }
+.round-btn:disabled { opacity: 0.4; }
+.round-btn:active:not(:disabled) { transform: scale(0.94); }
+.walk-context { position: absolute; left: 150px; right: 12px; bottom: calc(150px + env(safe-area-inset-bottom)); z-index: 7; display: grid; justify-items: end; }
+.walk-context .btn { width: auto; max-width: 100%; box-shadow: 0 6px 18px rgba(5, 6, 30, 0.55); }
+.minimap {
+  position: absolute; right: 12px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 7;
+  width: 124px; height: 124px; padding: 0; overflow: hidden;
+  border-radius: 50%; border: 3px solid var(--nv-glass-strong);
+  box-shadow: 0 0 0 1px var(--nv-line), 0 8px 22px rgba(5, 6, 30, 0.6);
+  background: #3f8fc7;
+}
+.minimap canvas { display: block; }
+.minimap-n { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 10px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); }
+.bigmap-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(5, 6, 22, 0.78); backdrop-filter: blur(4px); padding: 12px; overflow: auto; }
+.bigmap { display: grid; gap: 8px; width: min(444px, 100%); max-height: 100%; overflow: auto; padding: 12px; border-radius: 22px; background: linear-gradient(180deg, #f3f1ff, #e6e3fa); color: #241a6b; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); }
+.bigmap header { display: flex; align-items: center; justify-content: space-between; }
+.bigmap-canvas { border-radius: 16px; touch-action: manipulation; justify-self: center; box-shadow: 0 2px 10px rgba(40, 30, 120, 0.25); }
+.bigmap-pick { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 16px; background: #fff; border: 2px solid var(--nv-teal); }
+.bigmap-pick span { display: grid; }
+.bigmap-list { max-height: 220px; overflow: auto; }
+
+/* ---------- smoothness: blur over a live 3D scene is costly on phones, so the always-visible bars are solid glass instead ---------- */
+:root { --nv-glass: rgba(18, 20, 58, 0.88); }
+.hud2, .toast, .dock, .side-buttons button, .tip, .round-btn, .side-pop, .minimap, .drive-hud {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.hud2, .toast, .dock, .tip, .side-pop { background-color: rgba(16, 18, 52, 0.9); }
+@media (prefers-reduced-motion: reduce) { .vital.low, .need2.low { animation: none; } }
