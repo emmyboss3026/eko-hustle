@@ -224,3 +224,65 @@ describe("homes", () => {
   });
 });
 
+
+describe("cars", () => {
+  const sedan = { model: "sedan", color: "#2d3436" };
+  const withCar = () => {
+    const s = setup();
+    s.join("a"); s.join("b");
+    s.cities.setCars("a", [sedan]);
+    return s;
+  };
+
+  it("an owner can drive their car and others are told", () => {
+    const s = withCar();
+    expect(s.cities.drive("a", sedan)).toBe(true);
+    expect(last(s.inbox, "b", "car")).toMatchObject({ id: "a", car: sedan });
+    expect(s.cities.get("a")!.car).toEqual(sedan);
+    s.cities.drive("a", null);
+    expect(last(s.inbox, "b", "car")).toMatchObject({ id: "a", car: null });
+  });
+
+  it("nobody can drive a car that is not theirs, or a made-up model or colour", () => {
+    const s = withCar();
+    expect(s.cities.drive("b", sedan)).toBe(false);      // b owns nothing
+    expect(s.cities.drive("a", { model: "luxury", color: "#2d3436" })).toBe(false); // a does not own that model
+    expect(s.cities.drive("a", { model: "sedan", color: "red;<b>" })).toBe(false);
+    expect(s.cities.get("a")!.car).toBeNull();
+  });
+
+  it("selling the car you are driving puts you out", () => {
+    const s = withCar();
+    s.cities.drive("a", sedan);
+    s.cities.setCars("a", []);
+    expect(s.cities.get("a")!.car).toBeNull();
+    expect(last(s.inbox, "b", "car")).toMatchObject({ car: null });
+  });
+
+  it("a driven car may go faster than a runner, but not faster than its model", () => {
+    const s = setup();
+    const gt = { model: "sports", color: "#ff3b30" };
+    s.join("a");
+    s.cities.setCars("a", [gt]);
+    s.cities.drive("a", gt);
+    s.advance(1000);
+    const a = s.cities.get("a")!;
+    expect(s.cities.move("a", a.x + 30, a.z, 0, 0)).toBe(true);   // 30 m in a second: over running speed, under a sports car's top
+    s.advance(1000);
+    expect(s.cities.move("a", a.x + 90, a.z, 0, 0)).toBe(false);  // 60 m more in a second: no sports car does that
+  });
+
+  it("a runner cannot move at car speed", () => {
+    const s = withCar();
+    s.advance(1000);
+    const a = s.cities.get("a")!;
+    expect(s.cities.move("a", a.x + 30, a.z, 0, 0)).toBe(false);
+  });
+
+  it("cars cannot be driven in a home", () => {
+    const s = setup();
+    s.cities.joinHome({ id: "o", name: "o", send: () => {} }, "o");
+    s.cities.setCars("o", [sedan]);
+    expect(s.cities.drive("o", sedan)).toBe(false);
+  });
+});

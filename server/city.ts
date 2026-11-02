@@ -5,6 +5,7 @@
 // edge of the land. Positions live only here in memory; nothing is written to the database.
 
 import { blocked, LAND_HALF, RUN_SPEED } from "../src/three/world.js";
+import { CARS } from "../src/data/estate.ts";
 
 export const CAPACITY = 24;          // players per city instance: a starting target, to be measured, not a promise
 export const SEE_RANGE = 150;        // you only receive players this close (interest management)
@@ -19,9 +20,14 @@ const MOVE_EVERY_MS = 40;            // moves arriving faster than this are drop
 const SPEED_SLACK = 1.6;             // run speed × this, so lag spikes do not rubber-band honest players
 const MAX_GAP_S = 2;                 // a long silence never earns more than this much travel
 const KICK_AFTER_STRIKES = 25;
+const MAX_OWNED = 4;                 // the most cars one player can own (MAX_CARS in the game)
+const CAR_SCALE = 0.36;              // in-game top speed is real km/h × this (see StreetView.startDrive)
+const CAR_RADIUS = 0.8;              // how close to a wall a car centre may be
+const carTop = (model: string) => (CARS.find(c => c.id === model)?.topKmh ?? 0) / 3.6 * CAR_SCALE;
 
 export type Out = (msg: Record<string, unknown>) => void;
 export type Look = Record<string, string>;
+export type Car = { model: string; color: string };
 
 export type Member = {
   id: string;                        // the account id (or a guest id in development)
@@ -36,6 +42,8 @@ export type Member = {
   strikes: number;
   dirty: boolean;
   home: boolean;                     // in someone's home (positions are tiles) rather than the city (world units)
+  owned: Car[];                      // the cars this player says they own: only these can be driven, and only by them
+  car: Car | null;                   // the car they are driving now, if any
 };
 
 export type Options = {
@@ -58,7 +66,15 @@ const cleanLook = (l: unknown): Look => {
   }
   return out;
 };
-const publicOf = (m: Member) => ({ id: m.id, name: m.name, look: m.look, x: m.x, z: m.z, yaw: m.yaw, anim: m.anim });
+// Only known models and plain colours are accepted, so a car can never carry markup or large data
+const cleanCar = (c: unknown): Car | null => {
+  const o = c as Partial<Car> | null;
+  if (!o || typeof o.model !== "string" || typeof o.color !== "string") return null;
+  if (!CARS.some(k => k.id === o.model) || !/^#[0-9a-fA-F]{6}$/.test(o.color)) return null;
+  return { model: o.model, color: o.color };
+};
+const cleanCars = (l: unknown): Car[] => (Array.isArray(l) ? l.slice(0, MAX_OWNED).map(cleanCar).filter((c): c is Car => !!c) : []);
+const publicOf = (m: Member) => ({ id: m.id, name: m.name, look: m.look, x: m.x, z: m.z, yaw: m.yaw, anim: m.anim, car: m.car });
 
 export class Cities {
   readonly capacity: number;
@@ -83,7 +99,7 @@ export class Cities {
   }
 
   /** Put a player in an instance: the one they ask for (a friend's) if it has room, else the first with room, else a new one. */
-  join(p: { id: string; name: string; look?: unknown; at?: { x?: unknown; z?: unknown }; send: Out }, want?: string): Member {
+  join(p: { id: string; name: string; look?: unknown; cars?: unknown; at?: { x?: unknown; z?: unknown }; send: Out }, want?: string): Member {
     const old = this.byId.get(p.id);
     if (old) this.leave(old.id); // one live character per account: a second connection replaces the first
     let room = want ? this.rooms.get(want) : undefined;
@@ -105,6 +121,7 @@ export class Cities {
     const m: Member = {
       id: p.id, name: cleanName(p.name), look: cleanLook(p.look), instance: id!,
       x: spawn.x, z: spawn.z, yaw: 0, anim: 0, send: p.send, lastMove: t, lastSay: 0, strikes: 0, dirty: false, home: false,
+      owned: cleanCars(p.cars), car: null,
     };
     // Everyone already there hears about the newcomer; the newcomer gets everyone in range
     for (const o of room.values()) o.send({ t: "join", p: publicOf(m) });
@@ -125,6 +142,7 @@ export class Cities {
     const m: Member = {
       id: p.id, name: cleanName(p.name), look: cleanLook(p.look), instance: rid,
       x: HOME_DOOR.x, z: HOME_DOOR.z, yaw: 0, anim: 0, send: p.send, lastMove: this.now(), lastSay: 0, strikes: 0, dirty: false, home: true,
+      owned: [], car: null,
     };
     for (const o of room.values()) o.send({ t: "join", p: publicOf(m) });
     room.set(m.id, m);
@@ -152,6 +170,30 @@ export class Cities {
     if (room && room.size === 0) this.rooms.delete(m.instance); // clean up empty instances
   }
 
+  /** The player says which cars they own (after a purchase, sale or repaint). Driving a car they no longer have ends. */
+  setCars(id: string, cars: unknown) {
+    const m = this.byId.get(id);
+    if (!m || m.home) return;
+    m.owned = cleanCars(cars);
+    if (m.car && !m.owned.some(c => c.model === m.car!.model)) this.drive(id, null);
+  }
+
+  /** Get into one of your own cars, or out of it (null). Nobody can drive a car that is not theirs. */
+  drive(id: string, car: unknown): boolean {
+    const m = this.byId.get(id);
+    if (!m || m.home) return false;
+    let next: Car | null = null;
+    if (car) {
+      next = cleanCar(car);
+      if (!next || !m.owned.some(c => c.model === next!.model)) return false; // not one of your cars
+    }
+    if (!next && !m.car) return true;
+    m.car = next;
+    m.dirty = true;
+    for (const o of this.rooms.get(m.instance)?.values() ?? []) o.send({ t: "car", id, car: next });
+    return true;
+  }
+
   /** The player says they moved. Accepted moves are kept; others are refused and the client is told where it really is. */
   move(id: string, x: unknown, z: unknown, yaw: unknown, anim: unknown): boolean {
     const m = this.byId.get(id);
@@ -170,8 +212,9 @@ export class Cities {
     const out = m.home ? nx < 0 || nz < 0 || nx > HOME_SIZE || nz > HOME_SIZE : Math.abs(nx) > LAND_HALF || Math.abs(nz) > LAND_HALF;
     if (out) return refuse(m.home ? "outside the home" : "off the land");
     const gap = Math.min(MAX_GAP_S, (t - m.lastMove) / 1000);
-    if (Math.hypot(nx - m.x, nz - m.z) > (m.home ? HOME_SPEED : RUN_SPEED) * SPEED_SLACK * gap + 0.5) return refuse("too fast");
-    if (!m.home && blocked(nx, nz, 0.3)) return refuse("inside a wall");
+    const top = m.car ? carTop(m.car.model) : m.home ? HOME_SPEED : RUN_SPEED;
+    if (Math.hypot(nx - m.x, nz - m.z) > top * SPEED_SLACK * gap + 0.5) return refuse("too fast");
+    if (!m.home && blocked(nx, nz, m.car ? CAR_RADIUS : 0.3)) return refuse("inside a wall");
     m.x = nx; m.z = nz; m.yaw = ny; m.anim = na; m.lastMove = t; m.dirty = true;
     if (m.strikes > 0 && gap > 1) m.strikes--; // honest players recover from the odd glitch
     return true;

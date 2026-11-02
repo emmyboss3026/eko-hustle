@@ -6,7 +6,8 @@ import { supabase } from "./supabase";
 
 export const multiplayerUrl = (import.meta.env.VITE_MULTIPLAYER_URL as string | undefined)?.trim() || null;
 
-export type Peer = { id: string; name: string; look: Record<string, string>; x: number; z: number; yaw: number; anim: number };
+export type PeerCar = { model: string; color: string };
+export type Peer = { id: string; name: string; look: Record<string, string>; x: number; z: number; yaw: number; anim: number; car?: PeerCar | null };
 export type Say = { id: string; name: string; text: string };
 
 export type Handlers = {
@@ -17,6 +18,7 @@ export type Handlers = {
   onSnap: (ps: [string, number, number, number, number][]) => void;
   onFix: (x: number, z: number) => void;   // the server refused a move: you are really here
   onSay: (s: Say) => void;
+  onCar?: (id: string, car: PeerCar | null) => void;   // someone got into or out of a car
   onEnded?: (why: "denied" | "removed" | "replaced" | "kicked") => void;   // the server will not let you stay: do not retry
 };
 
@@ -31,6 +33,7 @@ export class Multiplayer {
   private h: Handlers;
   private who: { name: string; look: Record<string, unknown> };
   private at: () => { x: number; z: number };
+  private mine: PeerCar[] = [];
 
   private home: string | null;
 
@@ -59,7 +62,7 @@ export class Multiplayer {
     if (this.closed) return;
     const ws = new WebSocket(multiplayerUrl);
     this.ws = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ t: "hello", token, name: this.who.name, look: this.who.look, instance: this.instance, at: this.at(), home: this.home ?? undefined }));
+    ws.onopen = () => ws.send(JSON.stringify({ t: "hello", token, name: this.who.name, look: this.who.look, instance: this.instance, at: this.at(), cars: this.mine, home: this.home ?? undefined }));
     ws.onmessage = e => {
       let m: Record<string, unknown>;
       try { m = JSON.parse(String(e.data)); } catch { return; }
@@ -75,6 +78,7 @@ export class Multiplayer {
         case "snap": this.h.onSnap(m.ps as [string, number, number, number, number][]); break;
         case "fix": this.h.onFix(m.x as number, m.z as number); break;
         case "say": this.h.onSay(m as unknown as Say); break;
+        case "car": this.h.onCar?.(m.id as string, (m.car as PeerCar | null) ?? null); break;
         case "removed": this.closed = true; this.h.onEnded?.("removed"); break;
         case "denied": this.closed = true; this.h.onEnded?.("denied"); break;
       }
@@ -97,6 +101,17 @@ export class Multiplayer {
   /** The owner sends a visitor out of their home. The server ignores it from anyone else. */
   remove(id: string) {
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ t: "remove", id }));
+  }
+
+  /** The cars you own, so the server knows which ones you may drive. Sent again when they change. */
+  cars(list: PeerCar[]) {
+    this.mine = list.slice(0, 4);
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ t: "cars", cars: this.mine }));
+  }
+
+  /** Get into one of your cars (others see it), or out of it (null). */
+  drive(car: PeerCar | null) {
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ t: "drive", car }));
   }
 
   say(text: string) {

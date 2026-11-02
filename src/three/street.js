@@ -1214,7 +1214,21 @@ export class StreetView {
     fig.root.position.set(p.x, 0, p.z);
     fig.root.rotation.y = p.yaw;
     this.scene.add(fig.root);
-    this.remotes.set(p.id, { fig, tag, x: p.x, z: p.z, yaw: p.yaw, tx: p.x, tz: p.z, tyaw: p.yaw, anim: p.anim ?? 0 });
+    this.remotes.set(p.id, { fig, tag, x: p.x, z: p.z, yaw: p.yaw, tx: p.x, tz: p.z, tyaw: p.yaw, anim: p.anim ?? 0, car: null, v3d: null });
+    if (p.car) this.setRemoteCar(p.id, p.car);
+  }
+
+  /** Another player got into (or out of) a car: show the car, with their name over it, instead of the walking figure. */
+  setRemoteCar(id, car) {
+    const r = this.remotes.get(id);
+    if (!r) return;
+    if (r.v3d) { this.scene.remove(r.v3d.group); r.v3d = null; }
+    r.car = car;
+    for (const c of r.fig.root.children) if (c !== r.tag) c.visible = !car;
+    r.tag.position.y = car ? 2.2 / SIM_SCALE : 1.3;
+    if (!car) return;
+    r.v3d = buildVehicle(car.model, car.color);
+    this.scene.add(r.v3d.group);
   }
 
   /** Where the server says a player now is: they glide there rather than jump. */
@@ -1228,6 +1242,7 @@ export class StreetView {
     const r = this.remotes.get(id);
     if (!r) return;
     this.scene.remove(r.fig.root);
+    if (r.v3d) this.scene.remove(r.v3d.group);
     r.tag.material.map?.dispose();
     r.tag.material.dispose();
     this.remotes.delete(id);
@@ -1252,6 +1267,14 @@ export class StreetView {
       g.position.set(r.x, 0, r.z);
       g.rotation.y = r.yaw;
       const moving = r.anim > 0 || Math.hypot(dx, dz) > 0.05;
+      if (r.v3d) {
+        const c = r.v3d.group;
+        c.visible = g.visible;
+        c.position.set(r.x, 0, r.z);
+        c.rotation.y = r.yaw;
+        for (const w of r.v3d.wheels) w.rotation.x += Math.hypot(dx, dz) * k * 4 / r.v3d.wheelR;
+        continue;
+      }
       this.animate(r.fig, moving ? (r.anim === 2 ? 16 : 11) : 0, t, moving);
     }
   }

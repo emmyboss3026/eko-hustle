@@ -220,6 +220,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
         },
         onJoin: p => { view.current?.addRemote(p); setNet(x => ({ ...x, count: ++count })); },
         onLeave: id => { view.current?.removeRemote(id); setNet(x => ({ ...x, count: --count })); },
+        onCar: (id, car) => view.current?.setRemoteCar(id, car),
         onSnap: ps => ps.forEach(([id, x, z, yaw, anim]) => view.current?.moveRemote(id, x, z, yaw, anim)),
         onFix: (x, z) => view.current?.player.set(x, 0, z),
         onSay: m => {
@@ -231,6 +232,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       { name: live.current.state.sim.name, look: (live.current.state.sim.look ?? {}) as Record<string, unknown> },
       () => ({ x: view.current?.player.x ?? 0, z: view.current?.player.z ?? 0 }),
     );
+    conn.cars((live.current.state.vehicles ?? []).map(v => ({ model: v.model, color: v.color })));
     mp.current = conn;
     // A moment for the view to put you at the door you stepped out of, so the server hears the right spot
     const startTimer = setTimeout(() => conn.start(), 300);
@@ -255,6 +257,17 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       setSaid([]);
     };
   }, [walking, netOn]);
+
+  // Tell the city which cars you own and which one you are driving: others see it, and the server only lets you drive your own
+  useEffect(() => {
+    const c = mp.current;
+    if (!c || net.state !== "online") return;
+    const cars = state.vehicles ?? [];
+    c.cars(cars.map(v => ({ model: v.model, color: v.color })));
+    const v = drive ? cars.find(x => x.uid === drive.uid) : undefined;
+    c.drive(v ? { model: v.model, color: v.color } : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [net.state, state.vehicles, drive?.uid]);
 
   // Start walking: step out a few paces from the door of where you are.
   // Stop walking: look at the place you're at.

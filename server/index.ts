@@ -57,7 +57,7 @@ const sockets = new Map<string, WebSocket>();
 
 const wss = new WebSocketServer({
   port: PORT,
-  maxPayload: 1024, // every message is tiny; anything bigger is refused
+  maxPayload: 2048, // every message is tiny; anything bigger is refused
   verifyClient: ({ origin }: { origin?: string }) => !origin || ORIGINS.includes(origin),
 });
 
@@ -93,12 +93,14 @@ wss.on("connection", ws => {
         return;
       }
       const want = typeof msg.instance === "string" ? msg.instance : undefined;
-      const m = cities.join({ id, name: String(name ?? ""), look: msg.look, at: msg.at as { x?: unknown; z?: unknown }, send }, want);
+      const m = cities.join({ id, name: String(name ?? ""), look: msg.look, cars: msg.cars, at: msg.at as { x?: unknown; z?: unknown }, send }, want);
       log("join", m.instance, m.id, m.name);
       return;
     }
     if (msg.t === "move") cities.move(id, msg.x, msg.z, msg.yaw, msg.anim);
     else if (msg.t === "say") cities.say(id, msg.text);
+    else if (msg.t === "cars") cities.setCars(id, msg.cars);
+    else if (msg.t === "drive") cities.drive(id, msg.car);
     else if (msg.t === "remove" && typeof msg.id === "string") cities.removeVisitor(id, msg.id); // works only in your own home
   });
 
