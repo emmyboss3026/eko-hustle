@@ -3,7 +3,8 @@
 
 import type { GameState } from "./game";
 import type { Kit } from "./phone";
-import { FLOOR_PRICE, WALL_PRICE, edgeKey, floorById, homePlan, roomNames, wallsToEdges, wingLevel } from "../data/home";
+import { FLOOR_PRICE, WALL_PRICE, defaultEdges, edgeKey, floorById, homePlan, roomNames, tidyEdges, wallsToEdges, wingLevel } from "../data/home";
+import { blueprintById } from "../data/blueprints";
 import { allReachable, footprint } from "./path";
 import { HOME_GOALS, homeGoalById, type HomeGoal } from "../data/homeGoals";
 import { applyEffect, chapterOf, taskProgress } from "./story";
@@ -15,6 +16,9 @@ import {
 export type EstateCommand =
   | { type: "build"; id: string }
   | { type: "wall"; axis: "v" | "h"; at: number; i: number }
+  | { type: "walls"; edges: string[] }
+  | { type: "blueprint"; id: string }
+  | { type: "restoreLayout" }
   | { type: "floor"; room: string; style: string }
   | { type: "homeGoal"; id: string }
   | { type: "buyCar"; model: string; color: string }
@@ -30,6 +34,39 @@ export function homeGoalState(s: GameState, g: HomeGoal) {
   const open = !g.ch || chapterOf(s) >= g.ch;
   const claimed = !!s.homeGoals?.includes(g.id);
   return { tasks, open, claimed, ready: open && !claimed && tasks.every(t => t.done) };
+}
+
+const sizeOf = (s: GameState) => 8 + 2 * wingLevel(s.property);
+const edgesNow = (s: GameState) => s.home.walls ?? defaultEdges(wingLevel(s.property));
+
+/** Does a piece of furniture stand across this wall? A wall between its tiles would cut it in two. */
+export function straddles(s: GameState, e: string): boolean {
+  const [axis, at, i] = e.split(":");
+  const a = axis === "v" ? { x: +at - 1, y: +i } : { x: +i, y: +at - 1 };
+  const b = axis === "v" ? { x: +at, y: +i } : { x: +i, y: +at };
+  return s.home.objects.some(o => {
+    const [w, d] = footprint(o);
+    const covers = (t: { x: number; y: number }) => t.x >= o.x && t.x < o.x + w && t.y >= o.y && t.y < o.y + d;
+    return covers(a) && covers(b);
+  });
+}
+
+/** Why a set of walls cannot be built (a short sentence), or null. */
+export function wallsProblem(s: GameState, edges: string[]): string | null {
+  if (edges.some(e => straddles(s, e))) return "Furniture is in the way of a wall.";
+  if (!allReachable(homePlan(wingLevel(s.property), edges))) return "A wall would shut a room in. Leave a gap for a door.";
+  return null;
+}
+
+/** What it costs to change from the walls you have to these (negative: you get money back). Moving a wall costs nothing:
+ *  each piece taken away pays for one put somewhere else. Extra pieces cost WALL_PRICE; extra pieces removed pay half back. */
+export function wallsCost(s: GameState, edges: string[]): number {
+  const before = new Set(edgesNow(s));
+  const after = new Set(edges);
+  const added = [...after].filter(e => !before.has(e)).length;
+  const removed = [...before].filter(e => !after.has(e)).length;
+  const paired = Math.min(added, removed);
+  return (added - paired) * WALL_PRICE - Math.floor(((removed - paired) * WALL_PRICE) / 2);
 }
 
 export const homeGoalsDone = (s: GameState) => HOME_GOALS.filter(g => s.homeGoals?.includes(g.id)).length;
@@ -93,6 +130,40 @@ export function estateStep(s: GameState, cmd: EstateCommand, kit: Kit): GameStat
       if (!allReachable(homePlan(level, next))) return kit.say(s, "That wall would shut a room in. Leave a gap for a door.");
       const paid = has ? s : kit.charge(s, WALL_PRICE, "home", "Wall");
       return { ...paid, home: { ...paid.home, walls: next } };
+    }
+
+    case "walls": {
+      // Build the walls you drew in the wall editor, all at once. Useless pieces (floating in the middle of a room) are left out.
+      if (!Array.isArray(cmd.edges) || cmd.edges.length > 400) return s;
+      const edges = tidyEdges(cmd.edges.filter(e => typeof e === "string"), sizeOf(s));
+      const bad = wallsProblem(s, edges);
+      if (bad) return kit.say(s, bad);
+      const cost = wallsCost(s, edges);
+      if (cost > s.money) return kit.say(s, "Not enough money for these walls.");
+      const paid = cost > 0 ? kit.charge(s, cost, "home", "Walls") : cost < 0 ? kit.move(s, -cost, "home", "Walls") : s;
+      return { ...paid, home: { ...paid.home, walls: edges } };
+    }
+
+    case "blueprint": {
+      // Buy a blueprint once, then use it whenever you like. It replaces your walls and floors (the old ones can be restored).
+      const b = blueprintById(cmd.id);
+      if (!b) return s;
+      const owned = !!s.home.blueprints?.includes(b.id);
+      if (!owned && s.money < b.price) return kit.say(s, "Not enough money for this blueprint.");
+      const size = sizeOf(s);
+      const edges = tidyEdges(tidyEdges(b.walls(size), size).filter(e => !straddles(s, e)), size);
+      const names = roomNames(homePlan(wingLevel(s.property)));
+      const floors = Object.fromEntries(Object.entries(b.floors).filter(([room]) => names.includes(room)));
+      const paid = owned ? s : kit.charge(s, b.price, "home", b.name);
+      return kit.say(
+        { ...paid, home: { ...paid.home, walls: edges, floors, blueprints: owned ? paid.home.blueprints : [...(paid.home.blueprints ?? []), b.id], prevWalls: edgesNow(s), prevFloors: s.home.floors } },
+        `${b.emoji} ${b.name}`,
+      );
+    }
+
+    case "restoreLayout": {
+      if (!s.home.prevWalls) return s;
+      return { ...s, home: { ...s.home, walls: s.home.prevWalls, floors: s.home.prevFloors, prevWalls: edgesNow(s), prevFloors: s.home.floors } };
     }
 
     case "floor": {

@@ -429,3 +429,21 @@ body { background: radial-gradient(120% 90% at 50% 0%, #26186b 0%, #0d1030 55%, 
 .hud2-money::after { width: 16px; height: 16px; margin-left: 6px; font-size: 12px; }
 .game { --hud-h: 132px; }
 @media (min-width: 900px) { .game { --hud-h: 128px; } }
+
+/* ---------- wall editor bar and blueprint cards ---------- */
+.place-bar.wall-bar { display: grid; gap: 8px; }
+.wall-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wall-tools button {
+  padding: 6px 10px; border-radius: 999px; font-weight: 800; font-size: 13px;
+  border: 1px solid var(--nv-line); background: rgba(255, 255, 255, 0.1); color: var(--nv-text);
+}
+.wall-tools button[aria-checked="true"] { background: linear-gradient(135deg, #2ee6c5, #3be08a); color: #06241d; border-color: transparent; }
+.wall-tools button:disabled { opacity: 0.4; }
+.wall-sep { width: 1px; height: 22px; background: var(--nv-line); margin: 0 2px; }
+.wall-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.wall-cost { margin-right: auto; font-weight: 800; color: var(--nv-teal); }
+.plan-card { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: center; padding: 10px; margin-bottom: 10px; border-radius: 18px; background: #fff; border: 1px solid rgba(60, 50, 140, 0.16); box-shadow: 0 2px 8px rgba(40, 30, 120, 0.08); }
+.plan-card.current { border-color: var(--nv-teal); }
+.plan-svg { width: 96px; height: 96px; background: #fff7ea; border-radius: 8px; }
+.plan-info { display: grid; gap: 6px; justify-items: start; }
+.wall-warn { color: #ffb86b; }

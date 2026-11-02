@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { HOME_GOALS } from "../data/homeGoals";
 import { SIDES } from "./story";
+import { BLUEPRINTS } from "../data/blueprints";
 import { newGame, reduce, passTime, shiftPay, mood, earnings, upgrade, canRevive, type GameState } from "./game";
 import { actionById } from "../data/actions";
 import { STORY } from "../data/story";
 import { RENT } from "./economy";
-import { HOME, CATALOG, homePlan, wingLevel, levelForObjects, WALL_PRICE, FLOOR_PRICE, floorById } from "../data/home";
+import { HOME, CATALOG, homePlan, wingLevel, levelForObjects, WALL_PRICE, FLOOR_PRICE, floorById, tidyEdges, defaultEdges } from "../data/home";
 import { canPlace, findPath, wallBetween, allReachable } from "./path";
+import { wallsCost } from "./estate";
 
 const sim = { name: "Ada", trait: "hustler" as const, avatar: "👩🏾" };
 const fresh = (patch: Partial<GameState> = {}): GameState => ({ ...newGame(sim), ...patch });
@@ -520,5 +522,67 @@ describe("home goals", () => {
     const opened = new Set(SIDES.flatMap(m => (Array.isArray(m.if) ? m.if : m.if ? [m.if] : [])).filter(f => f.startsWith("home:")));
     for (const f of opened) expect(HOME_GOALS.some(g => `home:${g.id}` === f), f).toBe(true);
     expect(opened.size).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe("wall editor and blueprints", () => {
+  const level = (n: number) => (n - 8) / 2;
+
+  it("a piece floating in the middle of a room is useless and gets tidied away; half-walls stay", () => {
+    expect(tidyEdges(["v:4:3"], 8)).toEqual([]);
+    expect(tidyEdges(["v:4:3", "v:4:4"], 8)).toEqual([]);
+    expect(tidyEdges(["h:4:0", "h:4:1"], 8)).toEqual(["h:4:0", "h:4:1"]);          // joined to the outer wall at one end
+    expect(tidyEdges(["v:4:0", "v:4:1", "h:2:4", "v:9:2"], 8)).toEqual(["v:4:0", "v:4:1", "h:2:4"]);  // h:2:4 touches v:4:1's end; v:9 is outside
+  });
+
+  it("moving a wall is free, extra pieces cost, extra removals pay half back", () => {
+    const s = fresh({ money: 100_000 });
+    const base = defaultEdges(0);
+    expect(wallsCost(s, base)).toBe(0);
+    const moved = [...base.filter(e => e !== "h:3:5"), "h:4:5"];
+    expect(wallsCost(s, moved)).toBe(0);
+    expect(wallsCost(s, [...base, "h:4:0"])).toBe(WALL_PRICE);
+    expect(wallsCost(s, base.slice(1))).toBe(-WALL_PRICE / 2);
+  });
+
+  it("applies drawn walls, charges once, and drops floating pieces", () => {
+    const s = fresh({ money: 100_000 });
+    const edges = [...defaultEdges(0), "h:4:0", "h:4:1", "v:6:6"];   // the last one floats
+    const next = reduce(s, { type: "walls", edges });
+    expect(next.home.walls).toContain("h:4:1");
+    expect(next.home.walls).not.toContain("v:6:6");
+    expect(next.money).toBe(100_000 - 2 * WALL_PRICE);
+  });
+
+  it("refuses walls that shut a room in or cut furniture", () => {
+    const s = fresh({ money: 100_000 });
+    const sealed = defaultEdges(0).concat(["v:5:1"]);                  // closes the doorway into the bathroom
+    expect(reduce(s, { type: "walls", edges: sealed }).home.walls).toBeUndefined();
+    const bed = { uid: 99, type: "bed" as const, x: 6, y: 5, rot: 0 };
+    const withBed = { ...s, home: { ...s.home, objects: [...s.home.objects, bed] } };
+    expect(reduce(withBed, { type: "walls", edges: [...defaultEdges(0), "v:7:5", "v:7:6", "v:7:7"] }).home.walls).toBeUndefined();
+  });
+
+  it.each([8, 10, 12])("every blueprint fits a %i-tile flat: all of it reachable, nothing floating", n => {
+    for (const b of BLUEPRINTS) {
+      const edges = b.walls(n);
+      expect(tidyEdges(edges, n).length, `${b.id} has floating pieces at ${n}`).toBe(new Set(edges).size);
+      expect(allReachable(homePlan(level(n), edges)), `${b.id} shuts a room in at ${n}`).toBe(true);
+    }
+  });
+
+  it("buying a blueprint charges once, uses it, and can be undone", () => {
+    const s = fresh({ money: 1_000_000 });
+    const b = BLUEPRINTS[1];
+    const one = reduce(s, { type: "blueprint", id: b.id });
+    expect(one.money).toBe(1_000_000 - b.price);
+    expect(one.home.blueprints).toEqual([b.id]);
+    expect(one.home.walls!.length).toBeGreaterThan(0);
+    const again = reduce(one, { type: "blueprint", id: BLUEPRINTS[0].id });
+    const back = reduce(again, { type: "blueprint", id: b.id });
+    expect(back.money).toBe(again.money);                              // already owned: free
+    const restored = reduce(one, { type: "restoreLayout" });
+    expect(restored.home.walls).toEqual(defaultEdges(0));
+    expect(reduce(fresh({ money: 10 }), { type: "blueprint", id: b.id }).home.walls).toBeUndefined();
   });
 });

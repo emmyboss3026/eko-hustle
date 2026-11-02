@@ -54,6 +54,9 @@ export type Home = {
   nextUid: number;
   walls?: string[];    // walls you moved (see edgeKey in data/home.ts); none = the layout the flat came with
   floors?: Record<string, string>; // floors you laid, by room name
+  blueprints?: string[];           // house blueprints you bought (see data/blueprints.ts)
+  prevWalls?: string[];            // the layout before the last blueprint, so you can go back
+  prevFloors?: Record<string, string>;
   food: number;        // meal packs for cooking
   fuel: number;        // litres of generator fuel
 };
@@ -774,6 +777,9 @@ function step(s: GameState, cmd: Command): GameState {
 
     case "build":
     case "wall":
+    case "walls":
+    case "blueprint":
+    case "restoreLayout":
     case "floor":
     case "homeGoal":
     case "buyCar":

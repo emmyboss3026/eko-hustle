@@ -87,6 +87,56 @@ export function edgesToWalls(edges: string[]): Wall[] {
   return walls;
 }
 
+/** The walls a flat comes with at this wing level, as edges. */
+export const defaultEdges = (level: number) => wallsToEdges(basePlan(level).walls);
+
+/** Is this a wall edge inside a flat of this size? (Outer walls are not edges; they are fixed.) */
+export function validEdge(e: string, size: number): boolean {
+  const m = /^([vh]):(\d{1,2}):(\d{1,2})$/.exec(e);
+  return !!m && +m[2] >= 1 && +m[2] < size && +m[3] >= 0 && +m[3] < size;
+}
+
+/** Take out the pieces of wall that do nothing. Walls that join up form one piece of structure; if none of it touches the outer
+ *  wall it floats in the middle of a room, divides nothing and wastes space, so it goes. A wall (or a half-wall) joined to the outer
+ *  wall, directly or through other walls, stays. Also drops edges outside the flat and duplicates. */
+export function tidyEdges(edges: string[], size: number): string[] {
+  const all = [...new Set(edges.filter(e => validEdge(e, size)))];
+  const ends = (e: string): [string, string] => {
+    const [axis, at, i] = e.split(":");
+    return axis === "v" ? [`${at},${i}`, `${at},${+i + 1}`] : [`${i},${at}`, `${+i + 1},${at}`];
+  };
+  const onEdge = (v: string) => {
+    const [x, y] = v.split(",").map(Number);
+    return x === 0 || y === 0 || x === size || y === size;
+  };
+  // Start from the vertices on the outer wall and spread along touching walls
+  const reached = new Set<string>();
+  const keep = new Set<string>();
+  const byVertex = new Map<string, string[]>();
+  for (const e of all) for (const v of ends(e)) byVertex.set(v, [...(byVertex.get(v) ?? []), e]);
+  // A one-tile doorway does not break a wall: the pieces either side of it belong together
+  const linked = new Map<string, string[]>();
+  const set = new Set(all);
+  for (const e of all) {
+    const [axis, at, i] = e.split(":");
+    if (set.has(`${axis}:${at}:${+i + 1}`) || !set.has(`${axis}:${at}:${+i + 2}`)) continue;
+    const [, from] = ends(e);
+    const [to] = ends(`${axis}:${at}:${+i + 2}`);
+    linked.set(from, [...(linked.get(from) ?? []), to]);
+    linked.set(to, [...(linked.get(to) ?? []), from]);
+  }
+  const queue = [...byVertex.keys()].filter(onEdge);
+  for (const v of queue) reached.add(v);
+  for (let q = 0; q < queue.length; q++) {
+    for (const v of linked.get(queue[q]) ?? []) if (!reached.has(v)) { reached.add(v); queue.push(v); }
+    for (const e of byVertex.get(queue[q]) ?? []) {
+      keep.add(e);
+      for (const v of ends(e)) if (!reached.has(v)) { reached.add(v); queue.push(v); }
+    }
+  }
+  return all.filter(e => keep.has(e));
+}
+
 /** Floors you can lay in a room (two shades make the chequer). Keys of Home.floors are room names, "Living room" for the rest. */
 export const FLOORS = [
   { id: "wood", a: "#d8a878", b: "#cc9c6c" },

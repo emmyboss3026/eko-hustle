@@ -45,6 +45,9 @@ export class HouseView {
   private plan: HomePlan = HOME;
   private shellGroup: THREE.Group | null = null;
   private planKey = "";
+  private shapeKey = "";   // size, rooms and floors: when only the walls change, only the inner walls are rebuilt
+  private innerWalls = new THREE.Group();
+  private fpInner = new THREE.Group();
   private wallGrid = new THREE.Group();   // faint lines between tiles, shown while you are moving walls
   private wallMode = false;
   private simTile: Tile = { ...HOME.door };
@@ -277,24 +280,12 @@ export class HouseView {
     for (const px of [doorX0, doorX1]) shell.add(box(0.08, stub + 0.12, 0.14, "#6d4c41", px, (stub + 0.12) / 2, dz));
     shell.add(box(1, 0.02, 0.14, "#6d4c41", (doorX0 + doorX1) / 2, 0.01, dz));
 
-    // Inside walls, with gaps for doors.
-    const topH = WALL_H - 1.1;
-    for (const w of this.plan.walls) {
-      for (let i = w.from; i < w.to; i++) {
-        if (w.doors.includes(i)) continue;
-        shell.add(
-          w.axis === "v"
-            ? box(0.08, 1.1, 1, mat(this.plan.wall), w.at - HALF, 0.55, i + 0.5 - HALF)
-            : box(1, 1.1, 0.08, mat(this.plan.wall), i + 0.5 - HALF, 0.55, w.at - HALF),
-        );
-        // In first person the inside walls go up to the ceiling.
-        this.fpWalls.add(
-          w.axis === "v"
-            ? box(0.08, topH, 1, wallMat, w.at - HALF, 1.1 + topH / 2, i + 0.5 - HALF)
-            : box(1, topH, 0.08, wallMat, i + 0.5 - HALF, 1.1 + topH / 2, w.at - HALF),
-        );
-      }
-    }
+    // Inside walls, with gaps for doors: kept in their own groups so they can be rebuilt on their own
+    this.innerWalls = new THREE.Group();
+    this.fpInner = new THREE.Group();
+    shell.add(this.innerWalls);
+    this.fpWalls.add(this.fpInner);
+    this.buildInner(wallMat);
     // First person: the front and right walls stand at full height (with the front door open)…
     const upH = WALL_H - stub;
     this.fpWalls.add(box(doorX0 + HALF, upH, 0.1, wallMat, (-HALF + doorX0) / 2, stub + upH / 2, dz));
@@ -326,26 +317,65 @@ export class HouseView {
     shell.add(this.wallGrid);
   }
 
+  /** The walls inside the flat, from the current plan. */
+  private buildInner(wallMat: THREE.Material = mat(this.plan.wall)) {
+    const topH = WALL_H - 1.1;
+    for (const w of this.plan.walls) {
+      for (let i = w.from; i < w.to; i++) {
+        if (w.doors.includes(i)) continue;
+        this.innerWalls.add(
+          w.axis === "v"
+            ? box(0.08, 1.1, 1, mat(this.plan.wall), w.at - HALF, 0.55, i + 0.5 - HALF)
+            : box(1, 1.1, 0.08, mat(this.plan.wall), i + 0.5 - HALF, 0.55, w.at - HALF),
+        );
+        // In first person the inside walls go up to the ceiling.
+        const up = w.axis === "v"
+          ? box(0.08, topH, 1, wallMat, w.at - HALF, 1.1 + topH / 2, i + 0.5 - HALF)
+          : box(1, topH, 0.08, wallMat, i + 0.5 - HALF, 1.1 + topH / 2, w.at - HALF);
+        up.castShadow = false;
+        this.fpInner.add(up);
+      }
+    }
+  }
+
+  /** Lock the camera while a wall is being dragged, so the drag does not turn the view. */
+  setCameraLock(on: boolean) {
+    this.controls.enabled = !on && !this.fp;
+  }
+
+  /** Where a screen point lands on the floor, in tile units (0 to the size of the flat), or null. */
+  groundAt(clientX: number, clientY: number): { u: number; v: number } | null {
+    this.ray(clientX, clientY);
+    const p = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+    return p ? { u: p.x + HALF, v: p.z + HALF } : null;
+  }
+
   /** Show the lines between tiles while you are moving walls. */
   setWallMode(on: boolean) {
     this.wallMode = on;
     this.wallGrid.visible = on;
   }
 
-  /** The line between two tiles nearest a screen point (to add or take away a wall there), or null if it is not near one. */
-  edgeAt(clientX: number, clientY: number): { axis: "v" | "h"; at: number; i: number } | null {
+  /** The line between two tiles nearest a screen point (to add or take away a wall there), or null if it is not near one.
+   *  Walls stand 1.1 tall, so a tap on an existing wall is read at wall height: pass the walls you have as `existing`. */
+  edgeAt(clientX: number, clientY: number, existing: string[] = []): { axis: "v" | "h"; at: number; i: number } | null {
     this.ray(clientX, clientY);
-    const p = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
-    if (!p) return null;
-    const u = p.x + HALF, v = p.z + HALF;
-    const vx = Math.round(u), hy = Math.round(v);
-    const dv = Math.abs(u - vx), dh = Math.abs(v - hy);
     const n = this.plan.size;
-    const vOk = vx >= 1 && vx < n && v >= 0 && v < n;
-    const hOk = hy >= 1 && hy < n && u >= 0 && u < n;
-    if (vOk && (!hOk || dv <= dh) && dv < 0.32) return { axis: "v", at: vx, i: Math.floor(v) };
-    if (hOk && dh < 0.32) return { axis: "h", at: hy, i: Math.floor(u) };
-    return null;
+    const nearest = (height: number) => {
+      const p = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -height), new THREE.Vector3());
+      if (!p) return null;
+      const u = p.x + HALF, v = p.z + HALF;
+      const vx = Math.round(u), hy = Math.round(v);
+      const dv = Math.abs(u - vx), dh = Math.abs(v - hy);
+      const vOk = vx >= 1 && vx < n && v >= 0 && v < n;
+      const hOk = hy >= 1 && hy < n && u >= 0 && u < n;
+      if (vOk && (!hOk || dv <= dh) && dv < 0.32) return { axis: "v" as const, at: vx, i: Math.floor(v) };
+      if (hOk && dh < 0.32) return { axis: "h" as const, at: hy, i: Math.floor(u) };
+      return null;
+    };
+    const wall = existing.length ? nearest(0.55) : null;
+    if (wall && existing.includes(`${wall.axis}:${wall.at}:${wall.i}`)) return wall;
+    return nearest(0);
   }
 
   /** Switch to a bigger (or smaller) flat after building an extension. Rebuilds the shell around the same tiles. */
@@ -353,6 +383,18 @@ export class HouseView {
     const key = JSON.stringify([plan.size, plan.walls, plan.rooms, plan.floor, plan.floor2]);
     if (key === this.planKey) return;
     this.planKey = key;
+    const shape = JSON.stringify([plan.size, plan.rooms, plan.floor, plan.floor2]);
+    if (shape === this.shapeKey && this.shellGroup) {
+      // Only the walls moved (you are dragging one): rebuild just the inside walls
+      this.plan = plan;
+      for (const g of [this.innerWalls, this.fpInner]) {
+        g.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
+        for (const c of [...g.children]) g.remove(c);
+      }
+      this.buildInner();
+      return;
+    }
+    this.shapeKey = shape;
     this.plan = plan;
     if (this.shellGroup) {
       this.scene.remove(this.shellGroup);
