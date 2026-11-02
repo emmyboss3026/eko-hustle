@@ -15,14 +15,16 @@ import RewardsApp from "./RewardsApp";
 import BoardApp from "./BoardApp";
 import QuickApp from "./QuickApp";
 import StoryApp from "./StoryApp";
+import FriendsApp from "./FriendsApp";
 import { offered, storyOf } from "../../engine/story";
 import WorkTab from "../WorkTab";
 
-export type AppId = "bank" | "invest" | "business" | "invites" | "contacts" | "messages" | "rewards" | "board" | "jobs" | "quick" | "story";
+export type AppId = "bank" | "invest" | "business" | "invites" | "contacts" | "messages" | "rewards" | "board" | "jobs" | "quick" | "story" | "friends";
 
 export const APPS: { id: AppId; emoji: string; color: string }[] = [
   { id: "messages", emoji: "💬", color: "#25a55f" },
   { id: "story", emoji: "📖", color: "#7a4cc2" },
+  { id: "friends", emoji: "👫", color: "#2f9e8f" },
   { id: "bank", emoji: "🏦", color: "#1e5bd8" },
   { id: "invest", emoji: "📈", color: "#0d8a7a" },
   { id: "business", emoji: "🏪", color: "#d9822b" },
@@ -84,6 +86,7 @@ export default function Phone({ state, dispatch, app, onApp, onClose, onTravel, 
     case "jobs": body = <WorkTab state={state} dispatch={dispatch} goTo={onTravel} />; break;
     case "quick": body = <QuickApp state={state} dispatch={dispatch} />; break;
     case "story": body = <StoryApp state={state} dispatch={dispatch} />; break;
+    case "friends": body = <FriendsApp userId={userId} />; break;
     default:
       body = (
         <div className="phone-home">
