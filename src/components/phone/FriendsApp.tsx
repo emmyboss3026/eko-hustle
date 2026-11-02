@@ -6,7 +6,7 @@ import {
 } from "../../lib/friends";
 
 /** 👫 Friends: find players, send and answer requests, invite friends to your home. Needs an account. */
-export default function FriendsApp({ userId }: { userId: string | null }) {
+export default function FriendsApp({ userId, onVisit }: { userId: string | null; onVisit: (owner: { id: string; name: string }) => void }) {
   const { t } = useLang();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [invites, setInvites] = useState<HomeInvite[]>([]);
@@ -79,7 +79,8 @@ export default function FriendsApp({ userId }: { userId: string | null }) {
       {invites.length > 0 && <h3>{t("friends.homeInvites")}</h3>}
       {invites.map(i => (
         <div className="row" key={i.id}>
-          <span className="row-main"><span className="row-title">🏠 {i.name}</span><span className="note">{t("friends.visitSoon")}</span></span>
+          <span className="row-main"><span className="row-title">🏠 {i.name}</span></span>
+          <button className="chip-btn" onClick={() => onVisit({ id: i.id, name: i.name })}>{t("friends.visit")}</button>
         </div>
       ))}
 

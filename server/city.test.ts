@@ -153,3 +153,74 @@ describe("what a client may send", () => {
     expect(m.look).toEqual({ outfit: "#ff0000" });
   });
 });
+
+describe("homes", () => {
+  const inHome = () => {
+    const s = setup();
+    const send = (id: string) => (m: Msg) => s.inbox.get(id)!.push(m);
+    const enter = (id: string, owner: string) => {
+      s.inbox.set(id, []);
+      return s.cities.joinHome({ id, name: id, send: send(id) }, owner);
+    };
+    return { ...s, enter };
+  };
+
+  it("the owner and a visitor share one room, apart from the city", () => {
+    const s = inHome();
+    s.join("city-guy");
+    const owner = s.enter("owner", "owner");
+    const guest = s.enter("guest", "owner");
+    expect(owner!.instance).toBe("home:owner");
+    expect(guest!.instance).toBe("home:owner");
+    expect(last(s.inbox, "guest", "welcome")).toMatchObject({ home: "owner" });
+    expect((last(s.inbox, "guest", "welcome")!.players as unknown[]).length).toBe(1);
+    expect(last(s.inbox, "owner", "join")!.p).toMatchObject({ id: "guest", x: 2, z: 7 });
+    // the city player hears nothing from the home
+    s.advance(500);
+    s.cities.move("guest", 3, 7, 0, 1);
+    s.cities.tick();
+    expect(last(s.inbox, "city-guy", "snap")).toBeUndefined();
+    expect(last(s.inbox, "owner", "snap")!.ps).toEqual([["guest", 3, 7, 0, 1]]);
+  });
+
+  it("homes hold six people, and moves are checked against the room, not the street", () => {
+    const s = inHome();
+    for (let i = 0; i < 6; i++) expect(s.enter(`p${i}`, "o")).not.toBeNull();
+    expect(s.enter("p7", "o")).toBeNull();
+    s.advance(2000);
+    expect(s.cities.move("p0", 9, 7, 0, 1)).toBe(false);      // outside the 8-tile room
+    expect(s.cities.move("p0", 2, 7, 0, 1)).toBe(true);
+    s.advance(1000);
+    expect(s.cities.move("p0", 30, 7, 0, 1)).toBe(false);     // far too fast for a home
+  });
+
+  it("only the owner can send a visitor out", () => {
+    const s = inHome();
+    s.enter("owner", "owner"); s.enter("guest", "owner"); s.enter("other", "owner");
+    expect(s.cities.removeVisitor("guest", "other")).toBe(false);   // a visitor cannot
+    expect(s.cities.removeVisitor("owner", "owner")).toBe(false);   // nor remove themself this way
+    expect(s.cities.removeVisitor("owner", "guest")).toBe(true);
+    expect(last(s.inbox, "guest", "removed")).toBeDefined();
+    expect(last(s.inbox, "owner", "leave")).toMatchObject({ id: "guest" });
+    expect(s.cities.get("guest")).toBeUndefined();
+  });
+
+  it("chat in a home reaches everyone in the room, and leaving cleans the room up", () => {
+    const s = inHome();
+    s.enter("owner", "owner"); s.enter("guest", "owner");
+    s.advance(2000);
+    expect(s.cities.say("guest", "hello from the sofa")).toBe(1);
+    expect(last(s.inbox, "owner", "say")).toMatchObject({ text: "hello from the sofa" });
+    s.cities.leave("owner"); s.cities.leave("guest");
+    expect(s.cities.list()).toEqual([]);
+  });
+
+  it("walking back to the city leaves the home", () => {
+    const s = inHome();
+    s.enter("a", "a");
+    s.join("a"); // joins the public city: the home seat is given up
+    expect(s.cities.get("a")!.instance).toBe("001");
+    expect(s.cities.list().map(i => i.id)).toEqual(["001"]);
+  });
+});
+

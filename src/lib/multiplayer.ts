@@ -17,6 +17,7 @@ export type Handlers = {
   onSnap: (ps: [string, number, number, number, number][]) => void;
   onFix: (x: number, z: number) => void;   // the server refused a move: you are really here
   onSay: (s: Say) => void;
+  onEnded?: (why: "denied" | "removed" | "replaced" | "kicked") => void;   // the server will not let you stay: do not retry
 };
 
 /** One connection for as long as you walk the streets. Reconnects on its own and goes back to the same instance. */
@@ -31,7 +32,11 @@ export class Multiplayer {
   private who: { name: string; look: Record<string, unknown> };
   private at: () => { x: number; z: number };
 
-  constructor(h: Handlers, who: { name: string; look: Record<string, unknown> }, at: () => { x: number; z: number }) {
+  private home: string | null;
+
+  /** `home`: the owner's id to join their home instead of the city. */
+  constructor(h: Handlers, who: { name: string; look: Record<string, unknown> }, at: () => { x: number; z: number }, home: string | null = null) {
+    this.home = home;
     this.h = h;
     this.who = who;
     this.at = at;
@@ -54,7 +59,7 @@ export class Multiplayer {
     if (this.closed) return;
     const ws = new WebSocket(multiplayerUrl);
     this.ws = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ t: "hello", token, name: this.who.name, look: this.who.look, instance: this.instance, at: this.at() }));
+    ws.onopen = () => ws.send(JSON.stringify({ t: "hello", token, name: this.who.name, look: this.who.look, instance: this.instance, at: this.at(), home: this.home ?? undefined }));
     ws.onmessage = e => {
       let m: Record<string, unknown>;
       try { m = JSON.parse(String(e.data)); } catch { return; }
@@ -70,11 +75,15 @@ export class Multiplayer {
         case "snap": this.h.onSnap(m.ps as [string, number, number, number, number][]); break;
         case "fix": this.h.onFix(m.x as number, m.z as number); break;
         case "say": this.h.onSay(m as unknown as Say); break;
+        case "removed": this.closed = true; this.h.onEnded?.("removed"); break;
+        case "denied": this.closed = true; this.h.onEnded?.("denied"); break;
       }
     };
-    ws.onclose = () => {
+    ws.onclose = e => {
       this.ws = null;
       this.h.onStatus({ state: "offline" });
+      // The server closes with a code of 4000 or more when it does not want you back (signed in elsewhere, kicked, denied)
+      if (e.code >= 4000 && !this.closed) { this.closed = true; this.h.onEnded?.(e.code === 4004 ? "replaced" : "kicked"); }
       if (this.closed) return;
       this.timer = setTimeout(() => void this.open(), Math.min(10_000, 500 * 2 ** this.retry++));
     };
@@ -83,6 +92,11 @@ export class Multiplayer {
 
   move(x: number, z: number, yaw: number, anim: 0 | 1 | 2) {
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ t: "move", x, z, yaw, anim }));
+  }
+
+  /** The owner sends a visitor out of their home. The server ignores it from anyone else. */
+  remove(id: string) {
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ t: "remove", id }));
   }
 
   say(text: string) {

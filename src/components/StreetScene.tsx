@@ -17,7 +17,8 @@ type Props = {
   focus: SpotId | null;        // the place shown when you're not walking
   onEnter: (went: SpotId) => void;
   onStop: () => void;          // stop walking
-  firstPerson: boolean;        // see through the Sim's eyes while walking
+  firstPerson: boolean;        // see through the Sim eyes while walking
+  net?: boolean;               // false while visiting a home: you can only be in one place
 };
 
 // Where you appear when you step outside in each district
@@ -26,7 +27,7 @@ const DOOR_IDS = Object.keys(DOORS) as SpotId[];
 
 /** The open-world streets, full screen: walk around Lagos in 3D and go in through any door.
  *  When you're not walking, it shows the place you're at. */
-export default function StreetScene({ state, dispatch, walking, focus, onEnter, onStop, firstPerson }: Props) {
+export default function StreetScene({ state, dispatch, walking, focus, onEnter, onStop, firstPerson, net: netOn = true }: Props) {
   const { t, tx } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const bubbleEl = useRef<HTMLDivElement>(null);
@@ -186,7 +187,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
 
   // Join the shared city while you walk the streets, and leave when you stop.
   useEffect(() => {
-    if (!walking || !multiplayerUrl) return;
+    if (!walking || !netOn || !multiplayerUrl) return;
     let n = 0;
     let count = 1;
     const conn = new Multiplayer(
@@ -234,7 +235,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       setNet({ state: "offline", count: 0 });
       setSaid([]);
     };
-  }, [walking]);
+  }, [walking, netOn]);
 
   // Start walking: step out a few paces from the door of where you are.
   // Stop walking: look at the place you're at.

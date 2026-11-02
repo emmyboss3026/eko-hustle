@@ -39,6 +39,7 @@ export class HouseView {
   private furnitureKey = "";
   private ticks: Tick[] = [];
   private sim = buildSim();
+  private remotes = new Map<string, { fig: ReturnType<typeof buildSim>; x: number; z: number; yaw: number; tx: number; tz: number; tyaw: number; anim: number }>();
   private simPos: THREE.Vector3 | null = null;
   private simYaw = 0;
   private simTile: Tile = { ...HOME.door };
@@ -503,7 +504,57 @@ export class HouseView {
       this.camera.position.add(clamped.clone().sub(tg));
       tg.copy(clamped);
     }
+    this.updateRemotes(dt);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  // ---- other real players in this room (see lib/multiplayer.ts). Positions are in tiles: tile (i, j) is exactly (i, j). ----
+
+  /** Where you are, in the same tile units the server uses, and whether you are walking. */
+  mySpot(): { x: number; z: number; yaw: number; moving: boolean } {
+    const p = this.simPos ?? tileCenter(this.simTile.x, this.simTile.y);
+    return { x: p.x + HALF - 0.5, z: p.z + HALF - 0.5, yaw: this.simYaw, moving: this.path.length > 0 };
+  }
+
+  addRemote(p: { id: string; look?: Partial<Look>; x: number; z: number; yaw: number; anim?: number }) {
+    this.removeRemote(p.id);
+    const fig = buildSim(p.look ?? {});
+    this.scene.add(fig.root);
+    this.remotes.set(p.id, { fig, x: p.x, z: p.z, yaw: p.yaw, tx: p.x, tz: p.z, tyaw: p.yaw, anim: p.anim ?? 0 });
+  }
+
+  moveRemote(id: string, x: number, z: number, yaw: number, anim: number) {
+    const r = this.remotes.get(id);
+    if (r) Object.assign(r, { tx: x, tz: z, tyaw: yaw, anim });
+  }
+
+  removeRemote(id: string) {
+    const r = this.remotes.get(id);
+    if (!r) return;
+    this.scene.remove(r.fig.root);
+    this.remotes.delete(id);
+  }
+
+  clearRemotes() {
+    for (const id of [...this.remotes.keys()]) this.removeRemote(id);
+  }
+
+  private updateRemotes(dt: number) {
+    const k = 1 - Math.exp(-dt * 10);
+    for (const r of this.remotes.values()) {
+      r.x += (r.tx - r.x) * k;
+      r.z += (r.tz - r.z) * k;
+      let dy = r.tyaw - r.yaw;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      r.yaw += dy * k;
+      r.fig.root.position.set(r.x + 0.5 - HALF, 0, r.z + 0.5 - HALF);
+      r.fig.root.rotation.y = r.yaw;
+      const { body, legL, legR, armL, armR } = r.fig;
+      const moving = r.anim > 0 || Math.hypot(r.tx - r.x, r.tz - r.z) > 0.03;
+      const sw = moving ? Math.sin(this.time * 11) * 0.6 : 0;
+      legL.rotation.x = sw; legR.rotation.x = -sw; armL.rotation.x = -sw * 0.8; armR.rotation.x = sw * 0.8;
+      body.position.y = moving ? Math.abs(Math.sin(this.time * 11)) * 0.03 : Math.sin(this.time * 2) * 0.006;
+    }
   }
 
   private pose(name: Pose, t: number) {

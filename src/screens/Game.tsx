@@ -45,6 +45,7 @@ import { naira as nairaFmt } from "../engine/economy";
 // The 3D scenes are a big download, so they load in the background.
 const RoomScene = lazy(() => import("../components/RoomScene"));
 const StreetScene = lazy(() => import("../components/StreetScene"));
+const VisitScene = lazy(() => import("../components/VisitScene"));
 
 type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary";
 
@@ -106,6 +107,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const [toast, setToast] = useState<string | null>(null);
   const viewRef = useRef<HouseView | null>(null);
   const [phone, setPhone] = useState<AppId | "home" | null>(null);
+  const [visiting, setVisiting] = useState<{ id: string; name: string } | null>(null); // a friend's home you are in
   const [daily, setDaily] = useState<DailyStatus | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState<{ amount: number; day: number } | null>(null);
@@ -136,7 +138,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   // The clock: game minutes per real second (slower with relaxed survival, see data/survival.ts). It waits while a panel, event, the guide or a ride is open,
   // so you can read in peace.
   const eventOpen = state.eventId !== null;
-  const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null || phone !== null;
+  const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null || phone !== null || visiting !== null;
   const minutesPerTick = isRelaxed(state) ? RELAXED.minutesPerTick : CLASSIC.minutesPerTick;
   useEffect(() => {
     if (stopped) return;
@@ -300,6 +302,8 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             onPlaceTile={(x, y) => placing && setPlacing({ ...placing, x, y })}
             shift={narrow && (panel || selected !== null) ? 0.12 : 0}
             firstPerson={firstPerson}
+            userId={userId}
+            net={visiting === null}
           />
         )}
         {showStreet && (
@@ -315,8 +319,10 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             }}
             onStop={() => setWalking(false)}
             firstPerson={firstPerson}
+            net={visiting === null}
           />
         )}
+        {visiting && <VisitScene owner={visiting} state={state} onLeave={() => setVisiting(null)} />}
       </Suspense>
       {camHint && firstPerson && (showRoom || walking) && <div className="cam-hint" onAnimationEnd={() => setCamHint(false)}>{t("camera.look")}</div>}
       {!showRoom && !showStreet && <CityBackdrop time={state.time} name={tx.district(state.location)} />}
@@ -539,6 +545,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
           claiming={claiming}
           claimed={claimed}
           userId={userId}
+          onVisit={owner => { setPhone(null); setVisiting(owner); }}
         />
       )}
       {ride && <Cutscene ride={ride} onDone={endRide} />}

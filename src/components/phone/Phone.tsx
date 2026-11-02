@@ -48,10 +48,11 @@ type Props = {
   claiming: boolean;
   claimed: { amount: number; day: number } | null;
   userId: string | null;
+  onVisit: (owner: { id: string; name: string }) => void;
 };
 
 /** The in-game smartphone: a home screen of apps, each one working with the real game state. */
-export default function Phone({ state, dispatch, app, onApp, onClose, onTravel, daily, onClaim, claiming, claimed, userId }: Props) {
+export default function Phone({ state, dispatch, app, onApp, onClose, onTravel, daily, onClaim, claiming, claimed, userId, onVisit }: Props) {
   const { t } = useLang();
   const badges: Partial<Record<AppId, number>> = {
     messages: unreadCount(state),
@@ -86,7 +87,7 @@ export default function Phone({ state, dispatch, app, onApp, onClose, onTravel, 
     case "jobs": body = <WorkTab state={state} dispatch={dispatch} goTo={onTravel} />; break;
     case "quick": body = <QuickApp state={state} dispatch={dispatch} />; break;
     case "story": body = <StoryApp state={state} dispatch={dispatch} />; break;
-    case "friends": body = <FriendsApp userId={userId} />; break;
+    case "friends": body = <FriendsApp userId={userId} onVisit={onVisit} />; break;
     default:
       body = (
         <div className="phone-home">

@@ -5,6 +5,9 @@ import { canPlace } from "../engine/path";
 import { HouseView } from "../three/HouseView";
 import { useLang } from "../i18n/react";
 import { footstep } from "../lib/audio";
+import { publishHome } from "../lib/homes";
+import { multiplayerUrl } from "../lib/multiplayer";
+import { useHomeNet } from "./useHomeNet";
 
 export type Placing = { type: FurnitureType; uid: number | null; x: number | null; y: number | null; rot: number };
 
@@ -16,7 +19,9 @@ type Props = {
   placing: Placing | null;
   onPlaceTile: (x: number, y: number) => void;
   shift: number;   // how far to draw the room up the screen (when a panel covers the bottom)
-  firstPerson: boolean; // see through the Sim's eyes
+  firstPerson: boolean; // see through the Sim eyes
+  userId: string | null; // signed in: friends you invite can visit, and you see them here
+  net: boolean;          // false while you are visiting someone else (you can only be in one place)
 };
 
 const shirts: Record<string, string> = {
@@ -30,7 +35,7 @@ export function placingValid(state: GameState, p: Placing | null): boolean {
 }
 
 /** Your room in 3D, filling the whole screen. Tap furniture to use it, tap the floor to walk. */
-export default function RoomScene({ state, viewRef, selected, onSelect, placing, onPlaceTile, shift, firstPerson }: Props) {
+export default function RoomScene({ state, viewRef, selected, onSelect, placing, onPlaceTile, shift, firstPerson, userId, net: netOn }: Props) {
   const { t } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const [noGl, setNoGl] = useState(false);
@@ -57,6 +62,14 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
   useEffect(() => {
     viewRef.current?.setState(objects, { hour, powered: light, grid: state.power.grid, genRunning: gen, home: true }, selected);
   }, [objects, hour, light, gen, selected, state.power.grid, viewRef]);
+
+  // Visitors: join my own home room while I am here, and keep a copy of my furniture for them to see
+  const net = useHomeNet(viewRef, userId, { name: state.sim.name, look: (state.sim.look ?? {}) as Record<string, unknown> }, netOn && !!userId);
+  useEffect(() => {
+    if (!userId || !multiplayerUrl) return;
+    const h = setTimeout(() => void publishHome(objects), 1_500);
+    return () => clearTimeout(h);
+  }, [objects, userId]);
 
   useEffect(() => {
     viewRef.current?.setViewShift(shift);
@@ -118,6 +131,14 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
         aria-label={t("room.aria")}
       />
       {noGl && <div className="scene-msg">{t("room.noGl")}</div>}
+      {net.peers.length > 0 && (
+        <div className="visit-guests" role="status">
+          <b>{t("visit.guests")}</b>
+          {net.peers.map(p => (
+            <span key={p.id}>{p.name} <button className="chip-btn" onClick={() => net.remove(p.id)} aria-label={t("visit.send", { name: p.name })}>✕</button></span>
+          ))}
+        </div>
+      )}
     </>
   );
 }

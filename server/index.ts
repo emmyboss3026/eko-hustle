@@ -17,6 +17,22 @@ const HELLO_WITHIN_MS = 5_000;
 
 const log = (...a: unknown[]) => console.log(new Date().toISOString(), ...a);
 
+/** May this player enter that home? Asked of Supabase with the visitor's own token (can_enter_home). */
+async function mayEnterHome(token: unknown, owner: string, me: string): Promise<boolean> {
+  if (me === owner) return true;
+  if (typeof token !== "string" || !SUPABASE_URL || !SUPABASE_KEY) return false;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/can_enter_home`, {
+      method: "POST",
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_owner: owner }),
+    });
+    return r.ok && (await r.json()) === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Who does this Supabase token belong to? null if it is not valid. */
 async function userFor(token: unknown): Promise<{ id: string } | null> {
   if (typeof token !== "string" || !SUPABASE_URL || !SUPABASE_KEY) return null;
@@ -66,6 +82,16 @@ wss.on("connection", ws => {
       const name = user ? msg.name : `Guest-${id.slice(-4)}`;
       sockets.get(id)?.close(4004, "signed in elsewhere"); // one live character per account
       sockets.set(id, ws);
+      const home = typeof msg.home === "string" && /^[0-9a-f-]{36}$/.test(msg.home) ? msg.home : null;
+      if (home) {
+        // Entering a home: the owner, or a friend the owner has invited, and nobody else
+        const me = id;
+        const ok = await mayEnterHome(msg.token, home, me);
+        const m = ok ? cities.joinHome({ id: me, name: String(name ?? ""), look: msg.look, send }, home) : null;
+        if (!m) { send({ t: "denied", reason: ok ? "full" : "not_allowed" }); sockets.delete(me); id = null; ws.close(4005, "denied"); return; }
+        log("join home", home, m.id, m.name);
+        return;
+      }
       const want = typeof msg.instance === "string" ? msg.instance : undefined;
       const m = cities.join({ id, name: String(name ?? ""), look: msg.look, at: msg.at as { x?: unknown; z?: unknown }, send }, want);
       log("join", m.instance, m.id, m.name);
@@ -73,6 +99,7 @@ wss.on("connection", ws => {
     }
     if (msg.t === "move") cities.move(id, msg.x, msg.z, msg.yaw, msg.anim);
     else if (msg.t === "say") cities.say(id, msg.text);
+    else if (msg.t === "remove" && typeof msg.id === "string") cities.removeVisitor(id, msg.id); // works only in your own home
   });
 
   ws.on("close", () => {

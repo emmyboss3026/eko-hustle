@@ -10,6 +10,10 @@ export const CAPACITY = 24;          // players per city instance: a starting ta
 export const SEE_RANGE = 150;        // you only receive players this close (interest management)
 export const SAY_RANGE = 30;         // proximity chat reaches this far
 export const MAX_SAY = 120;
+export const HOME_CAPACITY = 6;      // people in one home at a time (owner + visitors)
+export const HOME_SIZE = 8;          // a home is an 8 x 8 tile room (see data/home.ts); positions there are in tiles
+const HOME_SPEED = 3;                // tiles per second, the same as the walking speed in HouseView
+const HOME_DOOR = { x: 2, z: 7 };    // where you appear when you come in
 const SAY_EVERY_MS = 1_000;
 const MOVE_EVERY_MS = 40;            // moves arriving faster than this are dropped
 const SPEED_SLACK = 1.6;             // run speed × this, so lag spikes do not rubber-band honest players
@@ -31,6 +35,7 @@ export type Member = {
   lastSay: number;
   strikes: number;
   dirty: boolean;
+  home: boolean;                     // in someone's home (positions are tiles) rather than the city (world units)
 };
 
 export type Options = {
@@ -99,7 +104,7 @@ export class Cities {
     const spawn = Number.isFinite(ax) && Number.isFinite(az) && Math.abs(ax) <= LAND_HALF && Math.abs(az) <= LAND_HALF && !blocked(ax, az, 0.3) ? { x: ax, z: az } : START;
     const m: Member = {
       id: p.id, name: cleanName(p.name), look: cleanLook(p.look), instance: id!,
-      x: spawn.x, z: spawn.z, yaw: 0, anim: 0, send: p.send, lastMove: t, lastSay: 0, strikes: 0, dirty: false,
+      x: spawn.x, z: spawn.z, yaw: 0, anim: 0, send: p.send, lastMove: t, lastSay: 0, strikes: 0, dirty: false, home: false,
     };
     // Everyone already there hears about the newcomer; the newcomer gets everyone in range
     for (const o of room.values()) o.send({ t: "join", p: publicOf(m) });
@@ -107,6 +112,34 @@ export class Cities {
     this.byId.set(m.id, m);
     m.send({ t: "welcome", id: m.id, instance: m.instance, capacity: this.capacity, players: [...room.values()].filter(o => o !== m && near(m, o, SEE_RANGE)).map(publicOf), x: m.x, z: m.z });
     return m;
+  }
+
+  /** Put a player in a home. The caller must already have checked that they may enter (the owner, or an invited friend). */
+  joinHome(p: { id: string; name: string; look?: unknown; send: Out }, owner: string): Member | null {
+    const old = this.byId.get(p.id);
+    if (old) this.leave(old.id);
+    const rid = `home:${owner}`;
+    let room = this.rooms.get(rid);
+    if (room && room.size >= HOME_CAPACITY) return null;
+    if (!room) { room = new Map(); this.rooms.set(rid, room); }
+    const m: Member = {
+      id: p.id, name: cleanName(p.name), look: cleanLook(p.look), instance: rid,
+      x: HOME_DOOR.x, z: HOME_DOOR.z, yaw: 0, anim: 0, send: p.send, lastMove: this.now(), lastSay: 0, strikes: 0, dirty: false, home: true,
+    };
+    for (const o of room.values()) o.send({ t: "join", p: publicOf(m) });
+    room.set(m.id, m);
+    this.byId.set(m.id, m);
+    m.send({ t: "welcome", id: m.id, instance: rid, home: owner, capacity: HOME_CAPACITY, players: [...room.values()].filter(o => o !== m).map(publicOf), x: m.x, z: m.z });
+    return m;
+  }
+
+  /** The owner sends a visitor out of their home. Nobody else can. */
+  removeVisitor(ownerId: string, guestId: string): boolean {
+    const g = this.byId.get(guestId);
+    if (!g || !g.home || g.instance !== `home:${ownerId}` || guestId === ownerId) return false;
+    g.send({ t: "removed" });
+    this.leave(guestId);
+    return true;
   }
 
   leave(id: string) {
@@ -134,10 +167,11 @@ export class Cities {
       return false;
     };
     if (![nx, nz, ny].every(Number.isFinite) || ![0, 1, 2].includes(na)) return refuse("bad numbers");
-    if (Math.abs(nx) > LAND_HALF || Math.abs(nz) > LAND_HALF) return refuse("off the land");
+    const out = m.home ? nx < 0 || nz < 0 || nx > HOME_SIZE || nz > HOME_SIZE : Math.abs(nx) > LAND_HALF || Math.abs(nz) > LAND_HALF;
+    if (out) return refuse(m.home ? "outside the home" : "off the land");
     const gap = Math.min(MAX_GAP_S, (t - m.lastMove) / 1000);
-    if (Math.hypot(nx - m.x, nz - m.z) > RUN_SPEED * SPEED_SLACK * gap + 0.5) return refuse("too fast");
-    if (blocked(nx, nz, 0.3)) return refuse("inside a wall");
+    if (Math.hypot(nx - m.x, nz - m.z) > (m.home ? HOME_SPEED : RUN_SPEED) * SPEED_SLACK * gap + 0.5) return refuse("too fast");
+    if (!m.home && blocked(nx, nz, 0.3)) return refuse("inside a wall");
     m.x = nx; m.z = nz; m.yaw = ny; m.anim = na; m.lastMove = t; m.dirty = true;
     if (m.strikes > 0 && gap > 1) m.strikes--; // honest players recover from the odd glitch
     return true;
@@ -154,7 +188,7 @@ export class Cities {
     m.lastSay = t;
     let heard = 0;
     for (const o of this.rooms.get(m.instance)?.values() ?? []) {
-      if (o === m || near(m, o, SAY_RANGE)) {
+      if (o === m || m.home || near(m, o, SAY_RANGE)) {
         o.send({ t: "say", id, name: m.name, text: clean });
         if (o !== m) heard++;
       }
@@ -168,7 +202,7 @@ export class Cities {
       const moved = [...room.values()].filter(m => m.dirty);
       if (moved.length) {
         for (const o of room.values()) {
-          const ps = moved.filter(m => m !== o && near(o, m, SEE_RANGE)).map(m => [m.id, round(m.x), round(m.z), round(m.yaw), m.anim]);
+          const ps = moved.filter(m => m !== o && (o.home || near(o, m, SEE_RANGE))).map(m => [m.id, round(m.x), round(m.z), round(m.yaw), m.anim]);
           if (ps.length) o.send({ t: "snap", ps });
         }
         for (const m of moved) m.dirty = false;

@@ -2776,3 +2776,13 @@ a.row { color: inherit; text-decoration: none; }
 .mp-said { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: #fff; text-shadow: 0 1px 3px #000; }
 .mp-bar form { display: flex; gap: 6px; }
 .mp-bar input { flex: 1; min-width: 0; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.4); background: rgba(0,0,0,.55); color: #fff; font-size: 14px; }
+
+/* Visiting a friend's home */
+.visit { position: fixed; inset: 0; z-index: 30; background: #1d1d1b; }
+.visit .scene { position: absolute; inset: 0; }
+.visit-bar { position: absolute; top: calc(8px + env(safe-area-inset-top)); left: 8px; right: 8px; display: flex; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 12px; background: rgba(38,38,34,.82); color: #fff; }
+.visit-bar .note { flex: 1; color: #ddd; font-size: 12px; }
+.visit-said { position: absolute; left: 12px; bottom: calc(70px + env(safe-area-inset-bottom)); max-width: min(340px, calc(100% - 24px)); }
+.visit-say { position: absolute; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; gap: 6px; max-width: 420px; }
+.visit-say input { flex: 1; min-width: 0; padding: 8px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.4); background: rgba(0,0,0,.55); color: #fff; font-size: 14px; }
+.visit-guests { position: absolute; left: 12px; top: calc(150px + env(safe-area-inset-top)); z-index: 6; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 5px 10px; border-radius: 12px; background: rgba(38,38,34,.82); color: #fff; font-size: 13px; }
