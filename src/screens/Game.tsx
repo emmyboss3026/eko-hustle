@@ -33,7 +33,7 @@ import { actionById } from "../data/actions";
 import { initAds } from "../lib/ads";
 import PaymentNotice from "../components/PaymentNotice";
 import { currentMission, type Mission } from "../data/missions";
-import { CATALOG, WALL_PRICE, type FurnitureType } from "../data/home";
+import { CATALOG, FLOORS, FLOOR_PRICE, WALL_PRICE, homePlan, roomAt, wingLevel, type FurnitureType } from "../data/home";
 import { spots, type SpotId } from "../data/spots";
 import { skylineStrip, skyFor } from "../art/art.js";
 import type { HouseView } from "../three/HouseView";
@@ -124,6 +124,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const [selected, setSelected] = useState<number | null>(null);
   const [placing, setPlacing] = useState<Placing | null>(null);
   const [wallMode, setWallMode] = useState(false);
+  const [floorStyle, setFloorStyle] = useState<string | null>(null);   // set while you are laying floors
   const [toast, setToast] = useState<string | null>(null);
   const viewRef = useRef<HouseView | null>(null);
   const [phone, setPhone] = useState<AppId | "home" | null>(null);
@@ -150,7 +151,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   // The clock: game minutes per real second (slower with relaxed survival, see data/survival.ts). It waits while a panel, event, the guide or a ride is open,
   // so you can read in peace.
   const eventOpen = state.eventId !== null;
-  const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null || wallMode || phone !== null || visiting !== null;
+  const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null || wallMode || floorStyle !== null || phone !== null || visiting !== null;
   const minutesPerTick = isRelaxed(state) ? RELAXED.minutesPerTick : CLASSIC.minutesPerTick;
   useEffect(() => {
     if (stopped) return;
@@ -353,6 +354,12 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             }}
             placing={placing}
             wallMode={wallMode}
+            floorMode={floorStyle !== null}
+            onFloorTile={(x, y) => {
+              if (floorStyle === null) return;
+              const room = roomAt(x, y, homePlan(wingLevel(state.property), state.home.walls, state.home.floors));
+              dispatch({ type: "floor", room, style: floorStyle });
+            }}
             onWallEdge={(axis, at, i) => dispatch({ type: "wall", axis, at, i })}
             onPlaceTile={(x, y) => placing && setPlacing({ ...placing, x, y })}
             shift={narrow && (panel || selected !== null) ? 0.12 : 0}
@@ -463,9 +470,10 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
       {/* ---------- bottom: messages, tips, quick buttons and the dock ---------- */}
       <div className={`bottom2 ${panel ? "under-panel" : ""}`}>
         {toast && !ride && !panel && <div className="toast2" aria-live="polite">{toast}</div>}
-        {!placing && !wallMode && !walking && !panel && selected === null && showRoom && (
+        {!placing && !wallMode && floorStyle === null && !walking && !panel && selected === null && showRoom && (
           <div className="quick">
             <button className="btn plain" onClick={() => setWallMode(true)}>🧱 {t("walls.tool")}</button>
+            <button className="btn plain" onClick={() => setFloorStyle("oak")}>🎨 {t("floors.tool")}</button>
           </div>
         )}
         {!placing && !walking && !panel && selected === null && (
@@ -490,6 +498,21 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
           </div>
         )}
         {!placing && !panel && selected === null && !walking && <TipBubble state={state} onHelp={() => openPanel("help")} />}
+
+        {floorStyle !== null && (
+          <div className="place-bar" role="group" aria-label={t("floors.tool")}>
+            <div>
+              <b>🎨 {t("floors.tool")}</b>
+              <small>{t("floors.hint", { price: naira(FLOOR_PRICE) })}</small>
+              <div className="swatch-row" role="radiogroup" aria-label={t("floors.tool")}>
+                {FLOORS.map(f => (
+                  <button key={f.id} role="radio" aria-checked={floorStyle === f.id} aria-label={t(`floor.${f.id}`)} title={t(`floor.${f.id}`)} style={{ background: `linear-gradient(135deg, ${f.a} 50%, ${f.b} 50%)` }} onClick={() => setFloorStyle(f.id)} />
+                ))}
+              </div>
+            </div>
+            <button className="btn" onClick={() => setFloorStyle(null)}>{t("walls.done")}</button>
+          </div>
+        )}
 
         {wallMode && (
           <div className="place-bar" role="group" aria-label={t("walls.tool")}>

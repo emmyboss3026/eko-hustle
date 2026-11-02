@@ -350,7 +350,7 @@ export class HouseView {
 
   /** Switch to a bigger (or smaller) flat after building an extension. Rebuilds the shell around the same tiles. */
   setPlan(plan: HomePlan) {
-    const key = `${plan.size}|${JSON.stringify(plan.walls)}`;
+    const key = JSON.stringify([plan.size, plan.walls, plan.rooms, plan.floor, plan.floor2]);
     if (key === this.planKey) return;
     this.planKey = key;
     this.plan = plan;

@@ -18,6 +18,8 @@ type Props = {
   onSelect: (uid: number | null) => void;
   placing: Placing | null;
   wallMode: boolean;
+  floorMode: boolean;
+  onFloorTile: (x: number, y: number) => void;
   onWallEdge: (axis: "v" | "h", at: number, i: number) => void;
   onPlaceTile: (x: number, y: number) => void;
   shift: number;   // how far to draw the room up the screen (when a panel covers the bottom)
@@ -32,12 +34,12 @@ const shirts: Record<string, string> = {
 
 export function placingValid(state: GameState, p: Placing | null): boolean {
   if (!p || p.x === null || p.y === null) return false;
-  return canPlace(homePlan(wingLevel(state.property), state.home.walls), state.home.objects, { type: p.type, uid: p.uid ?? undefined, x: p.x, y: p.y, rot: p.rot })
+  return canPlace(homePlan(wingLevel(state.property), state.home.walls, state.home.floors), state.home.objects, { type: p.type, uid: p.uid ?? undefined, x: p.x, y: p.y, rot: p.rot })
     && (p.uid !== null || state.money >= CATALOG[p.type].price);
 }
 
 /** Your room in 3D, filling the whole screen. Tap furniture to use it, tap the floor to walk. */
-export default function RoomScene({ state, viewRef, selected, onSelect, placing, wallMode, onWallEdge, onPlaceTile, shift, firstPerson, userId, net: netOn }: Props) {
+export default function RoomScene({ state, viewRef, selected, onSelect, placing, wallMode, floorMode, onFloorTile, onWallEdge, onPlaceTile, shift, firstPerson, userId, net: netOn }: Props) {
   const { t } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const [noGl, setNoGl] = useState(false);
@@ -63,9 +65,10 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
 
   const wing = wingLevel(state.property);
   const walls = state.home.walls;
+  const floors = state.home.floors;
   useEffect(() => {
-    viewRef.current?.setPlan(homePlan(wing, walls));
-  }, [wing, walls, viewRef]);
+    viewRef.current?.setPlan(homePlan(wing, walls, floors));
+  }, [wing, walls, floors, viewRef]);
 
   useEffect(() => {
     viewRef.current?.setWallMode(wallMode);
@@ -79,9 +82,9 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
   const net = useHomeNet(viewRef, userId, { name: state.sim.name, look: (state.sim.look ?? {}) as Record<string, unknown> }, netOn && !!userId);
   useEffect(() => {
     if (!userId || !multiplayerUrl) return;
-    const h = setTimeout(() => void publishHome(objects), 1_500);
+    const h = setTimeout(() => void publishHome(objects, { wing, walls, floors }), 1_500);
     return () => clearTimeout(h);
-  }, [objects, userId]);
+  }, [objects, userId, wing, walls, floors]);
 
   useEffect(() => {
     viewRef.current?.setViewShift(shift);
@@ -108,6 +111,11 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
     down.current = null;
     const v = viewRef.current;
     if (!v || !start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 7) return;
+    if (floorMode) {
+      const tile = v.tileAt(e.clientX, e.clientY);
+      if (tile) onFloorTile(tile.x, tile.y);
+      return;
+    }
     if (wallMode) {
       const edge = v.edgeAt(e.clientX, e.clientY);
       if (edge) onWallEdge(edge.axis, edge.at, edge.i);

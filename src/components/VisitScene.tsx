@@ -29,10 +29,12 @@ export default function VisitScene({ owner, state, onLeave }: Props) {
       return;
     }
     // The owner's furniture, if the server says I may see it
-    void fetchHome(owner.id).then(objects => {
+    void fetchHome(owner.id).then(home => {
       if (!alive) return;
-      if (!objects) return setLoad("denied");
-      view.current?.setPlan(homePlan(levelForObjects(objects)));
+      if (!home) return setLoad("denied");
+      const { objects, shape } = home;
+      // The owner's shape if the database has it, else a guess from where the furniture stands
+      view.current?.setPlan(shape ? homePlan(shape.wing, shape.walls, shape.floors) : homePlan(levelForObjects(objects)));
       view.current?.setState(objects, { hour: (state.time % 1440) / 60, powered: true, grid: true, genRunning: false, home: true }, null);
       setLoad("ready");
     });

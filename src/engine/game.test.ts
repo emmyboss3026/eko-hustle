@@ -3,7 +3,7 @@ import { newGame, reduce, passTime, shiftPay, mood, earnings, upgrade, canRevive
 import { actionById } from "../data/actions";
 import { STORY } from "../data/story";
 import { RENT } from "./economy";
-import { HOME, CATALOG, homePlan, wingLevel, levelForObjects, WALL_PRICE } from "../data/home";
+import { HOME, CATALOG, homePlan, wingLevel, levelForObjects, WALL_PRICE, FLOOR_PRICE, floorById } from "../data/home";
 import { canPlace, findPath, wallBetween, allReachable } from "./path";
 
 const sim = { name: "Ada", trait: "hustler" as const, avatar: "👩🏾" };
@@ -469,5 +469,25 @@ describe("moving walls", () => {
     expect(wall(s, "v", 8, 2).home.walls).toBeUndefined();
     expect(wall(s, "h", 3, 99).home.walls).toBeUndefined();
     for (const level of [0, 1, 2]) expect(allReachable(homePlan(level))).toBe(true);
+  });
+});
+
+describe("floors", () => {
+  it("lays a floor in one room for a fee, and the plan shows it", () => {
+    const s = reduce(fresh({ money: 100_000 }), { type: "floor", room: "Kitchen", style: "slate" });
+    expect(s.home.floors).toEqual({ Kitchen: "slate" });
+    expect(s.money).toBe(100_000 - FLOOR_PRICE);
+    const plan = homePlan(0, undefined, s.home.floors);
+    expect(plan.rooms.find(r => r.name === "Kitchen")!.floor).toBe(floorById("slate")!.a);
+    expect(plan.rooms.find(r => r.name === "Bedroom")!.floor).toBe(HOME.rooms.find(r => r.name === "Bedroom")!.floor);
+  });
+
+  it("refuses an unknown floor or room, the same floor twice, or no money", () => {
+    const rich = fresh({ money: 100_000 });
+    expect(reduce(rich, { type: "floor", room: "Kitchen", style: "gold" }).home.floors).toBeUndefined();
+    expect(reduce(rich, { type: "floor", room: "Garage", style: "oak" }).home.floors).toBeUndefined();
+    expect(reduce(fresh({ money: 0 }), { type: "floor", room: "Kitchen", style: "oak" }).home.floors).toBeUndefined();
+    const once = reduce(rich, { type: "floor", room: "Living room", style: "oak" });
+    expect(reduce(once, { type: "floor", room: "Living room", style: "oak" }).money).toBe(once.money);
   });
 });

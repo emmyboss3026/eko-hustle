@@ -51,9 +51,9 @@ export const HOME: HomePlan = {
     { name: "Bathroom", x0: 5, y0: 0, x1: 8, y1: 3, floor: "#8fd6e4", floor2: "#aee6f0" },
     { name: "Bedroom",  x0: 5, y0: 3, x1: 8, y1: 8, floor: "#d9b88f", floor2: "#cdab80" },
   ],
-  floor: "#d8a878",   // living room
-  floor2: "#cc9c6c",
-  wall: "#fff4e2",
+  floor: "#e6c79a",   // living room: light wood
+  floor2: "#dcbb8c",
+  wall: "#fffaf0",
   door: { x: 2, y: 7 },
 };
 
@@ -85,10 +85,41 @@ export function edgesToWalls(edges: string[]): Wall[] {
   return walls;
 }
 
-/** The flat for this wing level. `edges`: the walls you have moved, if you have (otherwise the layout it came with). */
-export function homePlan(level: number, edges?: string[]): HomePlan {
-  const plan = basePlan(level);
-  return edges ? { ...plan, walls: edgesToWalls(edges) } : plan;
+/** Floors you can lay in a room (two shades make the chequer). Keys of Home.floors are room names, "Living room" for the rest. */
+export const FLOORS = [
+  { id: "wood", a: "#d8a878", b: "#cc9c6c" },
+  { id: "oak", a: "#ead2ac", b: "#dfc49a" },
+  { id: "tile", a: "#eef2f5", b: "#d9e2e8" },
+  { id: "marble", a: "#f3ead8", b: "#e6dcc6" },
+  { id: "carpet", a: "#79c6bd", b: "#6bb9b0" },
+  { id: "slate", a: "#6b7480", b: "#5f6874" },
+  { id: "terracotta", a: "#d98a63", b: "#cc7d57" },
+] as const;
+export const FLOOR_PRICE = 20_000;   // per room
+export const floorById = (id: string) => FLOORS.find(f => f.id === id);
+export type Floors = Record<string, string>;
+
+/** Every room name a floor can be laid in. */
+export const roomNames = (plan: HomePlan) => [...plan.rooms.map(r => r.name), "Living room"];
+
+/** The flat for this wing level. `edges`: the walls you have moved; `floors`: the floors you have laid (otherwise what it came with). */
+export function homePlan(level: number, edges?: string[], floors?: Floors): HomePlan {
+  let plan = basePlan(level);
+  if (edges) plan = { ...plan, walls: edgesToWalls(edges) };
+  if (floors) {
+    const pick = (room: string) => floorById(floors[room] ?? "");
+    const living = pick("Living room");
+    plan = {
+      ...plan,
+      floor: living?.a ?? plan.floor,
+      floor2: living?.b ?? plan.floor2,
+      rooms: plan.rooms.map(r => {
+        const f = pick(r.name);
+        return f ? { ...r, floor: f.a, floor2: f.b } : r;
+      }),
+    };
+  }
+  return plan;
 }
 
 function basePlan(level: number): HomePlan {

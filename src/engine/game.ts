@@ -53,6 +53,7 @@ export type Home = {
   objects: Placed[];   // furniture in your room
   nextUid: number;
   walls?: string[];    // walls you moved (see edgeKey in data/home.ts); none = the layout the flat came with
+  floors?: Record<string, string>; // floors you laid, by room name
   food: number;        // meal packs for cooking
   fuel: number;        // litres of generator fuel
 };
@@ -696,7 +697,7 @@ function step(s: GameState, cmd: Command): GameState {
       const problem = itemBlocker(s, cmd.item);
       if (problem) return say(s, `❌ ${tx(s).furniture(cmd.item)}: ${problem}`);
       const obj: Placed = { uid: s.home.nextUid, type: cmd.item, x: cmd.x, y: cmd.y, rot: cmd.rot % 4 };
-      if (!canPlace(homePlan(wingLevel(s.property), s.home.walls), s.home.objects, obj)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(cmd.item) }));
+      if (!canPlace(homePlan(wingLevel(s.property), s.home.walls, s.home.floors), s.home.objects, obj)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(cmd.item) }));
       const next = bump(charge(s, spec.price, "home", tx(s).furniture(cmd.item)), "buy");
       return say(
         { ...next, home: { ...next.home, objects: [...next.home.objects, obj], nextUid: obj.uid + 1 } },
@@ -772,6 +773,7 @@ function step(s: GameState, cmd: Command): GameState {
 
     case "build":
     case "wall":
+    case "floor":
     case "buyCar":
     case "sellCar":
     case "paintCar":

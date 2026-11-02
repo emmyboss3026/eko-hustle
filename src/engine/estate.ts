@@ -3,7 +3,7 @@
 
 import type { GameState } from "./game";
 import type { Kit } from "./phone";
-import { WALL_PRICE, edgeKey, homePlan, wallsToEdges, wingLevel } from "../data/home";
+import { FLOOR_PRICE, WALL_PRICE, edgeKey, floorById, homePlan, roomNames, wallsToEdges, wingLevel } from "../data/home";
 import { allReachable, footprint } from "./path";
 import {
   CARS, CAR_RESALE, REPAINT_PRICE, SLOTS, UPGRADES, carById, freeSlot, slotNear, upgradeById,
@@ -13,6 +13,7 @@ import {
 export type EstateCommand =
   | { type: "build"; id: string }
   | { type: "wall"; axis: "v" | "h"; at: number; i: number }
+  | { type: "floor"; room: string; style: string }
   | { type: "buyCar"; model: string; color: string }
   | { type: "sellCar"; uid: number }
   | { type: "paintCar"; uid: number; color: string }
@@ -79,6 +80,16 @@ export function estateStep(s: GameState, cmd: EstateCommand, kit: Kit): GameStat
       if (!allReachable(homePlan(level, next))) return kit.say(s, "That wall would shut a room in. Leave a gap for a door.");
       const paid = has ? s : kit.charge(s, WALL_PRICE, "home", "Wall");
       return { ...paid, home: { ...paid.home, walls: next } };
+    }
+
+    case "floor": {
+      // Lay a new floor in one room
+      const plan = homePlan(wingLevel(s.property));
+      if (!floorById(cmd.style) || !roomNames(plan).includes(cmd.room)) return s;
+      if (s.home.floors?.[cmd.room] === cmd.style) return s;
+      if (s.money < FLOOR_PRICE) return kit.say(s, "Not enough money for a new floor.");
+      const paid = kit.charge(s, FLOOR_PRICE, "home", "Floor");
+      return { ...paid, home: { ...paid.home, floors: { ...paid.home.floors, [cmd.room]: cmd.style } } };
     }
 
     case "buyCar": {
