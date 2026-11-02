@@ -3,8 +3,8 @@ import { newGame, reduce, passTime, shiftPay, mood, earnings, upgrade, canRevive
 import { actionById } from "../data/actions";
 import { STORY } from "../data/story";
 import { RENT } from "./economy";
-import { HOME, CATALOG, homePlan, wingLevel, levelForObjects } from "../data/home";
-import { canPlace, findPath, wallBetween } from "./path";
+import { HOME, CATALOG, homePlan, wingLevel, levelForObjects, WALL_PRICE } from "../data/home";
+import { canPlace, findPath, wallBetween, allReachable } from "./path";
 
 const sim = { name: "Ada", trait: "hustler" as const, avatar: "👩🏾" };
 const fresh = (patch: Partial<GameState> = {}): GameState => ({ ...newGame(sim), ...patch });
@@ -433,5 +433,41 @@ describe("home extensions", () => {
     expect(levelForObjects([{ x: 3, y: 3 }])).toBe(0);
     expect(levelForObjects([{ x: 8, y: 1 }])).toBe(1);
     expect(levelForObjects([{ x: 3, y: 10 }])).toBe(2);
+  });
+});
+
+describe("moving walls", () => {
+  const wall = (s: GameState, axis: "v" | "h", at: number, i: number) => reduce(s, { type: "wall", axis, at, i });
+
+  it("takes away a wall for free and puts one back for a fee", () => {
+    const s0 = fresh({ money: 100_000 });
+    const s1 = wall(s0, "h", 3, 5);                  // the bathroom | bedroom wall
+    expect(s1.home.walls).toBeDefined();
+    expect(s1.home.walls).not.toContain("h:3:5");
+    expect(s1.money).toBe(100_000);
+    const s2 = wall(s1, "h", 3, 5);
+    expect(s2.home.walls).toContain("h:3:5");
+    expect(s2.money).toBe(100_000 - WALL_PRICE);
+  });
+
+  it("will not build without money, through furniture, or around a room with no way in", () => {
+    const poor = wall(fresh({ money: 0 }), "v", 3, 6);
+    expect(poor.home.walls).toBeUndefined();
+    const s = fresh({ money: 100_000 });
+    const rug = { uid: 99, type: "bed" as const, x: 6, y: 5, rot: 0 };   // a bed spans two tiles
+    const spans = { ...s, home: { ...s.home, objects: [...s.home.objects, rug] } };
+    const [w] = [CATALOG.bed.w];
+    expect(w).toBeGreaterThan(1);
+    expect(wall(spans, "v", 7, 5).home.walls).toBeUndefined();
+    // closing the doorway of the bathroom (the gap at row 1 of x = 5) seals it off
+    expect(wall(s, "v", 5, 1).home.walls).toBeUndefined();
+  });
+
+  it("ignores edges outside the room and keeps the flat reachable", () => {
+    const s = fresh({ money: 100_000 });
+    expect(wall(s, "v", 0, 2).home.walls).toBeUndefined();
+    expect(wall(s, "v", 8, 2).home.walls).toBeUndefined();
+    expect(wall(s, "h", 3, 99).home.walls).toBeUndefined();
+    for (const level of [0, 1, 2]) expect(allReachable(homePlan(level))).toBe(true);
   });
 });

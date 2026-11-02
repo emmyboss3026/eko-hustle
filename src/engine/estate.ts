@@ -3,6 +3,8 @@
 
 import type { GameState } from "./game";
 import type { Kit } from "./phone";
+import { WALL_PRICE, edgeKey, homePlan, wallsToEdges, wingLevel } from "../data/home";
+import { allReachable, footprint } from "./path";
 import {
   CARS, CAR_RESALE, REPAINT_PRICE, SLOTS, UPGRADES, carById, freeSlot, slotNear, upgradeById,
   type CarId, type SlotId, type Vehicle,
@@ -10,6 +12,7 @@ import {
 
 export type EstateCommand =
   | { type: "build"; id: string }
+  | { type: "wall"; axis: "v" | "h"; at: number; i: number }
   | { type: "buyCar"; model: string; color: string }
   | { type: "sellCar"; uid: number }
   | { type: "paintCar"; uid: number; color: string }
@@ -49,6 +52,33 @@ export function estateStep(s: GameState, cmd: EstateCommand, kit: Kit): GameStat
       const u = upgradeById(cmd.id)!;
       const next = kit.charge(s, u.price, "home", u.name);
       return kit.say({ ...next, property: { ...next.property, [u.id]: true } }, `🏗️ ${u.name} ${kit.money(u.price)}`);
+    }
+
+    case "wall": {
+      // Add or take away one piece of wall between two tiles. Removing is free; a new piece costs WALL_PRICE.
+      const level = wingLevel(s.property);
+      const now = homePlan(level, s.home.walls);
+      const { axis, at, i } = cmd;
+      if ((axis !== "v" && axis !== "h") || !Number.isInteger(at) || !Number.isInteger(i)) return s;
+      if (at < 1 || at >= now.size || i < 0 || i >= now.size) return s;
+      const cur = s.home.walls ?? wallsToEdges(now.walls);
+      const key = edgeKey(axis, at, i);
+      const has = cur.includes(key);
+      if (!has) {
+        if (s.money < WALL_PRICE) return kit.say(s, "Not enough money for a wall.");
+        const a = axis === "v" ? { x: at - 1, y: i } : { x: i, y: at - 1 };
+        const b = axis === "v" ? { x: at, y: i } : { x: i, y: at };
+        const across = s.home.objects.some(o => {
+          const [w, d] = footprint(o);
+          const covers = (t: { x: number; y: number }) => t.x >= o.x && t.x < o.x + w && t.y >= o.y && t.y < o.y + d;
+          return covers(a) && covers(b);
+        });
+        if (across) return kit.say(s, "Furniture is in the way of that wall.");
+      }
+      const next = has ? cur.filter(e => e !== key) : [...cur, key];
+      if (!allReachable(homePlan(level, next))) return kit.say(s, "That wall would shut a room in. Leave a gap for a door.");
+      const paid = has ? s : kit.charge(s, WALL_PRICE, "home", "Wall");
+      return { ...paid, home: { ...paid.home, walls: next } };
     }
 
     case "buyCar": {

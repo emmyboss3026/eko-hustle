@@ -64,7 +64,34 @@ export const MAX_SIZE = 12;
 
 export const wingLevel = (p?: { wing?: boolean; wing2?: boolean }) => (p?.wing ? (p?.wing2 ? 2 : 1) : 0);
 
-export function homePlan(level: number): HomePlan {
+/** Walls you can move are kept as single edges between two tiles: "v:5:2" is the vertical line at x = 5 beside row 2,
+ *  "h:3:6" the horizontal line at y = 3 beside column 6. */
+export const WALL_PRICE = 6_000;
+export const edgeKey = (axis: "v" | "h", at: number, i: number) => `${axis}:${at}:${i}`;
+
+export function wallsToEdges(walls: Wall[]): string[] {
+  const out: string[] = [];
+  for (const w of walls) for (let i = w.from; i < w.to; i++) if (!w.doors.includes(i)) out.push(edgeKey(w.axis, w.at, i));
+  return out;
+}
+
+export function edgesToWalls(edges: string[]): Wall[] {
+  const walls: Wall[] = [];
+  for (const e of edges) {
+    const [axis, at, i] = e.split(":");
+    if ((axis !== "v" && axis !== "h") || !Number.isInteger(+at) || !Number.isInteger(+i)) continue;
+    walls.push({ axis, at: +at, from: +i, to: +i + 1, doors: [] });
+  }
+  return walls;
+}
+
+/** The flat for this wing level. `edges`: the walls you have moved, if you have (otherwise the layout it came with). */
+export function homePlan(level: number, edges?: string[]): HomePlan {
+  const plan = basePlan(level);
+  return edges ? { ...plan, walls: edgesToWalls(edges) } : plan;
+}
+
+function basePlan(level: number): HomePlan {
   if (level <= 0) return HOME;
   const size = HOME.size + 2 * Math.min(2, level);
   return {

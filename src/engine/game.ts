@@ -52,6 +52,7 @@ export type Stats = {
 export type Home = {
   objects: Placed[];   // furniture in your room
   nextUid: number;
+  walls?: string[];    // walls you moved (see edgeKey in data/home.ts); none = the layout the flat came with
   food: number;        // meal packs for cooking
   fuel: number;        // litres of generator fuel
 };
@@ -695,7 +696,7 @@ function step(s: GameState, cmd: Command): GameState {
       const problem = itemBlocker(s, cmd.item);
       if (problem) return say(s, `❌ ${tx(s).furniture(cmd.item)}: ${problem}`);
       const obj: Placed = { uid: s.home.nextUid, type: cmd.item, x: cmd.x, y: cmd.y, rot: cmd.rot % 4 };
-      if (!canPlace(homePlan(wingLevel(s.property)), s.home.objects, obj)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(cmd.item) }));
+      if (!canPlace(homePlan(wingLevel(s.property), s.home.walls), s.home.objects, obj)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(cmd.item) }));
       const next = bump(charge(s, spec.price, "home", tx(s).furniture(cmd.item)), "buy");
       return say(
         { ...next, home: { ...next.home, objects: [...next.home.objects, obj], nextUid: obj.uid + 1 } },
@@ -708,7 +709,7 @@ function step(s: GameState, cmd: Command): GameState {
       if (!obj || CATALOG[obj.type].fixed) return s;
       if (s.location !== "mushin") return say(s, `❌ ${msg(s, "problem.goHome")}`);
       const moved = { ...obj, x: cmd.x, y: cmd.y, rot: cmd.rot % 4 };
-      if (!canPlace(homePlan(wingLevel(s.property)), s.home.objects, moved)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(obj.type) }));
+      if (!canPlace(homePlan(wingLevel(s.property), s.home.walls), s.home.objects, moved)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(obj.type) }));
       return { ...s, home: { ...s.home, objects: s.home.objects.map(o => (o.uid === obj.uid ? moved : o)) } };
     }
 
@@ -770,6 +771,7 @@ function step(s: GameState, cmd: Command): GameState {
       return storyStep(s, cmd, kit);
 
     case "build":
+    case "wall":
     case "buyCar":
     case "sellCar":
     case "paintCar":

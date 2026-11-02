@@ -33,7 +33,7 @@ import { actionById } from "../data/actions";
 import { initAds } from "../lib/ads";
 import PaymentNotice from "../components/PaymentNotice";
 import { currentMission, type Mission } from "../data/missions";
-import { CATALOG, type FurnitureType } from "../data/home";
+import { CATALOG, WALL_PRICE, type FurnitureType } from "../data/home";
 import { spots, type SpotId } from "../data/spots";
 import { skylineStrip, skyFor } from "../art/art.js";
 import type { HouseView } from "../three/HouseView";
@@ -123,6 +123,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const [entered, setEntered] = useState<SpotId | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [placing, setPlacing] = useState<Placing | null>(null);
+  const [wallMode, setWallMode] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const viewRef = useRef<HouseView | null>(null);
   const [phone, setPhone] = useState<AppId | "home" | null>(null);
@@ -149,7 +150,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   // The clock: game minutes per real second (slower with relaxed survival, see data/survival.ts). It waits while a panel, event, the guide or a ride is open,
   // so you can read in peace.
   const eventOpen = state.eventId !== null;
-  const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null || phone !== null || visiting !== null;
+  const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null || wallMode || phone !== null || visiting !== null;
   const minutesPerTick = isRelaxed(state) ? RELAXED.minutesPerTick : CLASSIC.minutesPerTick;
   useEffect(() => {
     if (stopped) return;
@@ -351,6 +352,8 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
               if (uid !== null) setPanel(null);
             }}
             placing={placing}
+            wallMode={wallMode}
+            onWallEdge={(axis, at, i) => dispatch({ type: "wall", axis, at, i })}
             onPlaceTile={(x, y) => placing && setPlacing({ ...placing, x, y })}
             shift={narrow && (panel || selected !== null) ? 0.12 : 0}
             firstPerson={firstPerson}
@@ -460,6 +463,11 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
       {/* ---------- bottom: messages, tips, quick buttons and the dock ---------- */}
       <div className={`bottom2 ${panel ? "under-panel" : ""}`}>
         {toast && !ride && !panel && <div className="toast2" aria-live="polite">{toast}</div>}
+        {!placing && !wallMode && !walking && !panel && selected === null && showRoom && (
+          <div className="quick">
+            <button className="btn plain" onClick={() => setWallMode(true)}>🧱 {t("walls.tool")}</button>
+          </div>
+        )}
         {!placing && !walking && !panel && selected === null && (
           <div className="quick">
             {canWork && (
@@ -482,6 +490,16 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
           </div>
         )}
         {!placing && !panel && selected === null && !walking && <TipBubble state={state} onHelp={() => openPanel("help")} />}
+
+        {wallMode && (
+          <div className="place-bar" role="group" aria-label={t("walls.tool")}>
+            <div>
+              <b>🧱 {t("walls.tool")}</b>
+              <small>{t("walls.hint", { price: naira(WALL_PRICE) })}</small>
+            </div>
+            <button className="btn" onClick={() => setWallMode(false)}>{t("walls.done")}</button>
+          </div>
+        )}
 
         {placing && (
           <div className="place-bar" role="group" aria-label={t("place.aria")}>

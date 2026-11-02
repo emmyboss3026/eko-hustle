@@ -52,6 +52,23 @@ export function wallBetween(home: HomePlan, a: Tile, b: Tile): boolean {
 
 const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 
+/** Can you walk from the front door to every tile (through doors and gaps, ignoring furniture)? A wall may not seal a room off. */
+export function allReachable(home: HomePlan): boolean {
+  const seen = new Set<number>([home.door.x * 1000 + home.door.y]);
+  const queue: Tile[] = [home.door];
+  for (let q = 0; q < queue.length; q++) {
+    const t = queue[q];
+    for (const [dx, dy] of STEPS) {
+      const n = { x: t.x + dx, y: t.y + dy };
+      const k = n.x * 1000 + n.y;
+      if (!inside(home, n.x, n.y) || seen.has(k) || wallBetween(home, t, n)) continue;
+      seen.add(k);
+      queue.push(n);
+    }
+  }
+  return seen.size === home.size * home.size;
+}
+
 /** Shortest route from start to goal (start not included), or null. [] means you're there. */
 export function findPath(home: HomePlan, objects: Placed[], start: Tile, goal: Tile): Tile[] | null {
   if (start.x === goal.x && start.y === goal.y) return [];

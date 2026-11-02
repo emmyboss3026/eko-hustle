@@ -44,6 +44,9 @@ export class HouseView {
   private simYaw = 0;
   private plan: HomePlan = HOME;
   private shellGroup: THREE.Group | null = null;
+  private planKey = "";
+  private wallGrid = new THREE.Group();   // faint lines between tiles, shown while you are moving walls
+  private wallMode = false;
   private simTile: Tile = { ...HOME.door };
   private path: Tile[] = [];
   private activity: Activity = null;
@@ -308,11 +311,48 @@ export class HouseView {
     });
     this.fpWalls.visible = false;
     this.scene.add(shell, this.fpWalls);
+
+    // The lines between tiles, for moving walls
+    const pts: number[] = [];
+    const n = this.plan.size;
+    for (let k = 1; k < n; k++) {
+      pts.push(k - HALF, 0.07, -HALF, k - HALF, 0.07, n - HALF);   // vertical lines (x = k)
+      pts.push(-HALF, 0.07, k - HALF, n - HALF, 0.07, k - HALF);   // horizontal lines (y = k)
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    this.wallGrid.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: "#2ee6c5", transparent: true, opacity: 0.7 })));
+    this.wallGrid.visible = this.wallMode;
+    shell.add(this.wallGrid);
+  }
+
+  /** Show the lines between tiles while you are moving walls. */
+  setWallMode(on: boolean) {
+    this.wallMode = on;
+    this.wallGrid.visible = on;
+  }
+
+  /** The line between two tiles nearest a screen point (to add or take away a wall there), or null if it is not near one. */
+  edgeAt(clientX: number, clientY: number): { axis: "v" | "h"; at: number; i: number } | null {
+    this.ray(clientX, clientY);
+    const p = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+    if (!p) return null;
+    const u = p.x + HALF, v = p.z + HALF;
+    const vx = Math.round(u), hy = Math.round(v);
+    const dv = Math.abs(u - vx), dh = Math.abs(v - hy);
+    const n = this.plan.size;
+    const vOk = vx >= 1 && vx < n && v >= 0 && v < n;
+    const hOk = hy >= 1 && hy < n && u >= 0 && u < n;
+    if (vOk && (!hOk || dv <= dh) && dv < 0.32) return { axis: "v", at: vx, i: Math.floor(v) };
+    if (hOk && dh < 0.32) return { axis: "h", at: hy, i: Math.floor(u) };
+    return null;
   }
 
   /** Switch to a bigger (or smaller) flat after building an extension. Rebuilds the shell around the same tiles. */
   setPlan(plan: HomePlan) {
-    if (plan.size === this.plan.size) return;
+    const key = `${plan.size}|${JSON.stringify(plan.walls)}`;
+    if (key === this.planKey) return;
+    this.planKey = key;
     this.plan = plan;
     if (this.shellGroup) {
       this.scene.remove(this.shellGroup);
@@ -321,7 +361,7 @@ export class HouseView {
       });
     }
     this.scene.remove(this.fpWalls);
-    for (const g of [this.backWall, this.leftWall, this.fpWalls]) for (const c of [...g.children]) g.remove(c);
+    for (const g of [this.backWall, this.leftWall, this.fpWalls, this.wallGrid]) for (const c of [...g.children]) g.remove(c);
     this.buildShell();
     this.fpWalls.visible = this.fp;
     const mid = plan.size / 2 - HALF;
