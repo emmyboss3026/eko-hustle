@@ -52,17 +52,19 @@ const RoomScene = lazy(() => import("../components/RoomScene"));
 const StreetScene = lazy(() => import("../components/StreetScene"));
 const VisitScene = lazy(() => import("../components/VisitScene"));
 
-type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story" | "build" | "cars";
+type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story" | "build" | "cars" | "more" | "builder";
 
+// Four main buttons. Travel, Jobs, Goals and Me live under More; Shop is an app on the phone and part of Build.
 const dock: { id: Panel | "phone"; emoji: string }[] = [
   { id: "do", emoji: "📍" },
-  { id: "go", emoji: "🚌" },
-  { id: "work", emoji: "💼" },
+  { id: "builder", emoji: "🏗️" },
   { id: "phone", emoji: "📱" },
-  { id: "shop", emoji: "🛒" },
-  { id: "goals", emoji: "✈️" },
-  { id: "me", emoji: "👤" },
+  { id: "more", emoji: "☰" },
 ];
+
+/** The dock button that holds a panel (for a mission's 🎯 tag). */
+const dockOf = (p: Panel | "phone" | null): Panel | "phone" | null =>
+  p === null ? null : p === "do" || p === "phone" ? p : p === "shop" || p === "build" || p === "cars" ? "builder" : "more";
 
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
@@ -124,6 +126,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const [selected, setSelected] = useState<number | null>(null);
   const [placing, setPlacing] = useState<Placing | null>(null);
   const [wallMode, setWallMode] = useState(false);
+  const [sideMenu, setSideMenu] = useState(false);   // the ⋯ menu on the right: Help, Feedback, Speed
   const [floorStyle, setFloorStyle] = useState<string | null>(null);   // set while you are laying floors
   const [toast, setToast] = useState<string | null>(null);
   const viewRef = useRef<HouseView | null>(null);
@@ -334,7 +337,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const m = mood(state);
   const job = state.career ? careers[state.career.id] : null;
   const canWork = !!job && job.where === state.location && !walking;
-  const missionDock = missionPanel(state, mission);
+  const missionDock = dockOf(missionPanel(state, mission));
   const narrow = typeof innerWidth === "number" && innerWidth < 900;
   const lit = state.power.grid || generatorOn(state);
   const phoneBadge = unreadCount(state) + openInvites(state).filter(i => i.until >= day).length + (daily?.canClaim ? 1 : 0);
@@ -400,16 +403,18 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             </span>
             <span>📍 {tx.district(state.location)} · <span className={rentWarn ? "warn" : ""}>{t(daysToRent > 1 ? "hud.rentIn" : "hud.rentIn1", { days: daysToRent })}</span></span>
           </div>
-          <div className="hud2-right">
-            <div className="hud2-money">{naira(state.money)}</div>
-            <div className="hud2-stats">
-              <span className={state.health <= 30 ? "low" : ""} title={t("hud.health")}>❤️ {Math.round(state.health)}</span>
-              <span className={m < 35 ? "low" : ""} title={t("hud.moodTip")}>{moodFace(m)} {m}</span>
-              <span className={lit ? "" : "low"} title={state.power.grid ? t("hud.lightOn") : generatorOn(state) ? t("hud.genOn") : t("hud.lightOff")}>
-                {state.power.grid ? "💡" : generatorOn(state) ? "⚡" : "🕯️"}
-              </span>
-            </div>
-          </div>
+          <div className="hud2-money">{naira(state.money)}</div>
+        </div>
+        <div className="hud2-vitals">
+          <span className={`vital ${state.health <= 30 ? "low" : ""}`} title={t("hud.health")}>
+            <b aria-hidden>❤️</b><span className="vital-bar"><i style={{ width: `${Math.round(state.health)}%` }} /></span><em>{Math.round(state.health)}</em>
+          </span>
+          <span className={`vital mood ${m < 35 ? "low" : ""}`} title={t("hud.moodTip")}>
+            <b aria-hidden>{moodFace(m)}</b><span className="vital-bar"><i style={{ width: `${m}%` }} /></span><em>{m}</em>
+          </span>
+          <span className={`vital power ${lit ? "" : "low"}`} title={state.power.grid ? t("hud.lightOn") : generatorOn(state) ? t("hud.genOn") : t("hud.lightOff")}>
+            <b>{state.power.grid ? "💡" : generatorOn(state) ? "⚡" : "🕯️"}</b>
+          </span>
         </div>
         <div className="hud2-needs" aria-label={t("hud.needs")}>
           {needKeys.map(k => {
@@ -426,10 +431,8 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
       </header>
 
       <div className="side-buttons">
-        <button onClick={() => openPanel(panel === "help" ? null : "help")} aria-label={t("side.help")}>❓<small>{t("side.help")}</small></button>
-        <button className="feedback-btn" onClick={() => openPanel(panel === "feedback" ? null : "feedback")} aria-label={t("side.feedback")}>💬<small>{t("side.feedback")}</small></button>
-        <button aria-pressed={paused} onClick={() => setPaused(p => !p)} aria-label={paused ? t("side.play") : t("side.pause")}>
-          {paused ? "▶" : "❚❚"}<small>{paused ? t("side.play") : t("side.pause")}</small>
+        <button className="side-pause" aria-pressed={paused} onClick={() => setPaused(p => !p)} aria-label={paused ? t("side.play") : t("side.pause")} title={paused ? t("side.play") : t("side.pause")}>
+          {paused ? "▶" : "❚❚"}
         </button>
         <button
           aria-pressed={firstPerson}
@@ -442,9 +445,16 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
         >
           {firstPerson ? "🗺️" : "🎥"}<small>{t("camera.view")}</small>
         </button>
-        <button onClick={() => setSpeed(s => (s === 1 ? 2 : s === 2 ? 4 : 1))} aria-label={t("side.speedAria", { speed })}>
-          {speed}×<small>{t("side.speed")}</small>
+        <button aria-expanded={sideMenu} aria-label={t("side.menu")} onClick={() => setSideMenu(o => !o)}>
+          ⋯<small>{t("side.menu")}</small>
         </button>
+        {sideMenu && (
+          <div className="side-pop" role="menu">
+            <button role="menuitem" onClick={() => { setSideMenu(false); openPanel(panel === "help" ? null : "help"); }}>❓ {t("side.help")}</button>
+            <button role="menuitem" onClick={() => { setSideMenu(false); openPanel(panel === "feedback" ? null : "feedback"); }}>💬 {t("side.feedback")}</button>
+            <button role="menuitem" aria-label={t("side.speedAria", { speed })} onClick={() => setSpeed(s => (s === 1 ? 2 : s === 2 ? 4 : 1))}>⏩ {t("side.speed")} {speed}×</button>
+          </div>
+        )}
       </div>
 
       <div className="alerts">
@@ -470,12 +480,6 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
       {/* ---------- bottom: messages, tips, quick buttons and the dock ---------- */}
       <div className={`bottom2 ${panel ? "under-panel" : ""}`}>
         {toast && !ride && !panel && <div className="toast2" aria-live="polite">{toast}</div>}
-        {!placing && !wallMode && floorStyle === null && !walking && !panel && selected === null && showRoom && (
-          <div className="quick">
-            <button className="btn plain" onClick={() => setWallMode(true)}>🧱 {t("walls.tool")}</button>
-            <button className="btn plain" onClick={() => setFloorStyle("oak")}>🎨 {t("floors.tool")}</button>
-          </div>
-        )}
         {!placing && !walking && !panel && selected === null && (
           <div className="quick">
             {canWork && (
@@ -583,6 +587,28 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             />
           )}
           {panel === "work" && <WorkTab state={state} dispatch={dispatch} goTo={() => openPanel("go")} />}
+          {panel === "more" && (
+            <div className="menu-grid">
+              {([["go", "🚌"], ["work", "💼"], ["goals", "✈️"], ["me", "👤"]] as [Panel, string][]).map(([id, emoji]) => (
+                <button key={id} className="menu-tile" onClick={() => openPanel(id)}>
+                  <span aria-hidden>{emoji}</span>{t(`dock.${id}`)}
+                  {missionPanel(state, mission) === id && <i className="tab-tag" aria-label={t("hud.missionHere")}>🎯</i>}
+                </button>
+              ))}
+            </div>
+          )}
+          {panel === "builder" && (
+            <>
+              <div className="menu-grid">
+                <button className="menu-tile" onClick={() => openPanel("shop")}><span aria-hidden>🛋️</span>{t("builder.furniture")}</button>
+                <button className="menu-tile" onClick={() => openPanel("build")}><span aria-hidden>🏗️</span>{t("shop.build")}</button>
+                <button className="menu-tile" disabled={!showRoom} onClick={() => { setPanel(null); setWallMode(true); }}><span aria-hidden>🧱</span>{t("walls.tool")}</button>
+                <button className="menu-tile" disabled={!showRoom} onClick={() => { setPanel(null); setFloorStyle("oak"); }}><span aria-hidden>🎨</span>{t("floors.tool")}</button>
+                <button className="menu-tile" onClick={() => openPanel("cars")}><span aria-hidden>🚗</span>{t("shop.cars")}</button>
+              </div>
+              {!showRoom && <p className="note">{t("builder.home")}</p>}
+            </>
+          )}
           {panel === "build" && <BuildSheet state={state} dispatch={dispatch} />}
           {panel === "cars" && <DealershipSheet state={state} dispatch={dispatch} />}
           {panel === "shop" && (
@@ -634,7 +660,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
           state={state}
           dispatch={dispatch}
           app={phone === "home" ? null : phone}
-          onApp={a => setPhone(a ?? "home")}
+          onApp={a => { if (a === "shop") { setPhone(null); openPanel("shop"); } else setPhone(a ?? "home"); }}
           onClose={() => { setPhone(null); setClaimed(null); }}
           onTravel={() => { setPhone(null); setPanel("go"); }}
           onStory={openStory}
