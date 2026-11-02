@@ -23,4 +23,8 @@ export const respondFriend = (id: string, accept: boolean) => call<Result>("frie
 export const removeFriend = (id: string) => call<Result>("friend_remove", { p_other: id });
 export const blockPlayer = (id: string) => call<Result>("block_player", { p_other: id });
 export const reportPlayer = (id: string, reason: string) => call<Result>("report_player", { p_other: id, p_reason: reason });
+export type Dm = { id: number; mine: boolean; body: string; created_at: string };
+export const sendDm = (id: string, text: string) => call<Result>("send_dm", { p_to: id, p_text: text });
+export const dmThread = (id: string) => call<Dm[]>("dm_thread", { p_other: id });
+export const dmUnread = () => call<{ from: string; count: number }[]>("dm_unread");
 export const inviteHome = (id: string) => call<Result>("invite_home", { p_guest: id });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLang } from "../../i18n/react";
 import {
-  blockPlayer, findPlayers, inviteHome, myFriends, myHomeInvites, removeFriend, reportPlayer, requestFriend, respondFriend,
+  blockPlayer, dmThread, dmUnread, findPlayers, inviteHome, myFriends, sendDm, type Dm, myHomeInvites, removeFriend, reportPlayer, requestFriend, respondFriend,
   type Found, type Friend, type HomeInvite,
 } from "../../lib/friends";
 
@@ -15,6 +15,10 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reporting, setReporting] = useState<{ id: string; reason: string } | null>(null);
+  const [chat, setChat] = useState<{ id: string; name: string } | null>(null);
+  const [msgs, setMsgs] = useState<Dm[]>([]);
+  const [draft, setDraft] = useState("");
+  const [unread, setUnread] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
     const [f, i] = await Promise.all([myFriends(), myHomeInvites()]);
@@ -24,6 +28,21 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
   useEffect(() => {
     if (userId) void load();
   }, [userId, load]);
+
+  // Unread counts, and the open conversation, refreshed every few seconds while this app is open
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    const tick = async () => {
+      const [u, m] = await Promise.all([dmUnread(), chat ? dmThread(chat.id) : Promise.resolve(null)]);
+      if (!alive) return;
+      if (u) setUnread(Object.fromEntries(u.map(x => [x.from, x.count])));
+      if (m) setMsgs(m);
+    };
+    void tick();
+    const id = setInterval(tick, 5_000);
+    return () => { alive = false; clearInterval(id); };
+  }, [userId, chat]);
 
   if (!userId) return <p className="note">{t("friends.signIn")}</p>;
 
@@ -35,6 +54,41 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
     await load();
     setBusy(false);
   };
+
+  if (chat) {
+    return (
+      <>
+        <button className="btn plain" onClick={() => { setChat(null); setMsgs([]); }}>‹ {t("friends.back")}</button>
+        <h3>{t("friends.chatWith", { name: chat.name })}</h3>
+        <div className="chat" aria-live="polite">
+          {msgs.length === 0 && <p className="note">{t("friends.noMessages")}</p>}
+          {msgs.map(m => (
+            <div key={m.id} className="chat-item">
+              <div className={`bubble ${m.mine ? "me" : "them"}`}><p>{m.body}</p></div>
+            </div>
+          ))}
+        </div>
+        {note && <p className="note" role="status">{note}</p>}
+        <form
+          className="row"
+          onSubmit={async e => {
+            e.preventDefault();
+            const text = draft.trim();
+            if (!text) return;
+            setDraft("");
+            const r = await sendDm(chat.id, text);
+            setNote(!r ? t("friends.error") : r.ok ? null : t(`friends.reason.${r.reason ?? "other"}`));
+            const m = await dmThread(chat.id);
+            if (m) setMsgs(m);
+          }}
+        >
+          <input value={draft} maxLength={500} onChange={e => setDraft(e.target.value)} placeholder={t("friends.typeMessage")} aria-label={t("friends.typeMessage")} />
+          <button className="btn" type="submit" disabled={!draft.trim()}>{t("friends.sendMessage")}</button>
+        </form>
+        <p className="note">{t("friends.dmNote")}</p>
+      </>
+    );
+  }
 
   const incoming = friends.filter(f => f.status === "pending" && f.incoming);
   const sent = friends.filter(f => f.status === "pending" && !f.incoming);
@@ -90,6 +144,7 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
       {mine.map(f => (
         <div className="row" key={f.id}>
           <span className="row-main"><span className="row-title">{f.avatar} {f.name}</span></span>
+          <button className="chip-btn" onClick={() => { setNote(null); setChat({ id: f.id, name: f.name }); }}>💬 {t("friends.chat")}{unread[f.id] ? ` (${unread[f.id]})` : ""}</button>
           <button className="chip-btn" disabled={busy} onClick={() => run(() => inviteHome(f.id), t("friends.invited"))}>🏠 {t("friends.invite")}</button>
           <button className="chip-btn" disabled={busy} onClick={() => run(() => removeFriend(f.id), t("friends.removed"))}>{t("friends.remove")}</button>
           <button className="chip-btn" disabled={busy} onClick={() => run(() => blockPlayer(f.id), t("friends.blocked"))}>{t("friends.block")}</button>
