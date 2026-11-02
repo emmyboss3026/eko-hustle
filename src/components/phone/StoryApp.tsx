@@ -27,7 +27,7 @@ export default function StoryApp({ state, dispatch }: { state: GameState; dispat
           <p>{active.intro}</p>
           {active.dialogue.map(([who, line], i) => <p key={i} className="note"><b>{who}:</b> {line}</p>)}
           {active.tasks.length > 0 && <h4>{t("story.tasks")}</h4>}
-          <ul>
+          <ul style={{ listStyle: "none", paddingLeft: 0 }}>
             {active.tasks.map((k, i) => <li key={i}>{taskStates(state, active)[i] ? "✅" : "⬜"} {k.text}</li>)}
           </ul>
           {active.days !== undefined && <div className="note">⏳ {t("story.deadline", { days: active.days, day: st.startDay + active.days })}</div>}
@@ -75,7 +75,7 @@ export default function StoryApp({ state, dispatch }: { state: GameState; dispat
             <div className="note">{c.focus}</div>
             {!playable.has(c.n) && <div className="note">🔒 {t("story.locked")}</div>}
             {finished.length > 0 && (
-              <ul>
+              <ul style={{ listStyle: "none", paddingLeft: 0 }}>
                 {finished.map(m => <li key={m.id}>✅ {m.title}{m.choice && st.choices[m.id] !== undefined ? ` · ${m.choice.options[st.choices[m.id]].label}` : ""}</li>)}
               </ul>
             )}
