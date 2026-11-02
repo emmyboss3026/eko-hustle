@@ -8,6 +8,7 @@ import { DOORS } from "../three/world.js";
 import { useLang } from "../i18n/react";
 import { chatterKey, PERSONAS, type Persona } from "../data/chatter";
 import { footstep, play } from "../lib/audio";
+import { Multiplayer, multiplayerUrl, type Say } from "../lib/multiplayer";
 
 type Props = {
   state: GameState;
@@ -44,6 +45,11 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
   const joyId = useRef<number | null>(null);
+  // The live city: other real players on the streets (only when a multiplayer server is configured)
+  const [net, setNet] = useState<{ state: "connecting" | "online" | "offline"; instance?: string; count: number }>({ state: "offline", count: 0 });
+  const [said, setSaid] = useState<(Say & { n: number })[]>([]);
+  const [line, setLine] = useState("");
+  const mp = useRef<Multiplayer | null>(null);
   const walkingRef = useRef(walking);
   walkingRef.current = walking;
   const focusRef = useRef(focus);
@@ -178,6 +184,58 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
     view.current?.setFirstPerson(firstPerson && walking);
   }, [firstPerson, walking]);
 
+  // Join the shared city while you walk the streets, and leave when you stop.
+  useEffect(() => {
+    if (!walking || !multiplayerUrl) return;
+    let n = 0;
+    let count = 1;
+    const conn = new Multiplayer(
+      {
+        onStatus: st => setNet(p => ({ ...p, state: st.state, instance: st.instance ?? p.instance })),
+        onWelcome: peers => {
+          view.current?.clearRemotes();
+          peers.forEach(p => view.current?.addRemote(p));
+          count = peers.length + 1;
+          setNet(p => ({ ...p, count }));
+        },
+        onJoin: p => { view.current?.addRemote(p); setNet(x => ({ ...x, count: ++count })); },
+        onLeave: id => { view.current?.removeRemote(id); setNet(x => ({ ...x, count: --count })); },
+        onSnap: ps => ps.forEach(([id, x, z, yaw, anim]) => view.current?.moveRemote(id, x, z, yaw, anim)),
+        onFix: (x, z) => view.current?.player.set(x, 0, z),
+        onSay: m => {
+          const id = ++n;
+          setSaid(l => [...l, { ...m, n: id }].slice(-4));
+          setTimeout(() => setSaid(l => l.filter(x => x.n !== id)), 9_000);
+        },
+      },
+      { name: live.current.state.sim.name, look: (live.current.state.sim.look ?? {}) as Record<string, unknown> },
+      () => ({ x: view.current?.player.x ?? 0, z: view.current?.player.z ?? 0 }),
+    );
+    mp.current = conn;
+    // A moment for the view to put you at the door you stepped out of, so the server hears the right spot
+    const startTimer = setTimeout(() => conn.start(), 300);
+    // Tell the server where you are ten times a second, but only when something changed
+    let sent = { x: NaN, z: NaN, yaw: NaN, anim: -1 };
+    const timer = setInterval(() => {
+      const v = view.current;
+      if (!v) return;
+      const anim = v.moving ? (v.running ? 2 : 1) : 0;
+      const { x, z } = v.player;
+      if (Math.hypot(x - sent.x, z - sent.z) < 0.05 && Math.abs(v.yaw - sent.yaw) < 0.05 && anim === sent.anim) return;
+      sent = { x, z, yaw: v.yaw, anim };
+      conn.move(x, z, v.yaw, anim as 0 | 1 | 2);
+    }, 100);
+    return () => {
+      clearTimeout(startTimer);
+      clearInterval(timer);
+      conn.stop();
+      mp.current = null;
+      view.current?.clearRemotes();
+      setNet({ state: "offline", count: 0 });
+      setSaid([]);
+    };
+  }, [walking]);
+
   // Start walking: step out a few paces from the door of where you are.
   // Stop walking: look at the place you're at.
   useEffect(() => {
@@ -280,6 +338,31 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
             >
               {t("chat.reply")}
             </button>
+          )}
+        </div>
+      )}
+
+      {walking && multiplayerUrl && (
+        <div className="mp-bar">
+          <span className={`mp-status ${net.state}`} role="status">
+            {net.state === "online" ? t("mp.online", { instance: net.instance ?? "", count: net.count }) : net.state === "connecting" ? t("mp.connecting") : t("mp.offline")}
+          </span>
+          {said.length > 0 && (
+            <div className="mp-said" aria-live="polite">
+              {said.map(m => <div key={m.n}><b>{m.name}</b> {m.text}</div>)}
+            </div>
+          )}
+          {net.state === "online" && (
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                if (line.trim()) mp.current?.say(line);
+                setLine("");
+              }}
+            >
+              <input value={line} maxLength={120} onChange={e => setLine(e.target.value)} placeholder={t("mp.sayPlaceholder")} aria-label={t("mp.sayPlaceholder")} />
+              <button className="btn plain" type="submit">{t("mp.say")}</button>
+            </form>
           )}
         </div>
       )}

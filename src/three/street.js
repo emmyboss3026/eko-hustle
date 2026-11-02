@@ -112,6 +112,14 @@ function label(text) {
   return s;
 }
 
+/** A player's name floating over their head, always facing the camera. */
+function nameTag(text) {
+  const tex = signTexture(text, { bg: null, fg: '#ffffff', w: 512, h: 96, font: 58, glow: '#000000' });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, fog: false }));
+  s.scale.set(1.7, 0.32, 1);
+  return s;
+}
+
 /** A simple person for the pavements (the Sim uses scene.js's own figure). */
 function buildPerson(shirt, skin, trousers) {
   const root = new THREE.Group();
@@ -416,6 +424,7 @@ export class StreetView {
     this.sim = sim;
     sim.root.scale.setScalar(SIM_SCALE);
     this.scene.add(sim.root);
+    this.remotes = new Map(); // other real players, by id (see lib/multiplayer.ts)
     this.player = new THREE.Vector3(DOORS.home.x, 0, DOORS.home.z);
     this.yaw = 0;
     // First-person view: the camera sits at the Sim's eyes and you drag to look around.
@@ -770,6 +779,7 @@ export class StreetView {
     this.sim.root.position.copy(this.player);
     this.sim.root.rotation.y = this.yaw;
     this.animate(this.sim, moving ? (this.running ? 16 : 11) : 0, t, moving);
+    this.updateRemotes(dt, t);
 
     // Shadows follow whoever we're looking at.
     const focus = this.controls.target;
@@ -952,6 +962,61 @@ export class StreetView {
       const x = Math.max(130, Math.min(this.size.w - 130, (v.x * 0.5 + 0.5) * this.size.w));
       const y = Math.max(190, Math.min(this.size.h - 160, (-v.y * 0.5 + 0.5) * this.size.h));
       this.bubble.screen = { x, y, visible: v.z < 1 };
+    }
+  }
+
+  // ---------------------------------------------------- other real players
+
+  /** Show another player. Their look comes from the server (colours only). */
+  addRemote(p) {
+    this.removeRemote(p.id);
+    const fig = buildSim(p.look ?? {});
+    fig.root.scale.setScalar(SIM_SCALE);
+    const tag = nameTag(p.name);
+    tag.position.set(0, 1.3, 0);
+    fig.root.add(tag);
+    fig.root.position.set(p.x, 0, p.z);
+    fig.root.rotation.y = p.yaw;
+    this.scene.add(fig.root);
+    this.remotes.set(p.id, { fig, tag, x: p.x, z: p.z, yaw: p.yaw, tx: p.x, tz: p.z, tyaw: p.yaw, anim: p.anim ?? 0 });
+  }
+
+  /** Where the server says a player now is: they glide there rather than jump. */
+  moveRemote(id, x, z, yaw, anim) {
+    const r = this.remotes.get(id);
+    if (!r) return;
+    r.tx = x; r.tz = z; r.tyaw = yaw; r.anim = anim;
+  }
+
+  removeRemote(id) {
+    const r = this.remotes.get(id);
+    if (!r) return;
+    this.scene.remove(r.fig.root);
+    r.tag.material.map?.dispose();
+    r.tag.material.dispose();
+    this.remotes.delete(id);
+  }
+
+  clearRemotes() {
+    for (const id of [...this.remotes.keys()]) this.removeRemote(id);
+  }
+
+  updateRemotes(dt, t) {
+    const k = 1 - Math.exp(-dt * 12);
+    for (const r of this.remotes.values()) {
+      const dx = r.tx - r.x;
+      const dz = r.tz - r.z;
+      if (Math.hypot(dx, dz) > 30) { r.x = r.tx; r.z = r.tz; } // a long jump (they came back from a trip): do not slide across town
+      else { r.x += dx * k; r.z += dz * k; }
+      let dy = r.tyaw - r.yaw;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy)); // the short way round
+      r.yaw += dy * k;
+      const g = r.fig.root;
+      g.visible = this.mode === 'street';
+      g.position.set(r.x, 0, r.z);
+      g.rotation.y = r.yaw;
+      const moving = r.anim > 0 || Math.hypot(dx, dz) > 0.05;
+      this.animate(r.fig, moving ? (r.anim === 2 ? 16 : 11) : 0, t, moving);
     }
   }
 
