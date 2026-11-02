@@ -18,10 +18,17 @@ describe("story data", () => {
     }
   });
 
-  it("has 60 missions on one path across chapters 1-6, plus the extra branch versions", () => {
-    expect(STORY.length).toBe(89); // 60 slots; mission 13 has 3 versions, 33/35/38/42/45/48/52/55/58 have 4 each
-    expect(storyProgress(fresh()).total).toBe(60);
-    expect(new Set(STORY.map(m => m.n)).size).toBe(60);
+  it("has 100 missions on one path across chapters 1-10, plus the extra branch versions", () => {
+    expect(STORY.length).toBe(167); // 100 slots: 13, 76, 84, 95 and 98 have 3 versions; 33/35/38/42/45/48/52/55/58/62/65/68/72/75/78/82/85/88/92 have 4 each
+    expect(storyProgress(fresh()).total).toBe(100);
+    expect(new Set(STORY.map(m => m.n)).size).toBe(100);
+  });
+
+  it("a choice never overwrites the flag the mission itself sets on finishing", () => {
+    for (const m of STORY) {
+      const key = m.reward.flag?.[0];
+      if (key) for (const o of m.choice?.options ?? []) expect(o.effect?.flag?.[0] === key && o.effect.flag[1] !== m.reward.flag![1], m.id).toBe(false);
+    }
   });
 
   it("every mission has real content", () => {
@@ -102,11 +109,11 @@ describe("story engine", () => {
 
   // Walk every mission in order, satisfying each one's tasks and picking option 0 (except the path choice at mission 29).
   const PATHS = [["business", "pos"], ["tech", "tech"], ["creative", "fashion"], ["professional", "pos"]] as const;
-  it.each(PATHS)("the whole story to mission 60 can be played on the %s path", (path, job) => {
+  it.each(PATHS)("the whole story to mission 100 can be played on the %s path", (path, job) => {
     let s = fresh({ money: 500_000, rep: 20, career: { id: job, level: 2, shifts: 0 }, time: 60 * 1440, skills: { hustle: 8, study: 8, charisma: 8, fitness: 8, cooking: 8 } });
     s = { ...s, businesses: [{ id: "water", level: 1, staff: 0, invested: 0, since: 1 }, { id: "suya", level: 1, staff: 0, invested: 0, since: 1 }, { id: "keke", level: 1, staff: 0, invested: 0, since: 1 }], trades: [1, 2, 3].map(t => ({ t, fund: "bank" as never, side: "buy" as const, amount: 1 })), contacts: { mummy: { rel: 90, last: 0 } } };
     const played: string[] = [];
-    for (let guard = 0; guard < 80; guard++) {
+    for (let guard = 0; guard < 200; guard++) {
       const open = offered(s);
       if (!open.length) break;
       const m = open[0];
@@ -117,16 +124,16 @@ describe("story engine", () => {
       s = reduce({ ...s, counts }, { type: "tick", minutes: 1, roll: 1, pick: 0 });
       if (storyOf(s).choosing) s = reduce(s, { type: "storyChoose", index: m.id === "s29-lane" ? PATHS.findIndex(p => p[0] === path) : 0 });
     }
-    expect(storyOf(s).done).toContain("s60-threshold");
+    expect(storyOf(s).done).toContain("s99z-legacy");
     expect(storyOf(s).active).toBeNull();
-    expect(played.length).toBe(60); // one mission per slot: no repeats, no skipped slots
+    expect(played.length).toBe(100); // one mission per slot: no repeats, no skipped slots
     expect(storyOf(s).flags.path).toBe(path);
   });
 
   it("changing course at mission 38 never repeats a slot and the story still reaches the end", () => {
     let s = fresh({ money: 500_000, rep: 20, career: { id: "pos", level: 2, shifts: 0 }, time: 60 * 1440, skills: { hustle: 8, study: 8, charisma: 8, fitness: 8, cooking: 8 } });
     s = { ...s, businesses: [{ id: "water", level: 1, staff: 0, invested: 0, since: 1 }, { id: "suya", level: 1, staff: 0, invested: 0, since: 1 }, { id: "keke", level: 1, staff: 0, invested: 0, since: 1 }], trades: [1, 2, 3].map(t => ({ t, fund: "bank" as never, side: "buy" as const, amount: 1 })), contacts: { mummy: { rel: 90, last: 0 } } };
-    for (let guard = 0; guard < 80; guard++) {
+    for (let guard = 0; guard < 200; guard++) {
       const open = offered(s);
       if (!open.length) break;
       s = reduce(s, { type: "storyStart", id: open[0].id });
@@ -137,8 +144,57 @@ describe("story engine", () => {
       // a player who changes course takes up the new trade
       if (storyOf(s).flags.path === "creative") s = { ...s, career: { id: "fashion", level: 2, shifts: 0 } };
     }
-    expect(storyOf(s).done).toContain("s60-threshold");
+    expect(storyOf(s).done).toContain("s99z-legacy");
     expect(storyOf(s).done.filter(id => id.startsWith("s38")).length).toBe(1);
     expect(storyOf(s).flags.path).toBe("creative");
+  });
+
+  it("reputation gates can always be met from story reputation alone, even after the worst choices", () => {
+    // Reputation also comes from other play, but the story must never depend on it: a dead end is worse than an easy gate.
+    let rep = 0;
+    for (const n of [...new Set(STORY.map(m => m.n))].sort((a, b) => a - b)) {
+      let worst = Infinity;
+      for (const m of STORY.filter(x => x.n === n)) {
+        const gate = Math.max(0, ...[...(m.requires ?? []), ...m.tasks.map(t => t.cond)].map(c => ("rep" in c ? c.rep : 0)));
+        expect(rep, `${m.id} needs reputation ${gate}`).toBeGreaterThanOrEqual(gate);
+        const opt = Math.min(...(m.choice?.options ?? [{ effect: undefined }]).map(o => o.effect?.rep ?? 0));
+        worst = Math.min(worst, Math.max(0, rep + (m.reward.rep ?? 0) + opt + 1)); // +1: finishing any mission
+      }
+      rep = worst;
+    }
+  });
+
+  it("the value you commit to in Chapter 7 decides which version of mission 76 you get", () => {
+    const done = STORY.filter(m => m.n < 76 && !m.alt).map(m => m.id);
+    for (const [values, id] of [["people", "s76a-hard-quarter"], ["durable", "s76b-succession"], ["winning", "s76c-hostile"]]) {
+      const s = fresh({ money: 500_000, story: { ...storyOf(fresh()), done, flags: { values, s75: "done" } } });
+      expect(offered(s).map(m => m.id)).toEqual([id]);
+    }
+  });
+
+  it("how you handled the politician in Chapter 8 decides which version of mission 84 you get", () => {
+    const done = STORY.filter(m => m.n < 84 && !m.alt).map(m => m.id);
+    for (const [politics, id] of [["out", "s84a-clean"], ["projects", "s84b-hearing"], ["endorsed", "s84c-scandal"]]) {
+      const s = fresh({ rep: 60, story: { ...storyOf(fresh()), done, flags: { politics, s83done: "yes" } } });
+      expect(offered(s).map(m => m.id)).toEqual([id]);
+    }
+  });
+
+  it("how you gave back (mission 73) and your value (mission 69) decide missions 95 and 98", () => {
+    const done = STORY.filter(m => m.n < 95 && !m.alt).map(m => m.id);
+    for (const [giving, id] of [["scholarship", "s95a-graduates"], ["mentor", "s95b-interns"], ["small", "s95c-second"]]) {
+      const s = fresh({ story: { ...storyOf(fresh()), done, flags: { giving, s94: "done" } } });
+      expect(offered(s).map(m => m.id)).toEqual([id]);
+    }
+    const done98 = STORY.filter(m => m.n < 98 && !m.alt).map(m => m.id);
+    for (const [values, id] of [["people", "s98a-people"], ["durable", "s98b-durable"], ["winning", "s98c-winning"]]) {
+      const s = fresh({ story: { ...storyOf(fresh()), done: done98, flags: { values, s97: "done" } } });
+      expect(offered(s).map(m => m.id)).toEqual([id]);
+    }
+  });
+
+  it("finishing mission 100 marks the story complete", () => {
+    const s = reduce(fresh({ money: 900_000, rep: 90, story: { ...storyOf(fresh()), active: "s99z-legacy", startDay: 1, base: {}, done: STORY.filter(m => m.n < 100 && !m.alt).map(m => m.id) } }), { type: "tick", minutes: 1, roll: 1, pick: 0 });
+    expect(storyOf(s).flags.story).toBe("complete");
   });
 });
