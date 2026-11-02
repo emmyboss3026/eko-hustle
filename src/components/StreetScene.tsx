@@ -101,7 +101,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       onMove: () => {},
       onArrive: (id: string) => enterRef.current(id as SpotId),
       look: state.sim.look ?? {},
-      labelFor: (id: string) => `${spots[id as SpotId]?.emoji ?? "🏠"} ${tx.spot(id as SpotId)}`,
+      labelFor: (id: string) => (id === "flats" ? `🏢 ${t("land.oldFlat")}` : `${spots[id as SpotId]?.emoji ?? "🏠"} ${tx.spot(id as SpotId)}`),
       // A passer-by says something (only while you're walking about)
       onEngine: (speed: number, throttle: number) => engine(speed, throttle),
       onChatter: (persona: Persona) => {

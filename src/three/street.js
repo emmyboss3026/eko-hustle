@@ -9,11 +9,11 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { spots } from '../data/spots';
 import { buildSim, daylight } from './pieces';
 import { buildVehicle, setLights } from './vehicles';
-import { SLOTS, carById, homeSolids, inRect } from '../data/estate';
+import { PLOTS, carById, homeSolids, inRect, plotTier, plotWidth } from '../data/estate';
 import { PERSONAS } from '../data/chatter';
 import {
-  BUILDINGS, DOORS, ENTER_RADIUS, LAND_HALF, LOT_CENTERS, LOT_HALF, PLACE_LOTS, PLACE_SOLIDS,
-  ROAD_HALF, ROAD_LINES, RUN_SPEED, WALK_SPEED, blocked, doorNear, faceYaw, resolve, roadPath,
+  BUILDINGS, DOORS, ENTER_RADIUS, ESTATE_LOT, LAND_HALF, LOT_CENTERS, LOT_HALF, PLACE_LOTS, PLACE_SOLIDS,
+  ROAD_HALF, ROAD_LINES, RUN_SPEED, WALK_SPEED, blocked, doorNear, faceYaw, moveHome, resolve, roadPath,
 } from './world.js';
 
 const SIM_SCALE = 1.75;
@@ -172,6 +172,24 @@ function buildKeke() {
   return g;
 }
 
+/** The empty land on the estate, with a for-sale sign and stakes marking the biggest plot. Hidden once you own land. */
+function buildEstateSale() {
+  const g = new THREE.Group();
+  g.position.set(ESTATE_LOT.cx, 0, ESTATE_LOT.cz);
+  g.rotation.y = GROUP_YAW[ESTATE_LOT.face];
+  const wide = PLOTS.at(-1).width;
+  const s = signBoard('LAND FOR SALE', 14, 2.6, { bg: '#e67e22' });
+  s.position.set(0, 4.2, -LOT_HALF - 0.5);
+  s.rotation.y = Math.PI;
+  g.add(s);
+  for (const x of [-4, 4]) g.add(box(0.4, 4.4, 0.4, '#5d4037', x, 2.2, -LOT_HALF - 0.5));
+  // stakes along the front and the corners of the whole estate
+  for (let x = -wide / 2; x <= wide / 2 + 0.1; x += 24) {
+    for (const z of [-LOT_HALF, LOT_HALF]) g.add(box(0.35, 1.3, 0.35, '#ff8a3d', x, 0.65, z, false));
+  }
+  return g;
+}
+
 function buildCar(color) {
   const g = new THREE.Group();
   g.add(box(1.9, 0.8, 4.3, color, 0, 0.75));
@@ -199,11 +217,13 @@ export function buildPlace(id, labelFor, property) {
     return add(s);
   };
 
-  switch (id) {
+  switch (id === 'flats' ? 'home' : id) {
     case 'home': {
       const pr = property ?? {};
+      const tier = plotTier(pr);
+      const wide = plotWidth(pr);          // your own land is wider than the old compound
       const up = pr.floor2 ? 3.4 : 0; // a second floor adds a storey
-      add(plane(48, 48, pr.garden ? '#58b05c' : '#9bb06a', 0, 0.07, 0));
+      add(plane(tier ? wide : 48, 48, pr.garden || tier ? '#58b05c' : '#9bb06a', 0, 0.07, 0));
       const [, lz, w, d, h] = solids[0];
       add(box(w, h, d, '#efe4d0', 0, h / 2, lz));
       if (pr.floor2) {
@@ -228,11 +248,31 @@ export function buildPlace(id, labelFor, property) {
         add(box(7, 0.1, 12.5, '#8d8d96', 0, 0.12, -18));
         for (const [bx, bz, bw, bd] of [[-1.35, -17.5, 0.12, 5.2], [1.35, -17.5, 0.12, 5.2], [0, -20.1, 2.82, 0.12]]) add(box(bw, 0.02, bd === undefined ? 0.12 : bd, '#f4f4f4', bx, 0.18, bz, false));
       }
-      if (pr.gate) {
+      if (tier) {
+        const half = wide / 2, mid = (3.5 + half) / 2, len = half - 3.5;
+        const wall = (x, z, ww, dd) => { add(box(ww, 1.9, dd, '#efe9dc', x, 0.95, z)); add(box(ww + 0.2, 0.16, dd + 0.2, '#b5523b', x, 1.95, z)); };
+        wall(-mid, -23.6, len, 0.5); wall(mid, -23.6, len, 0.5);   // the front, with a gap for the gate
+        wall(-half, 0, 0.5, 47.2); wall(half, 0, 0.5, 47.2); wall(0, 23.6, wide, 0.5);
+        // trees along the back wall, and a parking space marked on the lawn for each one you have
+        for (let x = -half + 8; x < half - 4; x += 14) {
+          add(cyl(0.3, 0.4, 3, '#7a5230', x, 1.5, 20, 8));
+          const crown = new THREE.Mesh(new THREE.SphereGeometry(2.2, 10, 8), mat('#2f8a3d'));
+          crown.position.set(x, 4.2, 20);
+          crown.castShadow = true;
+          add(crown);
+        }
+        for (let n = 1; n <= tier * 2; n++) {
+          const [sx] = [(n % 2 ? -1 : 1) * (9 + 6 * Math.floor((n - 1) / 2))];
+          for (const [mx, mz, mw, md] of [[sx - 1.4, -17, 0.1, 5.2], [sx + 1.4, -17, 0.1, 5.2], [sx, -19.6, 2.9, 0.1]]) add(box(mw, 0.02, md, '#f4f4f4', mx, 0.14, mz, false));
+        }
+      }
+      if (pr.gate && !tier) {
         for (const sx of [-1, 1]) {
           add(box(20.5, 1.9, 0.5, '#efe9dc', sx * 13.75, 0.95, -23.6));
           add(box(20.7, 0.16, 0.7, '#b5523b', sx * 13.75, 1.95, -23.6));
         }
+      }
+      if (pr.gate) {
         // an iron gate, swung open
         for (const sx of [-1, 1]) {
           const leaf = new THREE.Group();
@@ -489,6 +529,9 @@ export class StreetView {
     this.buildTown();
     this.places = Object.keys(PLACE_LOTS).map((id) => buildPlace(id, hooks.labelFor));
     this.places.forEach((g) => this.scene.add(g));
+    this.homeCx = PLACE_LOTS.home.cx;
+    this.estateSale = buildEstateSale();
+    this.scene.add(this.estateSale);
     this.buildTraffic();
     this.buildPeople();
 
@@ -753,8 +796,18 @@ export class StreetView {
     const key = JSON.stringify([info?.property ?? null, info?.vehicles ?? []]);
     if (key === this.estateKey) return;
     this.estateKey = key;
+    // Buying land moves your home onto the estate: the old flat stays behind, and the for-sale sign goes
+    moveHome(plotTier(info?.property) > 0);
+    this.estateSale.visible = plotTier(info?.property) === 0;
     const pk = JSON.stringify(info?.property ?? null);
-    if (pk !== this.propKey) {
+    if (PLACE_LOTS.home.cx !== this.homeCx) {
+      this.homeCx = PLACE_LOTS.home.cx;
+      for (const g of this.places) { this.scene.remove(g); g.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); }
+      this.places = Object.keys(PLACE_LOTS).map((id) => buildPlace(id, this.hooks.labelFor, id === 'home' ? info?.property : undefined));
+      this.places.forEach((g) => this.scene.add(g));
+      this.propKey = pk;
+      this.extraSolids = homeSolids(info?.property);
+    } else if (pk !== this.propKey) {
       this.propKey = pk;
       const i = this.places.findIndex((g) => g.userData.door === 'home');
       if (i >= 0) {

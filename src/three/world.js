@@ -34,6 +34,14 @@ export const PLACE_LOTS = {
   club:   { cx: 90,   cz: -30,  face: 'w' },
 };
 
+// ---------------------------------------------------------------- the estate: land you can buy
+// Four blocks on the east side are left empty of buildings (for everyone, so the server agrees). The land for sale is here.
+// Buying a plot moves your home onto it: PLACE_LOTS.home and DOORS.home point at the estate, and the old flat stays where it
+// was as the place 'flats' (its walls are in COLLIDERS for good, so the server and every player agree about them).
+export const ESTATE_CELLS = [[150, -150], [150, -90], [150, -30], [150, 30]];
+export const ESTATE_LOT = { cx: 150, cz: -60, face: 'w' };
+const OLD_HOME_LOT = { ...PLACE_LOTS.home };
+
 /** Lot-local → world. Local −z is the front (the door side). */
 export function toWorld(lot, lx, lz) {
   switch (lot.face) {
@@ -50,10 +58,11 @@ export function faceYaw(face) {
 }
 
 /** Where you stand to go in: on the pavement in front of the lot's gate. */
-export const DOORS = Object.fromEntries(Object.entries(PLACE_LOTS).map(([id, lot]) => {
+const doorOf = (id, lot) => {
   const [x, z] = toWorld(lot, 0, -LOT_HALF - 1.5);
-  return [id, { id, x, z, face: lot.face }];
-}));
+  return { id, x, z, face: lot.face };
+};
+export const DOORS = Object.fromEntries(Object.entries(PLACE_LOTS).map(([id, lot]) => [id, doorOf(id, lot)]));
 
 // --------------------------------------------------------------- colliders
 
@@ -76,6 +85,25 @@ function solidToWorld(lot, [lx, lz, w, d, h], extra = {}) {
   const [x, z] = toWorld(lot, lx, lz);
   const turned = lot.face === 'e' || lot.face === 'w';
   return { x, z, w: turned ? d : w, d: turned ? w : d, h, ...extra };
+}
+
+/** Is your home on the estate (you bought land) or in the old flat? Safe to call again and again. The old flat's collider is never
+ *  removed; only your own house on the estate is added (and only here, never on the server). */
+export function moveHome(onEstate) {
+  const now = PLACE_LOTS.home.cx === ESTATE_LOT.cx;
+  if (onEstate === now) return;
+  const at = onEstate ? ESTATE_LOT : OLD_HOME_LOT;
+  PLACE_LOTS.home = { ...at };
+  DOORS.home = doorOf('home', PLACE_LOTS.home);
+  for (let i = COLLIDERS.length - 1; i >= 0; i--) if (COLLIDERS[i].place === 'home-estate') COLLIDERS.splice(i, 1);
+  if (onEstate) {
+    PLACE_LOTS.flats = { ...OLD_HOME_LOT };
+    PLACE_SOLIDS.flats = PLACE_SOLIDS.home;
+    COLLIDERS.push(...PLACE_SOLIDS.home.map((s) => solidToWorld(ESTATE_LOT, s, { place: 'home-estate' })));
+  } else {
+    delete PLACE_LOTS.flats;
+    delete PLACE_SOLIDS.flats;
+  }
 }
 
 /** Small seeded random so the town is the same on every device. */
@@ -101,6 +129,7 @@ const TOWER_PALETTE = ['#6fa8dc', '#5cc5c1', '#8e9cff', '#7fb6e8'];
 export const BUILDINGS = [];
 LOT_CENTERS.forEach(([cx, cz], index) => {
   if (placeAt(cx, cz)) return;
+  if (ESTATE_CELLS.some(([ex, ez]) => ex === cx && ez === cz)) return;   // left empty: land for sale
   const r = rng(1000 + index);
   const central = Math.abs(cx) <= 90 && Math.abs(cz) <= 90;
   for (const [sx, sz] of [[-12, -12], [12, -12], [-12, 12], [12, 12]]) {

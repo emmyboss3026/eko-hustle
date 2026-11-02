@@ -9,13 +9,14 @@ import { allReachable, footprint } from "./path";
 import { HOME_GOALS, homeGoalById, type HomeGoal } from "../data/homeGoals";
 import { applyEffect, chapterOf, taskProgress } from "./story";
 import {
-  CARS, CAR_RESALE, REPAINT_PRICE, SLOTS, UPGRADES, carById, freeSlot, slotNear, upgradeById,
+  CARS, CAR_RESALE, REPAINT_PRICE, SLOTS, UPGRADES, carById, freeSlot, landCost, plotById, plotTier, slotNear, upgradeById,
   type CarId, type SlotId, type Vehicle,
 } from "../data/estate";
 
 export type EstateCommand =
   | { type: "build"; id: string }
   | { type: "wall"; axis: "v" | "h"; at: number; i: number }
+  | { type: "buyLand"; tier: number }
   | { type: "walls"; edges: string[] }
   | { type: "blueprint"; id: string }
   | { type: "restoreLayout" }
@@ -26,7 +27,8 @@ export type EstateCommand =
   | { type: "paintCar"; uid: number; color: string }
   | { type: "parkCar"; uid: number; x: number; z: number; yaw: number };
 
-export const MAX_CARS = 4;
+export const MAX_CARS = 12;           // the parking you have is the real limit (see slotsFor)
+export const LAND_FROM_CHAPTER = 3;   // the rent mission in chapter 2 must be behind you before you can leave the flat
 
 /** Where a home goal stands: its tasks, whether the story has opened it, and whether it is done or claimed. */
 export function homeGoalState(s: GameState, g: HomeGoal) {
@@ -78,7 +80,19 @@ export function buildBlocker(s: GameState, id: string): string | null {
   if (s.property?.[u.id]) return "You already built this.";
   const missing = u.needs?.filter(n => !s.property?.[n]).map(n => upgradeById(n)!.name);
   if (missing?.length) return `Build first: ${missing.join(", ")}.`;
+  if (u.land && plotTier(s.property) < u.land) return `Needs ${plotById(u.land)?.name ?? "more land"} or bigger.`;
   if (s.money < u.price) return "Not enough money.";
+  return null;
+}
+
+/** Why you cannot buy this plot yet (a short sentence), or null. */
+export function landBlocker(s: GameState, tier: number): string | null {
+  const plot = plotById(tier);
+  if (!plot) return "Unknown plot.";
+  if (plotTier(s.property) >= tier) return "You already have this plot or a bigger one.";
+  if (chapterOf(s) < LAND_FROM_CHAPTER) return "Not yet: get through the first chapters of your story first.";
+  if (s.rentOwed > 0) return "Pay the rent you owe before you leave the flat.";
+  if (s.money < landCost(plotTier(s.property), tier)) return "Not enough money.";
   return null;
 }
 
@@ -130,6 +144,23 @@ export function estateStep(s: GameState, cmd: EstateCommand, kit: Kit): GameStat
       if (!allReachable(homePlan(level, next))) return kit.say(s, "That wall would shut a room in. Leave a gap for a door.");
       const paid = has ? s : kit.charge(s, WALL_PRICE, "home", "Wall");
       return { ...paid, home: { ...paid.home, walls: next } };
+    }
+
+    case "buyLand": {
+      // Buy a plot and move onto it: rent stops, your things come with you, your cars are parked on the new land
+      if (landBlocker(s, cmd.tier)) return s;
+      const plot = plotById(cmd.tier)!;
+      const first = plotTier(s.property) === 0;
+      const paid = kit.charge(s, landCost(plotTier(s.property), cmd.tier), "home", plot.name);
+      let next: GameState = { ...paid, property: { ...paid.property, land: cmd.tier }, rentOwed: 0 };
+      // park every car again, in the best free spaces of the new land
+      const placed: Vehicle[] = [];
+      for (const v of next.vehicles ?? []) {
+        const slot = freeSlot(next.property, placed);
+        placed.push(slot ? { ...v, ...SLOTS[slot] } : v);
+      }
+      next = { ...next, vehicles: placed };
+      return kit.say(next, first ? `${plot.emoji} ${plot.name}: you own your land now, no more rent.` : `${plot.emoji} ${plot.name}`);
     }
 
     case "walls": {

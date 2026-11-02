@@ -371,7 +371,7 @@ export function passTime(s: GameState, minutes: number, effect?: Partial<Needs>,
     next = addMood(next, "sweatyNight");
   }
 
-  if (rentDue(s.time, time)) {
+  if (rentDue(s.time, time) && !next.property?.land) {   // on your own land there is no rent
     const owed = next.rentOwed + RENT;
     const paid = Math.min(next.money, owed);
     const left = owed - paid;
@@ -783,6 +783,7 @@ function step(s: GameState, cmd: Command): GameState {
     case "gramPost":
       return appsStep(s, cmd, kit);
 
+    case "buyLand":
     case "build":
     case "wall":
     case "walls":

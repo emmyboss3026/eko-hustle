@@ -105,7 +105,7 @@ export class Multiplayer {
 
   /** The cars you own, so the server knows which ones you may drive. Sent again when they change. */
   cars(list: PeerCar[]) {
-    this.mine = list.slice(0, 4);
+    this.mine = list.slice(0, 12);
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ t: "cars", cars: this.mine }));
   }
 

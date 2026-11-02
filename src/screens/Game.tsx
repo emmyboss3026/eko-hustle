@@ -28,6 +28,9 @@ import Loading from "../components/Loading";
 import { placingValid, type Placing } from "../components/RoomScene";
 import BlueprintSheet from "../components/BlueprintSheet";
 import PhotoSheet from "../components/PhotoSheet";
+import LandSheet from "../components/LandSheet";
+import { moveHome } from "../three/world.js";
+import { plotTier } from "../data/estate";
 import Avatar from "../components/Avatar";
 import { wallsCost, wallsProblem } from "../engine/estate";
 import { soundForLog } from "../lib/sound";
@@ -56,7 +59,7 @@ const RoomScene = lazy(() => import("../components/RoomScene"));
 const StreetScene = lazy(() => import("../components/StreetScene"));
 const VisitScene = lazy(() => import("../components/VisitScene"));
 
-type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story" | "build" | "cars" | "more" | "builder" | "plans" | "photo";
+type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story" | "build" | "cars" | "more" | "builder" | "plans" | "photo" | "land";
 
 // Four main buttons. Travel, Jobs, Goals and Me live under More; Shop is an app on the phone and part of Build.
 const dock: { id: Panel | "phone"; emoji: string }[] = [
@@ -378,6 +381,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const m = mood(state);
   const job = state.career ? careers[state.career.id] : null;
   const canWork = !!job && job.where === state.location && !walking;
+  moveHome(plotTier(state.property) > 0);   // your home is on the estate once you own land (safe to repeat)
   const missionDock = dockOf(missionPanel(state, mission));
   const narrow = typeof innerWidth === "number" && innerWidth < 900;
   const lit = state.power.grid || generatorOn(state);
@@ -444,7 +448,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             <span>
               {t(`day.${WEEKDAY_KEYS[Math.floor(state.time / 1440) % 7]}`)} · {t("hud.day", { day })} · {clockOf(state.time)}{isRushHour(state.time) ? " 🚦" : ""}
             </span>
-            <span>📍 {tx.district(state.location)} · <span className={rentWarn ? "warn" : ""}>{t(daysToRent > 1 ? "hud.rentIn" : "hud.rentIn1", { days: daysToRent })}</span></span>
+            <span>📍 {tx.district(state.location)} · {plotTier(state.property) > 0 ? <span>🏡 {t("hud.ownLand")}</span> : <span className={rentWarn ? "warn" : ""}>{t(daysToRent > 1 ? "hud.rentIn" : "hud.rentIn1", { days: daysToRent })}</span>}</span>
           </div>
           <div className="hud2-money">{naira(state.money)}</div>
         </div>
@@ -656,6 +660,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             <>
               <div className="menu-grid">
                 <button className="menu-tile" onClick={() => openPanel("shop")}><span aria-hidden>🛋️</span>{t("builder.furniture")}</button>
+                <button className="menu-tile" onClick={() => openPanel("land")}><span aria-hidden>🌍</span>{t("builder.land")}</button>
                 <button className="menu-tile" onClick={() => openPanel("plans")}><span aria-hidden>📐</span>{t("builder.plans")}</button>
                 <button className="menu-tile" onClick={() => openPanel("build")}><span aria-hidden>🏗️</span>{t("shop.build")}</button>
                 <button className="menu-tile" disabled={!showRoom} onClick={() => { setPanel(null); startWalls(); }}><span aria-hidden>🧱</span>{t("walls.tool")}</button>
@@ -665,6 +670,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
               {!showRoom && <p className="note">{t("builder.home")}</p>}
             </>
           )}
+          {panel === "land" && <LandSheet state={state} dispatch={dispatch} />}
           {panel === "photo" && <PhotoSheet avatar={state.sim.avatar} onClose={() => setPanel(null)} />}
           {panel === "plans" && <BlueprintSheet state={state} dispatch={dispatch} />}
           {panel === "build" && <BuildSheet state={state} dispatch={dispatch} />}

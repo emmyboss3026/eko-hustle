@@ -57,7 +57,7 @@ const sockets = new Map<string, WebSocket>();
 
 const wss = new WebSocketServer({
   port: PORT,
-  maxPayload: 2048, // every message is tiny; anything bigger is refused
+  maxPayload: 4096, // every message is tiny; anything bigger is refused
   verifyClient: ({ origin }: { origin?: string }) => !origin || ORIGINS.includes(origin),
 });
 

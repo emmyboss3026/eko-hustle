@@ -62,9 +62,16 @@ export const HOME: HomePlan = {
 /** Extra rooms you can build onto the flat. The room grows right and down, so tiles you already filled never move.
  *  wing: 8 x 8 becomes 10 x 10. wing2: 12 x 12. */
 export const EXTRA_ROOMS = ["Study", "Guest room", "Dining area"] as const;
-export const MAX_SIZE = 12;
+export const MAX_SIZE = 20;
 
-export const wingLevel = (p?: { wing?: boolean; wing2?: boolean }) => (p?.wing ? (p?.wing2 ? 2 : 1) : 0);
+export const MAX_WING = 6;
+const WING_KEYS = ["wing", "wing2", "wing3", "wing4", "wing5", "wing6"] as const;
+/** How many extensions are built, in order: each one needs the one before it. */
+export function wingLevel(p?: Partial<Record<(typeof WING_KEYS)[number], boolean>>): number {
+  let n = 0;
+  while (n < MAX_WING && p?.[WING_KEYS[n]]) n++;
+  return n;
+}
 
 /** Walls you can move are kept as single edges between two tiles: "v:5:2" is the vertical line at x = 5 beside row 2,
  *  "h:3:6" the horizontal line at y = 3 beside column 6. */
@@ -176,7 +183,7 @@ export function homePlan(level: number, edges?: string[], floors?: Floors): Home
 
 function basePlan(level: number): HomePlan {
   if (level <= 0) return HOME;
-  const size = HOME.size + 2 * Math.min(2, level);
+  const size = HOME.size + 2 * Math.min(MAX_WING, level);
   return {
     ...HOME,
     name: level > 1 ? "Large home, Mushin" : "Extended flat, Mushin",
@@ -199,7 +206,7 @@ function basePlan(level: number): HomePlan {
 /** The wing a visitor should see, worked out from where the owner's furniture stands (visitors are not told the upgrades). */
 export const levelForObjects = (objs: { x: number; y: number }[]) => {
   const far = Math.max(0, ...objs.map(o => Math.max(o.x, o.y)));
-  return far >= HOME.size + 2 ? 2 : far >= HOME.size ? 1 : 0;
+  return far < HOME.size ? 0 : Math.min(MAX_WING, Math.floor((far - HOME.size) / 2) + 1);
 };
 
 /** Which room a tile is in (for labels). */

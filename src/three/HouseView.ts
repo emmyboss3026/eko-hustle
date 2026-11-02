@@ -45,6 +45,7 @@ export class HouseView {
   private plan: HomePlan = HOME;
   private shellGroup: THREE.Group | null = null;
   private planKey = "";
+  private alone = false;   // on your own land: no neighbouring units around the flat
   private shapeKey = "";   // size, rooms and floors: when only the walls change, only the inner walls are rebuilt
   private innerWalls = new THREE.Group();
   private fpInner = new THREE.Group();
@@ -240,7 +241,7 @@ export class HouseView {
     shell.add(base);
 
     // The compound around your flat: the neighbours' block, the yard, the gate and the street.
-    this.compound = buildCompound();
+    this.compound = buildCompound(this.alone);
     shell.add(this.compound.group);
 
     const wallMat = mat(this.plan.wall);
@@ -315,6 +316,15 @@ export class HouseView {
     this.wallGrid.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: "#2ee6c5", transparent: true, opacity: 0.7 })));
     this.wallGrid.visible = this.wallMode;
     shell.add(this.wallGrid);
+  }
+
+  /** On your own land the neighbours\' units are gone. Rebuilds the compound when it changes. */
+  setAlone(on: boolean) {
+    if (on === this.alone) return;
+    this.alone = on;
+    this.shapeKey = "";
+    this.planKey = "";
+    this.setPlan(this.plan);
   }
 
   /** The walls inside the flat, from the current plan. */

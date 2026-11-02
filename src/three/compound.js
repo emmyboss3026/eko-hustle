@@ -146,7 +146,7 @@ function keke() {
  * rearN / rearW are the parts behind and left of the flat, hidden when the
  * camera swings round behind them so they never block the view into your rooms.
  */
-export function buildCompound() {
+export function buildCompound(alone = false) {
   const group = new THREE.Group();
   const rearN = new THREE.Group();
   const rearW = new THREE.Group();
@@ -176,15 +176,17 @@ export function buildCompound() {
   const roof = '#9a9184';
   const W = [-12.2, -4.12];   // the unit to the left of yours
   const N = [-12.2, -4.12];   // the units behind yours
-  // Ground floor: left unit, back unit, back-left unit.
-  rearW.add(slabs([[W[0], W[1], 0, STOREY, -4, 4, wall]]));
-  rearN.add(slabs([
-    [-4, 4, 0, STOREY, N[0], N[1], wall],
-    [W[0], W[1], 0, STOREY, N[0], N[1], wall],
-  ]));
-  // Flat roofs over the neighbours. There is no upper floor, stair or balcony: nobody could use them.
-  rearW.add(slabs([[W[0] - 0.1, W[1] + 0.1, STOREY, STOREY + 0.1, -4.1, 4.1, roof]]));
-  rearN.add(slabs([[W[0] - 0.1, 4.1, STOREY, STOREY + 0.1, N[0] - 0.1, N[1] + 0.1, roof]]));
+  // Ground floor: left unit, back unit, back-left unit. On your own land they are not there.
+  if (!alone) {
+    rearW.add(slabs([[W[0], W[1], 0, STOREY, -4, 4, wall]]));
+    rearN.add(slabs([
+      [-4, 4, 0, STOREY, N[0], N[1], wall],
+      [W[0], W[1], 0, STOREY, N[0], N[1], wall],
+    ]));
+    // Flat roofs over the neighbours. There is no upper floor, stair or balcony: nobody could use them.
+    rearW.add(slabs([[W[0] - 0.1, W[1] + 0.1, STOREY, STOREY + 0.1, -4.1, 4.1, roof]]));
+    rearN.add(slabs([[W[0] - 0.1, 4.1, STOREY, STOREY + 0.1, N[0] - 0.1, N[1] + 0.1, roof]]));
+  }
 
   // Windows and doors on the faces you can see. Their glow follows the clock.
   const glow = new THREE.MeshStandardMaterial({ color: '#bfe3ff', roughness: 0.3, emissive: '#ffcf7a', emissiveIntensity: 0 });
@@ -198,11 +200,15 @@ export function buildCompound() {
     g.add(box(0.1, 0.08, 1.3, frame, x, y - 0.38, z, false));
   };
   // Left unit: a door and a window at the front.
-  rearW.add(box(0.8, 1.15, 0.06, '#6d4c41', -9.6, 0.58, 4.03, false));
-  winFront(rearW, -6.6, 0.85, 4.03);
+  if (!alone) {
+    rearW.add(box(0.8, 1.15, 0.06, '#6d4c41', -9.6, 0.58, 4.03, false));
+    winFront(rearW, -6.6, 0.85, 4.03);
+  }
   // Back units: windows on the side facing the yard, upstairs and down.
-  winSide(rearN, 4.03, 0.85, -6.5);
-  winSide(rearN, 4.03, 0.85, -10);
+  if (!alone) {
+    winSide(rearN, 4.03, 0.85, -6.5);
+    winSide(rearN, 4.03, 0.85, -10);
+  }
   // ------------------------------------------------------ fence and gate
   const fence = '#d8cfc0';
   const H = 1.0;

@@ -90,6 +90,11 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
     viewRef.current?.setPlan(homePlan(wing, walls, floors));
   }, [wing, walls, floors, viewRef]);
 
+  const alone = (state.property?.land ?? 0) > 0;
+  useEffect(() => {
+    viewRef.current?.setAlone(alone);
+  }, [alone, viewRef]);
+
   const editing = !!editor;
   useEffect(() => {
     viewRef.current?.setWallMode(editing);
