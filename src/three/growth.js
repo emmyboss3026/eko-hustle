@@ -15,6 +15,14 @@ export const GROWTH = [
       cinema: { cx: -210, cz: 30, face: 'e', solids: [[0, -2, 24, 16, 9]] },
     },
   },
+  {
+    level: 2,
+    note: 'Second growth: a supermarket on the north edge and a stadium on the east edge.',
+    places: {
+      mart: { cx: 90, cz: -270, face: 's', solids: [[0, -4, 28, 14, 6]] },
+      stadium: { cx: 270, cz: 90, face: 'w', solids: [[0, 2, 34, 28, 10]] },
+    },
+  },
 ];
 
 /** How many times the map has grown. */

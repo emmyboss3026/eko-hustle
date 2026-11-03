@@ -12,6 +12,7 @@ export type SpotId =
   | "mamaput" | "jollof" | "bigbite" | "crunchy"
   | "campus" | "hospital" | "chambers" | "court" | "tower" | "studio" | "pavilion" | "residences" | "family"
   | "station" | "cinema"   // added by map growth 1
+  | "mart" | "stadium"     // added by map growth 2
   | "phone";
 
 export type Spot = {
@@ -56,6 +57,8 @@ export const spots: Record<SpotId, Spot> = {
   pavilion: { id: "pavilion", name: "Royal Pavilion Event Centre", emoji: "🎪", district: "ikeja", open: [10, 24], blurb: "Weddings on Saturday, concerts on Sunday, conferences in between.", art: "pavilion" },
   station: { id: "station", name: "Naija Fuel Station", emoji: "⛽", district: "mushin", open: [6, 22], blurb: "Petrol, diesel and cans for your generator, plus hot meat pies at the counter.", lot: true },
   cinema: { id: "cinema", name: "Gidi Cinema", emoji: "🎬", district: "yaba", open: [10, 24], blurb: "Nollywood premieres, cold air conditioning and popcorn you share whether you want to or not.", lot: true },
+  mart: { id: "mart", name: "FreshMart Supermarket", emoji: "🛒", district: "mushin", open: [7, 22], blurb: "Aisles of rice, tomatoes and tinned fish at honest prices, with a juice stand by the door.", lot: true },
+  stadium: { id: "stadium", name: "Unity Stadium", emoji: "🏟️", district: "yaba", open: [9, 23], blurb: "Floodlights, a loud crowd and a running track that anybody can use before the match.", lot: true },
   phone: { id: "phone", name: "Your phone", emoji: "📱", district: "any", blurb: "Works anywhere: call home, hustle on WhatsApp, order delivery." },
 };
 

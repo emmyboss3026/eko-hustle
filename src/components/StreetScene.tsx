@@ -10,6 +10,7 @@ import { chatterKey, PERSONAS, type Persona } from "../data/chatter";
 import { engine, footstep, play, stopEngine } from "../lib/audio";
 import { carById, type Property, type Vehicle } from "../data/estate";
 import { MiniMap, BigMap } from "./MiniMap";
+import { weatherAt } from "../data/weather";
 import { Multiplayer, multiplayerUrl, type Say } from "../lib/multiplayer";
 
 type Props = {
@@ -38,7 +39,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
   const live = useRef({ state, t });
   live.current = { state, t };
   const view = useRef<StreetView | null>(null);
-  const info = useRef<{ hour: number; grid: boolean; property?: Property; vehicles?: Vehicle[] }>({ hour: 12, grid: true });
+  const info = useRef<{ hour: number; grid: boolean; property?: Property; vehicles?: Vehicle[]; rain?: number }>({ hour: 12, grid: true });
   const [car, setCar] = useState<{ uid: number; model: string } | null>(null);   // a car of yours you can get into
   const [drive, setDrive] = useState<{ uid: number; model: string; kmh: number } | null>(null);
   const [near, setNear] = useState<SpotId | null>(null);
@@ -61,7 +62,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
   // What the 3D view is told: on the street at a spot, or looking at a place
   const scene = useRef<{ sim: { away: Record<string, unknown> } }>({ sim: { away: { kind: "place", place: focus ?? "hub" } } });
 
-  info.current = { hour: (state.time % 1440) / 60, grid: state.power.grid, property: state.property, vehicles: state.vehicles };
+  info.current = { hour: (state.time % 1440) / 60, grid: state.power.grid, property: state.property, vehicles: state.vehicles, rain: weatherAt(state.time).strength };
   // While an event card is open you stand still (and can't go in anywhere) until you choose.
   const blocked = useRef(false);
   blocked.current = state.eventId !== null;
