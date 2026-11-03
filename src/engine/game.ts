@@ -14,7 +14,7 @@ import { eventById, pickEvent, EVENT_CHANCE, EVENT_COOLDOWN, type Outcome } from
 import { addSkills, meets, describeReq, startSkills, type Skills } from "../data/skills";
 import { goalSteps, ieltsChance, visaChance, PROOF_OF_FUNDS, type GoalStepId } from "../data/goals";
 import {
-  CATALOG, EVICT_AFTER_WEEKS, HOME, homePlan, wingLevel, POWER, SELL_BACK, START_OBJECTS, START_SUPPLIES,
+  CATALOG, EVICT_AFTER_WEEKS, HOME, onFloor, planOf, POWER, SELL_BACK, START_OBJECTS, START_SUPPLIES,
   type FurnitureType, type Placed,
 } from "../data/home";
 import { canPlace } from "./path";
@@ -34,6 +34,7 @@ import { REVIVE, type ReviveHow } from "../data/revive";
 import { storyFlag } from "./progress";
 import { syncStory, storyStep, type StoryCommand, type StoryState } from "./story";
 import { estateStep, type EstateCommand } from "./estate";
+import { appsStep, type AppsCommand } from "./apps";
 import type { Property, Vehicle } from "../data/estate";
 
 export type EndingKind = "japa" | "landlord" | "evicted" | "collapsed";
@@ -54,6 +55,9 @@ export type Home = {
   nextUid: number;
   walls?: string[];    // walls you moved (see edgeKey in data/home.ts); none = the layout the flat came with
   floors?: Record<string, string>; // floors you laid, by room name
+  blueprints?: string[];           // house blueprints you bought (see data/blueprints.ts)
+  prevWalls?: string[];            // the layout before the last blueprint, so you can go back
+  prevFloors?: Record<string, string>;
   food: number;        // meal packs for cooking
   fuel: number;        // litres of generator fuel
 };
@@ -101,6 +105,8 @@ export type GameState = {
   camera?: "top" | "first"; // overhead or first-person view
   revives?: { ad: number; gem: number; refs: string[] }; // times you came back after collapsing (refs: gems used)
   property?: Property;     // what you have built on your home lot (see data/estate.ts)
+  arcade?: { day: number; plays: Record<string, number> };   // mini-game plays today (see engine/apps.ts)
+  gram?: { followers: number; posts: number; lastPost: number; paid: number[] };
   homeGoals?: string[];     // home goals you have claimed (see data/homeGoals.ts)
   vehicles?: Vehicle[];    // cars you own and where they are parked
   nextVehicle?: number;    // next id for a car
@@ -112,7 +118,7 @@ export const DIARY_SIZE = 500;
 
 export type Command =
   | { type: "tick"; minutes: number; roll: number; pick: number; power?: number; powerPick?: number }
-  | { type: "buy"; item: FurnitureType; x: number; y: number; rot: number }
+  | { type: "buy"; item: FurnitureType; x: number; y: number; rot: number; lvl?: number }   // lvl 1: upstairs
   | { type: "move"; uid: number; x: number; y: number; rot: number }
   | { type: "sell"; uid: number }
   | { type: "payRent" }
@@ -132,6 +138,7 @@ export type Command =
   | { type: "finalize" }  // the player chose to end this life instead of reviving
   | StoryCommand
   | EstateCommand
+  | AppsCommand
   | PhoneCommand;
 
 export const AD_REWARD = 3_000;
@@ -364,7 +371,7 @@ export function passTime(s: GameState, minutes: number, effect?: Partial<Needs>,
     next = addMood(next, "sweatyNight");
   }
 
-  if (rentDue(s.time, time)) {
+  if (rentDue(s.time, time) && !next.property?.land) {   // on your own land there is no rent
     const owed = next.rentOwed + RENT;
     const paid = Math.min(next.money, owed);
     const left = owed - paid;
@@ -697,8 +704,9 @@ function step(s: GameState, cmd: Command): GameState {
       if (!spec) return s;
       const problem = itemBlocker(s, cmd.item);
       if (problem) return say(s, `❌ ${tx(s).furniture(cmd.item)}: ${problem}`);
-      const obj: Placed = { uid: s.home.nextUid, type: cmd.item, x: cmd.x, y: cmd.y, rot: cmd.rot % 4 };
-      if (!canPlace(homePlan(wingLevel(s.property), s.home.walls, s.home.floors), s.home.objects, obj)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(cmd.item) }));
+      const lvl = cmd.lvl === 1 && s.property?.floor2 ? 1 : 0;
+      const obj: Placed = { uid: s.home.nextUid, type: cmd.item, x: cmd.x, y: cmd.y, rot: cmd.rot % 4, ...(lvl ? { lvl } : {}) };
+      if (!canPlace(planOf(s, lvl), onFloor(s.home.objects, lvl), obj)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(cmd.item) }));
       const next = bump(charge(s, spec.price, "home", tx(s).furniture(cmd.item)), "buy");
       return say(
         { ...next, home: { ...next.home, objects: [...next.home.objects, obj], nextUid: obj.uid + 1 } },
@@ -711,7 +719,7 @@ function step(s: GameState, cmd: Command): GameState {
       if (!obj || CATALOG[obj.type].fixed) return s;
       if (s.location !== "mushin") return say(s, `❌ ${msg(s, "problem.goHome")}`);
       const moved = { ...obj, x: cmd.x, y: cmd.y, rot: cmd.rot % 4 };
-      if (!canPlace(homePlan(wingLevel(s.property), s.home.walls), s.home.objects, moved)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(obj.type) }));
+      if (!canPlace(planOf(s, obj.lvl ?? 0), onFloor(s.home.objects, obj.lvl ?? 0), moved)) return say(s, msg(s, "log.noFit", { item: tx(s).furniture(obj.type) }));
       return { ...s, home: { ...s.home, objects: s.home.objects.map(o => (o.uid === obj.uid ? moved : o)) } };
     }
 
@@ -772,8 +780,16 @@ function step(s: GameState, cmd: Command): GameState {
     case "story":
       return storyStep(s, cmd, kit);
 
+    case "arcade":
+    case "gramPost":
+      return appsStep(s, cmd, kit);
+
+    case "buyLand":
     case "build":
     case "wall":
+    case "walls":
+    case "blueprint":
+    case "restoreLayout":
     case "floor":
     case "homeGoal":
     case "buyCar":

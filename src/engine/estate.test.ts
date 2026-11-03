@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { newGame, reduce, type GameState } from "./game";
-import { buildBlocker, carBlocker, MAX_CARS } from "./estate";
-import { CARS, SLOTS, UPGRADES, homeSolids, homeTier, slotsFor } from "../data/estate";
+import { buildBlocker, carBlocker, landBlocker, MAX_CARS } from "./estate";
+import { MAIN } from "./story";
+import { homePlan, wingLevel } from "../data/home";
+import { CARS, LAND_RESALE, PLOTS, SLOTS, UPGRADES, homeSolids, homeTier, landCost, slotsFor } from "../data/estate";
 
 const sim = { name: "Ada", trait: "hustler" as const, avatar: "👩🏾" };
 const rich = (patch: Partial<GameState> = {}): GameState => ({ ...newGame(sim), money: 50_000_000, ...patch });
@@ -37,8 +39,8 @@ describe("building on your property", () => {
     expect(homeSolids({ garage: true, pool: true, gate: true }).length).toBe(6);
   });
 
-  it("every upgrade can be built in some order", () => {
-    let s = rich();
+  it("every upgrade can be built in some order (the big extensions need land)", () => {
+    let s: GameState = { ...rich({ money: 300_000_000 }), property: { land: 4 } };
     for (let i = 0; i < UPGRADES.length; i++) {
       const next = UPGRADES.find(u => !s.property?.[u.id] && !buildBlocker(s, u.id));
       if (!next) break;
@@ -114,5 +116,66 @@ describe("cars", () => {
     const s = newGame(sim);
     expect(s.property).toBeUndefined();
     expect(carBlocker(rich(), "compact")).toBeNull();
+  });
+});
+
+describe("land", () => {
+  const atChapter3 = (patch: Partial<GameState> = {}) => {
+    const s = rich();
+    return { ...s, story: { ...(s.story ?? { route: null, flags: [], done: [], xp: 0 }), done: MAIN.filter(m => m.ch <= 2 && !m.route).map(m => m.id) }, ...patch } as GameState;
+  };
+
+  it("the plots get bigger and dearer, and a bigger plot gives you more lawn parking and bigger houses", () => {
+    for (let i = 1; i < PLOTS.length; i++) {
+      expect(PLOTS[i].price).toBeGreaterThan(PLOTS[i - 1].price);
+      expect(PLOTS[i].width).toBeGreaterThan(PLOTS[i - 1].width);
+      expect(PLOTS[i].house).toBeGreaterThan(PLOTS[i - 1].house);
+    }
+    expect(slotsFor({ land: 1 }).filter(id => id.startsWith("lawn")).length).toBe(2);
+    expect(slotsFor({ land: 4 }).filter(id => id.startsWith("lawn")).length).toBe(8);
+    expect(slotsFor({}).some(id => id.startsWith("lawn"))).toBe(false);
+  });
+
+  it("you need to be past the first chapters, pay what you owe, and have the money", () => {
+    const early = rich();
+    expect(landBlocker(early, 1)).toMatch(/chapters/);
+    const s = atChapter3();
+    expect(landBlocker({ ...s, rentOwed: 100 }, 1)).toMatch(/rent/);
+    expect(landBlocker({ ...s, money: 1000 }, 1)).toMatch(/money/);
+    expect(landBlocker(s, 1)).toBeNull();
+    expect(landBlocker(s, 9)).toMatch(/Unknown/);
+  });
+
+  it("buying land moves you out: it charges, ends rent, and parks your cars on the new lawn", () => {
+    let s = { ...atChapter3(), money: 20_000_000 };
+    s = reduce(s, { type: "buyCar", model: "compact", color: CARS[1].colors[0] });
+    const before = s.money;
+    const next = reduce(s, { type: "buyLand", tier: 2 });
+    expect(next.property?.land).toBe(2);
+    expect(before - next.money).toBe(PLOTS[1].price);
+    expect(next.rentOwed).toBe(0);
+    expect(next.vehicles).toHaveLength(1);
+    expect(reduce(next, { type: "buyLand", tier: 1 })).toBe(next);                 // cannot go back to a smaller plot
+    const bigger = reduce({ ...next, money: 100_000_000 }, { type: "buyLand", tier: 3 });
+    expect(bigger.money).toBe(100_000_000 - landCost(2, 3));
+    expect(landCost(2, 3)).toBe(PLOTS[2].price - Math.round(PLOTS[1].price * LAND_RESALE));
+  });
+
+  it("no rent is charged on your own land", () => {
+    let s = { ...atChapter3(), money: 5_000_000 };
+    s = reduce(s, { type: "buyLand", tier: 1 });
+    const later = reduce(s, { type: "tick", minutes: 60 * 24 * 14, roll: 0.5, pick: 0 });
+    expect(later.rentOwed).toBe(0);
+    expect(later.ending?.kind).not.toBe("evicted");
+  });
+
+  it("the big extensions need the right plot", () => {
+    const s = { ...rich(), property: { wing: true } };
+    expect(buildBlocker(s, "wing")).toMatch(/already/);
+    expect(buildBlocker(s, "wing2")).toMatch(/Quarter plot/);
+    expect(buildBlocker({ ...s, property: { ...s.property, land: 1 } }, "wing2")).toBeNull();
+    expect(buildBlocker({ ...s, property: { ...s.property, land: 1, wing2: true } }, "wing3")).toMatch(/Half plot/);
+    expect(wingLevel({ wing: true, wing2: true, wing3: true })).toBe(3);
+    expect(homePlan(5).size).toBe(20);
   });
 });

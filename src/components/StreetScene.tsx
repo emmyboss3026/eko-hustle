@@ -9,6 +9,7 @@ import { useLang } from "../i18n/react";
 import { chatterKey, PERSONAS, type Persona } from "../data/chatter";
 import { engine, footstep, play, stopEngine } from "../lib/audio";
 import { carById, type Property, type Vehicle } from "../data/estate";
+import { MiniMap, BigMap } from "./MiniMap";
 import { Multiplayer, multiplayerUrl, type Say } from "../lib/multiplayer";
 
 type Props = {
@@ -24,7 +25,6 @@ type Props = {
 
 // Where you appear when you step outside in each district
 const START: Partial<Record<DistrictId, SpotId>> = { mushin: "home", yaba: "hub", island: "club" };
-const DOOR_IDS = Object.keys(DOORS) as SpotId[];
 
 /** The open-world streets, full screen: walk around Lagos in 3D and go in through any door.
  *  When you're not walking, it shows the place you're at. */
@@ -43,7 +43,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
   const [drive, setDrive] = useState<{ uid: number; model: string; kmh: number } | null>(null);
   const [near, setNear] = useState<SpotId | null>(null);
   const [run, setRun] = useState(false);
-  const [menu, setMenu] = useState(false);
+  const [bigMap, setBigMap] = useState(false);
   const [noGl, setNoGl] = useState(false);
   const [target, setTarget] = useState<SpotId | null>(null);
   const joy = useRef<HTMLDivElement>(null);
@@ -88,7 +88,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       setNoGl(true);
       return;
     }
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));   // phones with 3x screens draw 9 times the pixels for little gain
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -101,7 +101,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       onMove: () => {},
       onArrive: (id: string) => enterRef.current(id as SpotId),
       look: state.sim.look ?? {},
-      labelFor: (id: string) => `${spots[id as SpotId]?.emoji ?? "🏠"} ${tx.spot(id as SpotId)}`,
+      labelFor: (id: string) => (id === "flats" ? `🏢 ${t("land.oldFlat")}` : `${spots[id as SpotId]?.emoji ?? "🏠"} ${tx.spot(id as SpotId)}`),
       // A passer-by says something (only while you're walking about)
       onEngine: (speed: number, throttle: number) => engine(speed, throttle),
       onChatter: (persona: Persona) => {
@@ -280,7 +280,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       scene.current = { sim: { away: { kind: "street", x: start.x + ox, z: start.z + oz, yaw: Math.atan2(ox, oz) } } };
     } else {
       scene.current = { sim: { away: { kind: "place", place: focus ?? "hub" } } };
-      setMenu(false);
+      setBigMap(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walking, focus]);
@@ -310,7 +310,6 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
     v.walkTo(d.x, d.z, id);
     v.setTarget(id);
     setTarget(id);
-    setMenu(false);
   }
 
   // The thumbstick for phones: drag from its centre
@@ -414,57 +413,64 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
             </div>
           )}
 
+          {/* the controls sit beside the stick and the map, low on the screen, so the view stays clear */}
+          {!drive && (near || car) && (
+            <div className="walk-context">
+              {near ? (
+                <button className="btn big" onClick={() => enterRef.current(near)}>
+                  🚪 {t("street.goInto", { place: `${spots[near].emoji} ${tx.spot(near)}` })}
+                  {!spotOpen(near, state.time) && <small> ({t("street.closedNow")})</small>}
+                </button>
+              ) : car && (
+                <button className="btn big" onClick={() => view.current?.startDrive(car.uid)}>
+                  🚗 {t("drive.start", { car: carById(car.model)?.name ?? "" })}
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="walk-actions">
             {drive ? (
               <>
                 <button
-                  className="btn plain big"
+                  className="round-btn"
+                  aria-label={t("drive.brake")}
+                  title={t("drive.brake")}
                   onPointerDown={() => { if (view.current) view.current.brake = true; }}
                   onPointerUp={() => { if (view.current) view.current.brake = false; }}
                   onPointerLeave={() => { if (view.current) view.current.brake = false; }}
-                >🛑 {t("drive.brake")}</button>
+                >🛑<small>{t("drive.brake")}</small></button>
                 <button
-                  className="btn big"
+                  className="round-btn"
                   disabled={drive.kmh > 6}
+                  aria-label={t("drive.park")}
+                  title={t("drive.park")}
                   onClick={() => {
                     const r = view.current?.stopDrive();
                     stopEngine();
                     if (r) dispatch({ type: "parkCar", uid: r.uid, x: r.x, z: r.z, yaw: r.yaw });
                   }}
-                >🅿️ {t("drive.park")}</button>
+                >🅿️<small>{t("drive.parkShort")}</small></button>
               </>
-            ) : car && (
-              <button className="btn big" onClick={() => view.current?.startDrive(car.uid)}>
-                🚗 {t("drive.start", { car: carById(car.model)?.name ?? "" })}
-              </button>
-            )}
-            {drive ? null : near ? (
-              <button className="btn big" onClick={() => enterRef.current(near)}>
-                🚪 {t("street.goInto", { place: `${spots[near].emoji} ${tx.spot(near)}` })}
-                {!spotOpen(near, state.time) && <small> ({t("street.closedNow")})</small>}
-              </button>
             ) : (
-              <>
-                <button className="btn" onClick={() => setMenu(m => !m)} aria-expanded={menu}>📍 {t("street.whereTo")}</button>
-                <button className="btn plain" aria-pressed={run} onClick={() => setRun(r => !r)}>🏃🏾 {run ? t("street.running") : t("street.run")}</button>
-              </>
+              <button className="round-btn" aria-pressed={run} aria-label={run ? t("street.running") : t("street.run")} title={run ? t("street.running") : t("street.run")} onClick={() => setRun(r => !r)}>
+                {run ? "🏃🏾" : "🚶🏾"}<small>{run ? t("street.runShort") : t("street.walkShort")}</small>
+              </button>
             )}
-            <button className="btn plain" onClick={onStop}>✕ {t("street.stop")}</button>
+            <button className="round-btn" aria-label={t("map.open")} title={t("map.open")} onClick={() => setBigMap(true)}>🗺️<small>{t("map.short")}</small></button>
+            <button className="round-btn" aria-label={t("street.stop")} title={t("street.stop")} onClick={onStop}>✕<small>{t("street.stopShort")}</small></button>
           </div>
 
-          {menu && (
-            <div className="walk-menu" role="menu">
-              <b>{t("street.walkTo")}</b>
-              {DOOR_IDS.map(id => (
-                <button key={id} role="menuitem" className="row" onClick={() => walkToDoor(id)}>
-                  <span className="row-emoji" aria-hidden>{spots[id].emoji}</span>
-                  <span className="row-main">
-                    <span className="row-title">{tx.spot(id)}</span>
-                    <span className="note">{spots[id].district !== "any" && tx.district(spots[id].district as DistrictId)}{spotOpen(id, state.time) ? "" : ` · ${t("street.closedNow")}`}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
+          <MiniMap view={view} onOpen={() => setBigMap(true)} />
+          {bigMap && (
+            <BigMap
+              view={view}
+              time={state.time}
+              onGo={walkToDoor}
+              onGoPoint={(x, z) => { const v = view.current; if (v) { v.walkTo(x, z); v.setTarget(null); setTarget(null); } }}
+              onStop={() => { const v = view.current; if (v) { v.route = []; v.routeDoor = null; v.setTarget(null); setTarget(null); } }}
+              onClose={() => setBigMap(false)}
+            />
           )}
 
           <div

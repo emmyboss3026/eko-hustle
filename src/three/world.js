@@ -7,10 +7,13 @@
 // edges; the beach lot touches it.
 
 export const ROAD_SPACING = 60;
-export const ROAD_LINES = [-180, -120, -60, 0, 60, 120, 180];
+import { GROWN_PLACES, MAP_LEVEL } from './growth.js';
+
+const ROADS_HALF = 180 + ROAD_SPACING * MAP_LEVEL;   // the outer roads: 60 further out for each growth of the map
+export const ROAD_LINES = Array.from({ length: (2 * ROADS_HALF) / ROAD_SPACING + 1 }, (_, k) => -ROADS_HALF + ROAD_SPACING * k);
 export const ROAD_HALF = 4;          // tarmac is 8 wide
 export const LOT_HALF = 24;          // a lot runs from road line + 6 to the next line − 6
-export const LAND_HALF = 186;        // the land ends just past the outer roads
+export const LAND_HALF = ROADS_HALF + 6;   // the land ends just past the outer roads
 export const ENTER_RADIUS = 5;       // how close you must be to a door to go in
 export const WALK_SPEED = 7;         // world units per real second
 export const RUN_SPEED = 12;
@@ -32,7 +35,16 @@ export const PLACE_LOTS = {
   park:   { cx: -150, cz: 30,   face: 'e' },
   beach:  { cx: 150,  cz: 150,  face: 'n' },
   club:   { cx: 90,   cz: -30,  face: 'w' },
+  ...Object.fromEntries(Object.entries(GROWN_PLACES).map(([id, p]) => [id, { cx: p.cx, cz: p.cz, face: p.face }])),   // places added by growth.js
 };
+
+// ---------------------------------------------------------------- the estate: land you can buy
+// Four blocks on the east side are left empty of buildings (for everyone, so the server agrees). The land for sale is here.
+// Buying a plot moves your home onto it: PLACE_LOTS.home and DOORS.home point at the estate, and the old flat stays where it
+// was as the place 'flats' (its walls are in COLLIDERS for good, so the server and every player agree about them).
+export const ESTATE_CELLS = [[150, -150], [150, -90], [150, -30], [150, 30]];
+export const ESTATE_LOT = { cx: 150, cz: -60, face: 'w' };
+const OLD_HOME_LOT = { ...PLACE_LOTS.home };
 
 /** Lot-local → world. Local −z is the front (the door side). */
 export function toWorld(lot, lx, lz) {
@@ -50,10 +62,11 @@ export function faceYaw(face) {
 }
 
 /** Where you stand to go in: on the pavement in front of the lot's gate. */
-export const DOORS = Object.fromEntries(Object.entries(PLACE_LOTS).map(([id, lot]) => {
+const doorOf = (id, lot) => {
   const [x, z] = toWorld(lot, 0, -LOT_HALF - 1.5);
-  return [id, { id, x, z, face: lot.face }];
-}));
+  return { id, x, z, face: lot.face };
+};
+export const DOORS = Object.fromEntries(Object.entries(PLACE_LOTS).map(([id, lot]) => [id, doorOf(id, lot)]));
 
 // --------------------------------------------------------------- colliders
 
@@ -70,12 +83,32 @@ export const PLACE_SOLIDS = {
   park:   [[0, 2, 6, 6, 2], [-14, -10, 1, 1, 6], [14, -10, 1, 1, 6], [-14, 14, 1, 1, 6], [14, 14, 1, 1, 6]],
   beach:  [[-10, 6, 1, 1, 4], [10, 6, 1, 1, 4], [0, 14, 1, 1, 4]],
   club:   [[0, -2, 26, 18, 10]],
+  ...Object.fromEntries(Object.entries(GROWN_PLACES).map(([id, p]) => [id, p.solids])),
 };
 
 function solidToWorld(lot, [lx, lz, w, d, h], extra = {}) {
   const [x, z] = toWorld(lot, lx, lz);
   const turned = lot.face === 'e' || lot.face === 'w';
   return { x, z, w: turned ? d : w, d: turned ? w : d, h, ...extra };
+}
+
+/** Is your home on the estate (you bought land) or in the old flat? Safe to call again and again. The old flat's collider is never
+ *  removed; only your own house on the estate is added (and only here, never on the server). */
+export function moveHome(onEstate) {
+  const now = PLACE_LOTS.home.cx === ESTATE_LOT.cx;
+  if (onEstate === now) return;
+  const at = onEstate ? ESTATE_LOT : OLD_HOME_LOT;
+  PLACE_LOTS.home = { ...at };
+  DOORS.home = doorOf('home', PLACE_LOTS.home);
+  for (let i = COLLIDERS.length - 1; i >= 0; i--) if (COLLIDERS[i].place === 'home-estate') COLLIDERS.splice(i, 1);
+  if (onEstate) {
+    PLACE_LOTS.flats = { ...OLD_HOME_LOT };
+    PLACE_SOLIDS.flats = PLACE_SOLIDS.home;
+    COLLIDERS.push(...PLACE_SOLIDS.home.map((s) => solidToWorld(ESTATE_LOT, s, { place: 'home-estate' })));
+  } else {
+    delete PLACE_LOTS.flats;
+    delete PLACE_SOLIDS.flats;
+  }
 }
 
 /** Small seeded random so the town is the same on every device. */
@@ -91,6 +124,11 @@ function rng(seed) {
 
 export const LOT_CENTERS = [];
 for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) LOT_CENTERS.push([-150 + i * 60, -150 + j * 60]);
+// Each growth adds a ring of lots round the outside. They come AFTER the original ones so the seeded buildings do not change.
+for (let ring = 1; ring <= MAP_LEVEL; ring++) {
+  const edge = 150 + 60 * ring;
+  for (let cx = -edge; cx <= edge; cx += 60) for (let cz = -edge; cz <= edge; cz += 60) if (Math.max(Math.abs(cx), Math.abs(cz)) === edge) LOT_CENTERS.push([cx, cz]);
+}
 
 const placeAt = (cx, cz) => Object.keys(PLACE_LOTS).find((id) => PLACE_LOTS[id].cx === cx && PLACE_LOTS[id].cz === cz) ?? null;
 
@@ -101,6 +139,7 @@ const TOWER_PALETTE = ['#6fa8dc', '#5cc5c1', '#8e9cff', '#7fb6e8'];
 export const BUILDINGS = [];
 LOT_CENTERS.forEach(([cx, cz], index) => {
   if (placeAt(cx, cz)) return;
+  if (ESTATE_CELLS.some(([ex, ez]) => ex === cx && ez === cz)) return;   // left empty: land for sale
   const r = rng(1000 + index);
   const central = Math.abs(cx) <= 90 && Math.abs(cz) <= 90;
   for (const [sx, sz] of [[-12, -12], [12, -12], [-12, 12], [12, 12]]) {

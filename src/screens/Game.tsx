@@ -26,6 +26,13 @@ import Guide, { guideSeen } from "../components/Guide";
 import Cutscene, { type Ride } from "../components/Cutscene";
 import Loading from "../components/Loading";
 import { placingValid, type Placing } from "../components/RoomScene";
+import BlueprintSheet from "../components/BlueprintSheet";
+import PhotoSheet from "../components/PhotoSheet";
+import LandSheet from "../components/LandSheet";
+import { moveHome } from "../three/world.js";
+import { plotTier } from "../data/estate";
+import Avatar from "../components/Avatar";
+import { wallsCost, wallsProblem } from "../engine/estate";
 import { soundForLog } from "../lib/sound";
 import { play, setScene, startAmbience, stopAmbience, type Sfx } from "../lib/audio";
 import { soundForAction } from "../data/sounds";
@@ -33,7 +40,7 @@ import { actionById } from "../data/actions";
 import { initAds } from "../lib/ads";
 import PaymentNotice from "../components/PaymentNotice";
 import { currentMission, type Mission } from "../data/missions";
-import { CATALOG, FLOORS, FLOOR_PRICE, WALL_PRICE, homePlan, roomAt, wingLevel, type FurnitureType } from "../data/home";
+import { CATALOG, FLOORS, FLOOR_PRICE, defaultEdges, flatSize, homePlan, roomAt, tidyEdges, wingLevel, type FurnitureType } from "../data/home";
 import { spots, type SpotId } from "../data/spots";
 import { skylineStrip, skyFor } from "../art/art.js";
 import type { HouseView } from "../three/HouseView";
@@ -52,7 +59,7 @@ const RoomScene = lazy(() => import("../components/RoomScene"));
 const StreetScene = lazy(() => import("../components/StreetScene"));
 const VisitScene = lazy(() => import("../components/VisitScene"));
 
-type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story" | "build" | "cars" | "more" | "builder";
+type Panel = "do" | "go" | "work" | "shop" | "goals" | "me" | "help" | "feedback" | "diary" | "story" | "build" | "cars" | "more" | "builder" | "plans" | "photo" | "land";
 
 // Four main buttons. Travel, Jobs, Goals and Me live under More; Shop is an app on the phone and part of Build.
 const dock: { id: Panel | "phone"; emoji: string }[] = [
@@ -125,7 +132,9 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const [entered, setEntered] = useState<SpotId | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [placing, setPlacing] = useState<Placing | null>(null);
-  const [wallMode, setWallMode] = useState(false);
+  // The wall editor: walls as drawn so far (nothing is paid until Apply), with undo and redo
+  const [draft, setDraft] = useState<{ tool: "move" | "draw" | "erase"; edges: string[]; committed: string[]; past: string[][]; future: string[][]; note: string | null } | null>(null);
+  const [floorLevel, setFloorLevel] = useState(0);   // 0 ground floor, 1 upstairs
   const [sideMenu, setSideMenu] = useState(false);   // the ⋯ menu on the right: Help, Feedback, Speed
   const [floorStyle, setFloorStyle] = useState<string | null>(null);   // set while you are laying floors
   const [toast, setToast] = useState<string | null>(null);
@@ -154,7 +163,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   // The clock: game minutes per real second (slower with relaxed survival, see data/survival.ts). It waits while a panel, event, the guide or a ride is open,
   // so you can read in peace.
   const eventOpen = state.eventId !== null;
-  const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null || wallMode || floorStyle !== null || phone !== null || visiting !== null;
+  const stopped = paused || eventOpen || guide || ride !== null || panel !== null || placing !== null || draft !== null || floorStyle !== null || phone !== null || visiting !== null;
   const minutesPerTick = isRelaxed(state) ? RELAXED.minutesPerTick : CLASSIC.minutesPerTick;
   useEffect(() => {
     if (stopped) return;
@@ -266,6 +275,42 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
     }
   }, []);
   const endRide = useCallback(() => setRide(null), []);
+
+  // ----- the wall editor
+  const wallSize = flatSize(wingLevel(state.property));
+  const wallEdges = draft ? tidyEdges(draft.edges, wallSize) : [];
+  const wallCost = draft ? wallsCost(state, wallEdges) : 0;
+  const startWalls = () => {
+    const e = state.home.walls ?? defaultEdges(wingLevel(state.property));
+    setDraft({ tool: "move", edges: e, committed: e, past: [], future: [], note: null });
+  };
+  /** A drag is shown as it goes (commit false); letting go keeps it if it is allowed, otherwise puts the walls back. */
+  function editWalls(next: string[], commit: boolean) {
+    if (!commit) return setDraft(d => d && { ...d, edges: next });
+    commitWalls(next);
+  }
+  function commitWalls(next: string[]) {
+    setDraft(d => {
+      if (!d) return d;
+      if (next.length === d.committed.length && next.every(e => d.committed.includes(e))) return { ...d, edges: d.committed };
+      const bad = wallsProblem(state, next);
+      if (bad) return { ...d, edges: d.committed, note: bad };
+      return { ...d, edges: next, committed: next, past: [...d.past, d.committed], future: [], note: null };
+    });
+  }
+  const undoWalls = () => setDraft(d => (d && d.past.length ? { ...d, edges: d.past[d.past.length - 1], committed: d.past[d.past.length - 1], past: d.past.slice(0, -1), future: [d.committed, ...d.future], note: null } : d));
+  const redoWalls = () => setDraft(d => (d && d.future.length ? { ...d, edges: d.future[0], committed: d.future[0], past: [...d.past, d.committed], future: d.future.slice(1), note: null } : d));
+  const tidyWalls = () => {
+    if (!draft) return;
+    const tidy = tidyEdges(draft.committed, wallSize);
+    if (tidy.length === draft.committed.length) return setDraft({ ...draft, note: t("walls.tidyNone") });
+    setDraft({ ...draft, edges: tidy, committed: tidy, past: [...draft.past, draft.committed], future: [], note: t("walls.tidied", { n: draft.committed.length - tidy.length }) });
+  };
+  const applyWalls = () => {
+    if (!draft) return;
+    dispatch({ type: "walls", edges: wallEdges });
+    setDraft(null);
+  };
   const [storyId, setStoryId] = useState<string | null>(null);
   const openStory = useCallback((id: string | null) => {
     setStoryId(id);
@@ -321,13 +366,13 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
     setPanel(null);
     setSelected(null);
     setWalking(false);
-    setPlacing({ type, uid, x: current?.x ?? null, y: current?.y ?? null, rot: current?.rot ?? 0 });
+    setPlacing({ type, uid, x: current?.x ?? null, y: current?.y ?? null, rot: current?.rot ?? 0, lvl: current ? (current.lvl ?? 0) : (viewRef.current?.level ?? 0) });
   }
 
   function confirmPlacing() {
     if (!placing || placing.x === null || placing.y === null || !placingValid(state, placing)) return;
-    const { x, y, rot } = placing;
-    dispatch(placing.uid !== null ? { type: "move", uid: placing.uid, x, y, rot } : { type: "buy", item: placing.type, x, y, rot });
+    const { x, y, rot, lvl } = placing;
+    dispatch(placing.uid !== null ? { type: "move", uid: placing.uid, x, y, rot } : { type: "buy", item: placing.type, x, y, rot, lvl });
     setPlacing(null);
   }
 
@@ -337,6 +382,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const m = mood(state);
   const job = state.career ? careers[state.career.id] : null;
   const canWork = !!job && job.where === state.location && !walking;
+  moveHome(plotTier(state.property) > 0);   // your home is on the estate once you own land (safe to repeat)
   const missionDock = dockOf(missionPanel(state, mission));
   const narrow = typeof innerWidth === "number" && innerWidth < 900;
   const lit = state.power.grid || generatorOn(state);
@@ -356,19 +402,19 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
               if (uid !== null) setPanel(null);
             }}
             placing={placing}
-            wallMode={wallMode}
+            editor={draft ? { tool: draft.tool, edges: draft.edges, size: flatSize(wingLevel(state.property)), onEdit: editWalls } : null}
             floorMode={floorStyle !== null}
             onFloorTile={(x, y) => {
               if (floorStyle === null) return;
               const room = roomAt(x, y, homePlan(wingLevel(state.property), state.home.walls, state.home.floors));
               dispatch({ type: "floor", room, style: floorStyle });
             }}
-            onWallEdge={(axis, at, i) => dispatch({ type: "wall", axis, at, i })}
             onPlaceTile={(x, y) => placing && setPlacing({ ...placing, x, y })}
             shift={narrow && (panel || selected !== null) ? 0.12 : 0}
             firstPerson={firstPerson}
             userId={userId}
             net={visiting === null}
+            onLevel={setFloorLevel}
           />
         )}
         {showStreet && (
@@ -395,13 +441,16 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
       {/* ---------- top: who, when, money and needs ---------- */}
       <header className="hud2">
         <div className="hud2-row">
-          <span className="hud2-avatar" aria-hidden>{state.sim.avatar}</span>
+          <button className="hud2-avatar" onClick={() => openPanel(panel === "photo" ? null : "photo")} aria-label={t("hud.photo")} title={t("hud.photo")}>
+            <Avatar emoji={state.sim.avatar} />
+            <i className="avatar-cam" aria-hidden>📷</i>
+          </button>
           <div className="hud2-who">
             <b>{state.sim.name}</b>
             <span>
               {t(`day.${WEEKDAY_KEYS[Math.floor(state.time / 1440) % 7]}`)} · {t("hud.day", { day })} · {clockOf(state.time)}{isRushHour(state.time) ? " 🚦" : ""}
             </span>
-            <span>📍 {tx.district(state.location)} · <span className={rentWarn ? "warn" : ""}>{t(daysToRent > 1 ? "hud.rentIn" : "hud.rentIn1", { days: daysToRent })}</span></span>
+            <span>📍 {tx.district(state.location)} · {plotTier(state.property) > 0 ? <span>🏡 {t("hud.ownLand")}</span> : <span className={rentWarn ? "warn" : ""}>{t(daysToRent > 1 ? "hud.rentIn" : "hud.rentIn1", { days: daysToRent })}</span>}</span>
           </div>
           <div className="hud2-money">{naira(state.money)}</div>
         </div>
@@ -482,6 +531,11 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
         {toast && !ride && !panel && <div className="toast2" aria-live="polite">{toast}</div>}
         {!placing && !walking && !panel && selected === null && (
           <div className="quick">
+            {showRoom && state.property?.floor2 && (
+              <button className="btn plain" onClick={() => viewRef.current?.goLevel(floorLevel ? 0 : 1)}>
+                {floorLevel ? `⬇ ${t("floor.down")}` : `⬆ ${t("floor.up")}`}
+              </button>
+            )}
             {canWork && (
               <button className="btn big" disabled={state.needs.energy < 15} onClick={() => dispatch({ type: "work" })}>
                 {state.needs.energy < 15 ? t("work.tooTired") : t("work.goTo", { hours: job!.hours })}
@@ -518,13 +572,25 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
           </div>
         )}
 
-        {wallMode && (
-          <div className="place-bar" role="group" aria-label={t("walls.tool")}>
-            <div>
-              <b>🧱 {t("walls.tool")}</b>
-              <small>{t("walls.hint", { price: naira(WALL_PRICE) })}</small>
+        {draft && (
+          <div className="place-bar wall-bar" role="group" aria-label={t("walls.tool")}>
+            <div className="wall-tools" role="radiogroup" aria-label={t("walls.tool")}>
+              {([["move", "✋", "walls.move"], ["draw", "✏️", "walls.draw"], ["erase", "🧽", "walls.erase"]] as const).map(([id, emoji, key]) => (
+                <button key={id} role="radio" aria-checked={draft.tool === id} onClick={() => setDraft({ ...draft, tool: id })}>{emoji} {t(key)}</button>
+              ))}
+              <span className="wall-sep" aria-hidden />
+              <button aria-label={t("walls.undo")} title={t("walls.undo")} disabled={!draft.past.length} onClick={undoWalls}>↶</button>
+              <button aria-label={t("walls.redo")} title={t("walls.redo")} disabled={!draft.future.length} onClick={redoWalls}>↷</button>
+              <button aria-label={t("walls.tidy")} title={t("walls.tidyTip")} onClick={tidyWalls}>🧹 {t("walls.tidy")}</button>
+              <button aria-label={t("walls.reset")} title={t("walls.reset")} onClick={() => commitWalls(defaultEdges(wingLevel(state.property)))}>⟲</button>
             </div>
-            <button className="btn" onClick={() => setWallMode(false)}>{t("walls.done")}</button>
+            <small>{draft.note ?? t("walls.hint2")}</small>
+            {draft.edges.length > wallEdges.length && <small className="wall-warn">⚠ {t("walls.floating", { n: draft.edges.length - wallEdges.length })}</small>}
+            <div className="wall-actions">
+              <span className="wall-cost">{wallCost > 0 ? t("walls.cost", { price: naira(wallCost) }) : wallCost < 0 ? t("walls.refund", { price: naira(-wallCost) }) : t("walls.free")}</span>
+              <button className="btn plain" onClick={() => setDraft(null)}>{t("place.cancel")}</button>
+              <button className="btn" disabled={wallCost > state.money || !!wallsProblem(state, wallEdges)} onClick={applyWalls}>{t("walls.apply")}</button>
+            </div>
           </div>
         )}
 
@@ -601,14 +667,19 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             <>
               <div className="menu-grid">
                 <button className="menu-tile" onClick={() => openPanel("shop")}><span aria-hidden>🛋️</span>{t("builder.furniture")}</button>
+                <button className="menu-tile" onClick={() => openPanel("land")}><span aria-hidden>🌍</span>{t("builder.land")}</button>
+                <button className="menu-tile" onClick={() => openPanel("plans")}><span aria-hidden>📐</span>{t("builder.plans")}</button>
                 <button className="menu-tile" onClick={() => openPanel("build")}><span aria-hidden>🏗️</span>{t("shop.build")}</button>
-                <button className="menu-tile" disabled={!showRoom} onClick={() => { setPanel(null); setWallMode(true); }}><span aria-hidden>🧱</span>{t("walls.tool")}</button>
-                <button className="menu-tile" disabled={!showRoom} onClick={() => { setPanel(null); setFloorStyle("oak"); }}><span aria-hidden>🎨</span>{t("floors.tool")}</button>
+                <button className="menu-tile" disabled={!showRoom || floorLevel === 1} onClick={() => { setPanel(null); startWalls(); }}><span aria-hidden>🧱</span>{t("walls.tool")}</button>
+                <button className="menu-tile" disabled={!showRoom || floorLevel === 1} onClick={() => { setPanel(null); setFloorStyle("oak"); }}><span aria-hidden>🎨</span>{t("floors.tool")}</button>
                 <button className="menu-tile" onClick={() => openPanel("cars")}><span aria-hidden>🚗</span>{t("shop.cars")}</button>
               </div>
               {!showRoom && <p className="note">{t("builder.home")}</p>}
             </>
           )}
+          {panel === "land" && <LandSheet state={state} dispatch={dispatch} />}
+          {panel === "photo" && <PhotoSheet avatar={state.sim.avatar} onClose={() => setPanel(null)} />}
+          {panel === "plans" && <BlueprintSheet state={state} dispatch={dispatch} />}
           {panel === "build" && <BuildSheet state={state} dispatch={dispatch} />}
           {panel === "cars" && <DealershipSheet state={state} dispatch={dispatch} />}
           {panel === "shop" && (
@@ -660,7 +731,11 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
           state={state}
           dispatch={dispatch}
           app={phone === "home" ? null : phone}
-          onApp={a => { if (a === "shop") { setPhone(null); openPanel("shop"); } else setPhone(a ?? "home"); }}
+          onApp={a => {
+            // Some apps are shortcuts to a screen of the game
+            const to: Partial<Record<string, Panel>> = { shop: "shop", estate: "builder", cars: "cars", goals: "goals" };
+            if (a && to[a]) { setPhone(null); openPanel(to[a]!); } else setPhone(a ?? "home");
+          }}
           onClose={() => { setPhone(null); setClaimed(null); }}
           onTravel={() => { setPhone(null); setPanel("go"); }}
           onStory={openStory}
