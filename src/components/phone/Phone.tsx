@@ -17,14 +17,10 @@ import QuickApp from "./QuickApp";
 import FriendsApp from "./FriendsApp";
 import WorkTab from "../WorkTab";
 import StoryApp from "./StoryApp";
-import GamesApp from "./GamesApp";
-import NewsApp from "./NewsApp";
-import GramApp from "./GramApp";
-import MusicApp from "./MusicApp";
 import { currentStory, storyOf, tasksDone, challengeProgress } from "../../engine/story";
 import { CHALLENGES } from "../../data/story";
 
-export type AppId = "games" | "news" | "gram" | "music" | "estate" | "cars" | "goals" | "shop" | "story" | "friends" | "bank" | "invest" | "business" | "invites" | "contacts" | "messages" | "rewards" | "board" | "jobs" | "quick";
+export type AppId = "shop" | "story" | "friends" | "bank" | "invest" | "business" | "invites" | "contacts" | "messages" | "rewards" | "board" | "jobs" | "quick";
 
 export const APPS: { id: AppId; emoji: string; color: string }[] = [
   { id: "story", emoji: "📖", color: "#8e44ad" },
@@ -37,13 +33,6 @@ export const APPS: { id: AppId; emoji: string; color: string }[] = [
   { id: "contacts", emoji: "📇", color: "#6f42c1" },
   { id: "rewards", emoji: "🎁", color: "#e0a800" },
   { id: "board", emoji: "🏆", color: "#b8860b" },
-  { id: "games", emoji: "🎮", color: "#5f3dc4" },
-  { id: "gram", emoji: "📸", color: "#d6336c" },
-  { id: "news", emoji: "📰", color: "#1971c2" },
-  { id: "music", emoji: "🎵", color: "#2f9e44" },
-  { id: "estate", emoji: "🏠", color: "#e67700" },
-  { id: "cars", emoji: "🚗", color: "#1c7ed6" },
-  { id: "goals", emoji: "✈️", color: "#0b7285" },
   { id: "shop", emoji: "🛒", color: "#e8590c" },
   { id: "jobs", emoji: "💼", color: "#495057" },
   { id: "quick", emoji: "🛵", color: "#c0392b" },
@@ -106,10 +95,6 @@ export default function Phone({ state, dispatch, app, onApp, onClose, onTravel, 
     case "jobs": body = <WorkTab state={state} dispatch={dispatch} goTo={onTravel} />; break;
     case "quick": body = <QuickApp state={state} dispatch={dispatch} />; break;
     case "friends": body = <FriendsApp userId={userId} onVisit={onVisit} />; break;
-    case "games": body = <GamesApp state={state} dispatch={dispatch} />; break;
-    case "news": body = <NewsApp state={state} />; break;
-    case "gram": body = <GramApp state={state} dispatch={dispatch} />; break;
-    case "music": body = <MusicApp />; break;
     default:
       body = (
         <div className="phone-home">

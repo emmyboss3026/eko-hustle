@@ -148,12 +148,6 @@ export const actions: Action[] = [
   { id: "order-groceries", label: "Order groceries delivered (5 packs)", emoji: "🛵", minutes: 5, cost: 5_200, category: "home", where: "any", spot: "phone", effect: {}, stock: { food: 5 } },
   { id: "chopnow-jollof", label: "ChopNow: order jollof delivered", emoji: "🛵", minutes: 40, cost: 4_000, category: "food", where: "any", spot: "phone", effect: { hunger: 55, fun: 5 }, mood: "fullTummy" },
   { id: "chopnow-pizza", label: "ChopNow: order pizza for the gang", emoji: "🍕", minutes: 45, cost: 8_000, category: "food", where: "any", spot: "phone", effect: { hunger: 50, social: 20, fun: 15 }, mood: "goodGist" },
-  // Naija Fuel Station (added by map growth 1)
-  { id: "station-fuel", label: "Fill your generator cans (10 litres)", emoji: "⛽", minutes: 25, cost: 9_000, category: "home", where: "mushin", spot: "station", effect: {}, stock: { fuel: 10 } },
-  { id: "station-pie", label: "Meat pie and a cold drink", emoji: "🥧", minutes: 15, cost: 1_200, category: "food", where: "mushin", spot: "station", effect: { hunger: 18, fun: 4 } },
-  // Gidi Cinema (added by map growth 1)
-  { id: "cinema-film", label: "Watch a Nollywood film", emoji: "🎬", minutes: 150, cost: 3_500, category: "fun", where: "yaba", spot: "cinema", effect: { fun: 45, social: 8, energy: -5 }, mood: "goodGist" },
-  { id: "cinema-popcorn", label: "Share popcorn with friends", emoji: "🍿", minutes: 30, cost: 1_800, category: "fun", where: "yaba", spot: "cinema", effect: { fun: 12, social: 20, hunger: 6 } },
   { id: "fuel", label: "Buy generator fuel (5 litres)", emoji: "⛽", minutes: 15, cost: 5_000, category: "home", where: "any", spot: "phone", effect: {}, stock: { fuel: 5 } },
   { id: "puff-puff", label: "Buy puff-puff from a hawker", emoji: "🍩", minutes: 5, cost: 300, category: "food", where: "any", spot: "phone", effect: { hunger: 15 } },
   { id: "pure-water", label: "Buy pure water", emoji: "💧", minutes: 2, cost: 50, category: "food", where: "any", spot: "phone", effect: { hunger: 3, bladder: -5 } },

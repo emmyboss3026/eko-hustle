@@ -1,5 +1,4 @@
 import { useState } from "react";
-import Avatar from "./Avatar";
 import LegalLinks from "./LegalLinks";
 import { dayOf, mood, moodPay, type GameState } from "../engine/game";
 import { moodlets } from "../data/moodlets";
@@ -62,7 +61,7 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
 
   return (
     <>
-      <h2><Avatar emoji={state.sim.avatar} className="me-avatar" /> {state.sim.name}</h2>
+      <h2>{state.sim.avatar} {state.sim.name}</h2>
       <p className="lede">{traits[state.sim.trait].emoji} {tr.name}: {tr.desc}</p>
       {state.sim.preset && tx.presetStory(state.sim.preset) && <p className="note">“{tx.presetStory(state.sim.preset)}”</p>}
 

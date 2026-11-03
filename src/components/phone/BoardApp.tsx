@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import Avatar from "../Avatar";
 import type { GameState } from "../../engine/game";
 import { naira } from "../../engine/economy";
 import { achievements, level, score, STATUS, statusTier, netWorth, reputation, ACHIEVEMENTS } from "../../engine/progress";
@@ -71,7 +70,7 @@ export default function BoardApp({ state, userId }: { state: GameState; userId: 
     <>
       {/* Your numbers right now (what the server will see next time it updates) */}
       <div className="board-me-card">
-        <Avatar emoji={state.sim.avatar} className="board-face big" />
+        <span className="board-face big" aria-hidden>{state.sim.avatar}</span>
         <div>
           <b>{state.sim.name}</b>
           <small>{t("phone.level", { level: level(state) })} · {STATUS[tier].emoji} {t(STATUS[tier].key)}</small>

@@ -26,7 +26,7 @@ export async function publishHome(objects: Placed[], shape: HomeShape): Promise<
 function cleanShape(s: unknown): HomeShape | null {
   const o = s as Partial<HomeShape> | null;
   if (!o || typeof o !== "object") return null;
-  const wing = Number.isInteger(o.wing) ? Math.max(0, Math.min(6, o.wing as number)) : 0;
+  const wing = Number.isInteger(o.wing) ? Math.max(0, Math.min(2, o.wing as number)) : 0;
   const walls = Array.isArray(o.walls) ? o.walls.filter(w => typeof w === "string" && /^[vh]:\d{1,2}:\d{1,2}$/.test(w)).slice(0, 400) : undefined;
   const floors: Record<string, string> = {};
   if (o.floors && typeof o.floors === "object") {

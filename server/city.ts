@@ -12,15 +12,15 @@ export const SEE_RANGE = 150;        // you only receive players this close (int
 export const SAY_RANGE = 30;         // proximity chat reaches this far
 export const MAX_SAY = 120;
 export const HOME_CAPACITY = 6;      // people in one home at a time (owner + visitors)
-export const HOME_SIZE = 20;         // the most a home can grow to (8 x 8 up to 20 x 20 tiles with extensions: see data/home.ts); positions there are in tiles
+export const HOME_SIZE = 12;         // the most a home can grow to (8 x 8, 10 x 10 or 12 x 12 tiles with extensions: see data/home.ts); positions there are in tiles
 const HOME_SPEED = 3;                // tiles per second, the same as the walking speed in HouseView
-const HOME_DOOR = { x: 2, z: 9 };    // where you appear when you come in
+const HOME_DOOR = { x: 2, z: 7 };    // where you appear when you come in
 const SAY_EVERY_MS = 1_000;
 const MOVE_EVERY_MS = 40;            // moves arriving faster than this are dropped
 const SPEED_SLACK = 1.6;             // run speed × this, so lag spikes do not rubber-band honest players
 const MAX_GAP_S = 2;                 // a long silence never earns more than this much travel
 const KICK_AFTER_STRIKES = 25;
-const MAX_OWNED = 12;                // the most cars one player can own (MAX_CARS in the game)
+const MAX_OWNED = 4;                 // the most cars one player can own (MAX_CARS in the game)
 const CAR_SCALE = 0.36;              // in-game top speed is real km/h × this (see StreetView.startDrive)
 const CAR_RADIUS = 0.8;              // how close to a wall a car centre may be
 const carTop = (model: string) => (CARS.find(c => c.id === model)?.topKmh ?? 0) / 3.6 * CAR_SCALE;
@@ -137,7 +137,6 @@ export class Cities {
     if (old) this.leave(old.id);
     const rid = `home:${owner}`;
     let room = this.rooms.get(rid);
-    if (p.id !== owner && !room?.has(owner)) return null;   // a guest only gets in while the owner is home to receive them
     if (room && room.size >= HOME_CAPACITY) return null;
     if (!room) { room = new Map(); this.rooms.set(rid, room); }
     const m: Member = {
@@ -150,11 +149,6 @@ export class Cities {
     this.byId.set(m.id, m);
     m.send({ t: "welcome", id: m.id, instance: rid, home: owner, capacity: HOME_CAPACITY, players: [...room.values()].filter(o => o !== m).map(publicOf), x: m.x, z: m.z });
     return m;
-  }
-
-  /** Is the owner at home (so guests may come in)? */
-  hostHome(owner: string) {
-    return !!this.rooms.get(`home:${owner}`)?.has(owner);
   }
 
   /** The owner sends a visitor out of their home. Nobody else can. */
@@ -172,10 +166,6 @@ export class Cities {
     this.byId.delete(id);
     const room = this.rooms.get(m.instance);
     room?.delete(id);
-    // When the owner leaves their home, the guests are shown out: nobody stays in a home with nobody in it
-    if (m.home && m.instance === `home:${id}`) {
-      for (const g of [...(room?.values() ?? [])]) { g.send({ t: "removed" }); this.leave(g.id); }
-    }
     for (const o of room?.values() ?? []) o.send({ t: "leave", id });
     if (room && room.size === 0) this.rooms.delete(m.instance); // clean up empty instances
   }

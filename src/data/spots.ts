@@ -11,7 +11,6 @@ export type SpotId =
   | "village" | "mall" | "airport"
   | "mamaput" | "jollof" | "bigbite" | "crunchy"
   | "campus" | "hospital" | "chambers" | "court" | "tower" | "studio" | "pavilion" | "residences" | "family"
-  | "station" | "cinema"   // added by map growth 1
   | "phone";
 
 export type Spot = {
@@ -54,8 +53,6 @@ export const spots: Record<SpotId, Spot> = {
   residences: { id: "residences", name: "Ocean Crest Residences", emoji: "🌇", district: "island", blurb: "Luxury flats with a pool and a view of the lagoon. Residents only.", art: "residences" },
   studio: { id: "studio", name: "Afrowave Studios", emoji: "🎙️", district: "ikeja", open: [10, 2], blurb: "Recording booths, ring lights and producers who work all night.", art: "studio" },
   pavilion: { id: "pavilion", name: "Royal Pavilion Event Centre", emoji: "🎪", district: "ikeja", open: [10, 24], blurb: "Weddings on Saturday, concerts on Sunday, conferences in between.", art: "pavilion" },
-  station: { id: "station", name: "Naija Fuel Station", emoji: "⛽", district: "mushin", open: [6, 22], blurb: "Petrol, diesel and cans for your generator, plus hot meat pies at the counter.", lot: true },
-  cinema: { id: "cinema", name: "Gidi Cinema", emoji: "🎬", district: "yaba", open: [10, 24], blurb: "Nollywood premieres, cold air conditioning and popcorn you share whether you want to or not.", lot: true },
   phone: { id: "phone", name: "Your phone", emoji: "📱", district: "any", blurb: "Works anywhere: call home, hustle on WhatsApp, order delivery." },
 };
 

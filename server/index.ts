@@ -57,7 +57,7 @@ const sockets = new Map<string, WebSocket>();
 
 const wss = new WebSocketServer({
   port: PORT,
-  maxPayload: 4096, // every message is tiny; anything bigger is refused
+  maxPayload: 2048, // every message is tiny; anything bigger is refused
   verifyClient: ({ origin }: { origin?: string }) => !origin || ORIGINS.includes(origin),
 });
 
@@ -88,7 +88,7 @@ wss.on("connection", ws => {
         const me = id;
         const ok = await mayEnterHome(msg.token, home, me);
         const m = ok ? cities.joinHome({ id: me, name: String(name ?? ""), look: msg.look, send }, home) : null;
-        if (!m) { send({ t: "denied", reason: !ok ? "not_allowed" : cities.hostHome(home) ? "full" : "host_away" }); sockets.delete(me); id = null; ws.close(4005, "denied"); return; }
+        if (!m) { send({ t: "denied", reason: ok ? "full" : "not_allowed" }); sockets.delete(me); id = null; ws.close(4005, "denied"); return; }
         log("join home", home, m.id, m.name);
         return;
       }

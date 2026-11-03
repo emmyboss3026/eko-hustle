@@ -16,8 +16,6 @@ import { traits, type TraitId } from "../data/traits";
 import { skillInfo, type SkillId, type Skills } from "../data/skills";
 import { CATALOG, EXTRA_ROOMS, HOME, type FurnitureType } from "../data/home";
 import { HOME_GOALS } from "../data/homeGoals";
-import { BLUEPRINTS } from "../data/blueprints";
-import { PLOTS } from "../data/estate";
 import { goalSteps, type GoalStepId } from "../data/goals";
 import { presets } from "../data/characters";
 
@@ -64,14 +62,6 @@ export function text(lang: Lang) {
       win: (i: number) => c(`mission.${m.id}.win${i}`, m.choices?.[i]?.chance?.win ?? ""),
       fail: c(`mission.${m.id}.fail`, m.fail?.text ?? ""),
     }),
-    plot: (tier: number) => {
-      const p = PLOTS.find(x => x.tier === tier);
-      return { name: c(`plot.${tier}.name`, p?.name ?? ""), desc: c(`plot.${tier}.desc`, p?.desc ?? "") };
-    },
-    blueprint: (id: string) => {
-      const b = BLUEPRINTS.find(x => x.id === id);
-      return { name: c(`blueprint.${id}.name`, b?.name ?? id), desc: c(`blueprint.${id}.desc`, b?.desc ?? "") };
-    },
     homeGoal: (id: string) => {
       const g = HOME_GOALS.find(x => x.id === id);
       return { name: c(`homegoal.${id}.name`, g?.name ?? id), desc: c(`homegoal.${id}.desc`, g?.desc ?? "") };
@@ -189,14 +179,6 @@ export function contentEntries(): [string, string][] {
   for (const r of HOME.rooms) add(`room.${r.name}`, r.name);
   add("room.Living room", "Living room");
   for (const r of EXTRA_ROOMS) add(`room.${r}`, r);
-  for (const p of PLOTS) {
-    add(`plot.${p.tier}.name`, p.name);
-    add(`plot.${p.tier}.desc`, p.desc);
-  }
-  for (const b of BLUEPRINTS) {
-    add(`blueprint.${b.id}.name`, b.name);
-    add(`blueprint.${b.id}.desc`, b.desc);
-  }
   for (const g of HOME_GOALS) {
     add(`homegoal.${g.id}.name`, g.name);
     add(`homegoal.${g.id}.desc`, g.desc);

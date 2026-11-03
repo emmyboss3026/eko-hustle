@@ -3,7 +3,7 @@
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { CATALOG, HOME, onFloor, type FurnitureType, type HomePlan, type Placed } from "../data/home";
+import { CATALOG, HOME, type FurnitureType, type HomePlan, type Placed } from "../data/home";
 import { findPath, footprint, routeToObject, walkable, type Tile } from "../engine/path";
 import { box, buildPiece, buildSim, daylight, mat, type Tick } from "./pieces";
 import { buildCompound } from "./compound.js";
@@ -11,15 +11,14 @@ import type { Look } from "../data/characters";
 
 export { daylight };
 
-const HALF = 4;   // the anchor: tile (0,0) stays at (-4,-4) whatever size the flat is, because the neighbours and the yard are drawn around it
+const HALF = HOME.size / 2;   // the anchor: the original flat, which the neighbours and the yard are drawn around
 const WALL_H = 1.5;
-const STAIR_H = 2.4;   // how high the staircase climbs to the floor above
 const tileCenter = (x: number, y: number) => new THREE.Vector3(x + 0.5 - HALF, 0, y + 0.5 - HALF);
 
 
 export type ViewInfo = { hour: number; powered: boolean; grid: boolean; genRunning: boolean; home: boolean };
 export type Ghost = { type: FurnitureType; x: number; y: number; rot: number; valid: boolean } | null;
-export type Hit = { kind: "object"; uid: number } | { kind: "stairs" } | { kind: "tile"; x: number; y: number } | null;
+export type Hit = { kind: "object"; uid: number } | { kind: "tile"; x: number; y: number } | null;
 
 type Pose = "walk" | "stand" | "sit" | "lie" | "use";
 type Activity = { uid: number; action: string; until: number } | null;
@@ -46,19 +45,6 @@ export class HouseView {
   private plan: HomePlan = HOME;
   private shellGroup: THREE.Group | null = null;
   private planKey = "";
-  /** The floor you are looking at: 0 is the ground floor, 1 is upstairs (once the second floor is built). */
-  level = 0;
-  private groundPlan: HomePlan = HOME;
-  private upperPlan: HomePlan | null = null;
-  private allObjects: Placed[] = [];
-  private climb: { dir: 1 | -1; t: number } | null = null;   // the Sim is on the stairs
-  private afterPath: "up" | "down" | null = null;            // walking to the stairs, to climb them
-  /** Told when the floor on view changes (by walking up or down the stairs). */
-  onLevel: ((level: number) => void) | null = null;
-  private alone = false;   // on your own land: no neighbouring units around the flat
-  private shapeKey = "";   // size, rooms and floors: when only the walls change, only the inner walls are rebuilt
-  private innerWalls = new THREE.Group();
-  private fpInner = new THREE.Group();
   private wallGrid = new THREE.Group();   // faint lines between tiles, shown while you are moving walls
   private wallMode = false;
   private simTile: Tile = { ...HOME.door };
@@ -94,7 +80,7 @@ export class HouseView {
   constructor(container: HTMLElement, look?: Partial<Look>) {
     this.container = container;
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -115,7 +101,7 @@ export class HouseView {
     this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
 
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(1024, 1024);
+    this.sun.shadow.mapSize.set(2048, 2048);
     const sc = this.sun.shadow.camera;
     sc.left = sc.bottom = -18;
     sc.right = sc.top = 18;
@@ -251,7 +237,7 @@ export class HouseView {
     shell.add(base);
 
     // The compound around your flat: the neighbours' block, the yard, the gate and the street.
-    this.compound = buildCompound(this.alone);
+    this.compound = buildCompound();
     shell.add(this.compound.group);
 
     const wallMat = mat(this.plan.wall);
@@ -285,33 +271,35 @@ export class HouseView {
     const dz = edge + 0.05;
     const doorX0 = this.plan.door.x - HALF;
     const doorX1 = doorX0 + 1;
-    const hasDoor = this.level === 0;   // upstairs the front wall is solid
-    if (hasDoor) {
-      shell.add(box(doorX0 + HALF, stub, 0.1, wallMat, (-HALF + doorX0) / 2, stub / 2, dz));
-      shell.add(box(edge - doorX1, stub, 0.1, wallMat, (doorX1 + edge) / 2, stub / 2, dz));
-      for (const px of [doorX0, doorX1]) shell.add(box(0.08, stub + 0.12, 0.14, "#6d4c41", px, (stub + 0.12) / 2, dz));
-      shell.add(box(1, 0.02, 0.14, "#6d4c41", (doorX0 + doorX1) / 2, 0.01, dz));
-    } else {
-      shell.add(box(this.plan.size, stub, 0.1, wallMat, mid, stub / 2, dz));
-    }
+    shell.add(box(doorX0 + HALF, stub, 0.1, wallMat, (-HALF + doorX0) / 2, stub / 2, dz));
+    shell.add(box(edge - doorX1, stub, 0.1, wallMat, (doorX1 + edge) / 2, stub / 2, dz));
     shell.add(box(0.1, stub, this.plan.size + 0.1, wallMat, edge + 0.05, stub / 2, mid));
-    if (this.plan.stairs) this.buildStairs(shell);
+    for (const px of [doorX0, doorX1]) shell.add(box(0.08, stub + 0.12, 0.14, "#6d4c41", px, (stub + 0.12) / 2, dz));
+    shell.add(box(1, 0.02, 0.14, "#6d4c41", (doorX0 + doorX1) / 2, 0.01, dz));
 
-    // Inside walls, with gaps for doors: kept in their own groups so they can be rebuilt on their own
-    this.innerWalls = new THREE.Group();
-    this.fpInner = new THREE.Group();
-    shell.add(this.innerWalls);
-    this.fpWalls.add(this.fpInner);
-    this.buildInner(wallMat);
+    // Inside walls, with gaps for doors.
+    const topH = WALL_H - 1.1;
+    for (const w of this.plan.walls) {
+      for (let i = w.from; i < w.to; i++) {
+        if (w.doors.includes(i)) continue;
+        shell.add(
+          w.axis === "v"
+            ? box(0.08, 1.1, 1, mat(this.plan.wall), w.at - HALF, 0.55, i + 0.5 - HALF)
+            : box(1, 1.1, 0.08, mat(this.plan.wall), i + 0.5 - HALF, 0.55, w.at - HALF),
+        );
+        // In first person the inside walls go up to the ceiling.
+        this.fpWalls.add(
+          w.axis === "v"
+            ? box(0.08, topH, 1, wallMat, w.at - HALF, 1.1 + topH / 2, i + 0.5 - HALF)
+            : box(1, topH, 0.08, wallMat, i + 0.5 - HALF, 1.1 + topH / 2, w.at - HALF),
+        );
+      }
+    }
     // First person: the front and right walls stand at full height (with the front door open)…
     const upH = WALL_H - stub;
-    if (hasDoor) {
-      this.fpWalls.add(box(doorX0 + HALF, upH, 0.1, wallMat, (-HALF + doorX0) / 2, stub + upH / 2, dz));
-      this.fpWalls.add(box(edge - doorX1, upH, 0.1, wallMat, (doorX1 + edge) / 2, stub + upH / 2, dz));
-      this.fpWalls.add(box(1, WALL_H - 1.25, 0.1, wallMat, (doorX0 + doorX1) / 2, 1.25 + (WALL_H - 1.25) / 2, dz)); // over the door
-    } else {
-      this.fpWalls.add(box(this.plan.size, upH, 0.1, wallMat, mid, stub + upH / 2, dz));
-    }
+    this.fpWalls.add(box(doorX0 + HALF, upH, 0.1, wallMat, (-HALF + doorX0) / 2, stub + upH / 2, dz));
+    this.fpWalls.add(box(edge - doorX1, upH, 0.1, wallMat, (doorX1 + edge) / 2, stub + upH / 2, dz));
+    this.fpWalls.add(box(1, WALL_H - 1.25, 0.1, wallMat, (doorX0 + doorX1) / 2, 1.25 + (WALL_H - 1.25) / 2, dz)); // over the door
     this.fpWalls.add(box(0.1, upH, this.plan.size + 0.1, wallMat, edge + 0.05, stub + upH / 2, mid));
     // …and there's a ceiling.
     const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(this.plan.size + 0.2, this.plan.size + 0.2), new THREE.MeshStandardMaterial({ color: "#f1ede4", side: THREE.DoubleSide }));
@@ -338,184 +326,33 @@ export class HouseView {
     shell.add(this.wallGrid);
   }
 
-  /** The stairs: wooden steps that climb to the floor above (downstairs), or the opening with a rail round it (upstairs). */
-  private buildStairs(shell: THREE.Group) {
-    const st = this.plan.stairs!;
-    const g = new THREE.Group();
-    const x = 0.5 - HALF;                                  // the stairs run along the left wall
-    const zTop = st.tiles[0].y - HALF;                     // the north end, where you step off at the top
-    const zBot = zTop + st.tiles.length;                   // the south end, the bottom step
-    if (this.level === 0) {
-      const n = 9, run = st.tiles.length / n;
-      for (let i = 0; i < n; i++) {
-        const h = ((i + 1) * STAIR_H) / n;
-        const step = box(0.96, h, run + 0.01, i % 2 ? "#b98b5e" : "#c79a6c", x, h / 2, zBot - run * (i + 0.5));
-        step.userData.stairs = true;
-        g.add(step);
-      }
-      const rail = box(0.06, 0.06, Math.hypot(st.tiles.length, STAIR_H), "#4e342e", x + 0.46, STAIR_H / 2 + 0.5, (zTop + zBot) / 2);
-      rail.rotation.x = Math.atan2(STAIR_H, st.tiles.length);
-      rail.userData.stairs = true;
-      g.add(rail);
-      for (const f of [0.1, 0.5, 0.9]) {
-        const post = box(0.05, 0.7, 0.05, "#4e342e", x + 0.46, STAIR_H * (1 - f) + 0.35, zTop + st.tiles.length * f);
-        post.userData.stairs = true;
-        g.add(post);
-      }
-    } else {
-      const pit = box(0.96, 0.04, st.tiles.length, "#2b211b", x, -0.01, (zTop + zBot) / 2);
-      pit.userData.stairs = true;
-      g.add(pit);
-      for (let i = 0; i < 3; i++) {                        // the first steps going down, seen through the opening
-        const dn = box(0.9, 0.06, 0.28, "#8a6a49", x, -0.1 - i * 0.12, zTop + 0.35 + i * 0.3);
-        dn.userData.stairs = true;
-        g.add(dn);
-      }
-      const east = box(0.05, 0.9, st.tiles.length, "#4e342e", x + 0.49, 0.45, (zTop + zBot) / 2);
-      const south = box(0.98, 0.9, 0.05, "#4e342e", x, 0.45, zBot);
-      for (const r of [east, south]) { r.userData.stairs = true; g.add(r); }
-    }
-    shell.add(g);
-  }
-
-  /** On your own land the neighbours\' units are gone. Rebuilds the compound when it changes. */
-  setAlone(on: boolean) {
-    if (on === this.alone) return;
-    this.alone = on;
-    this.shapeKey = "";
-    this.planKey = "";
-    this.rebuildPlan(this.plan);
-  }
-
-  /** The walls inside the flat, from the current plan. */
-  private buildInner(wallMat: THREE.Material = mat(this.plan.wall)) {
-    const topH = WALL_H - 1.1;
-    for (const w of this.plan.walls) {
-      for (let i = w.from; i < w.to; i++) {
-        if (w.doors.includes(i)) continue;
-        this.innerWalls.add(
-          w.axis === "v"
-            ? box(0.08, 1.1, 1, mat(this.plan.wall), w.at - HALF, 0.55, i + 0.5 - HALF)
-            : box(1, 1.1, 0.08, mat(this.plan.wall), i + 0.5 - HALF, 0.55, w.at - HALF),
-        );
-        // In first person the inside walls go up to the ceiling.
-        const up = w.axis === "v"
-          ? box(0.08, topH, 1, wallMat, w.at - HALF, 1.1 + topH / 2, i + 0.5 - HALF)
-          : box(1, topH, 0.08, wallMat, i + 0.5 - HALF, 1.1 + topH / 2, w.at - HALF);
-        up.castShadow = false;
-        this.fpInner.add(up);
-      }
-    }
-  }
-
-  /** Lock the camera while a wall is being dragged, so the drag does not turn the view. */
-  setCameraLock(on: boolean) {
-    this.controls.enabled = !on && !this.fp;
-  }
-
-  /** Where a screen point lands on the floor, in tile units (0 to the size of the flat), or null. */
-  groundAt(clientX: number, clientY: number): { u: number; v: number } | null {
-    this.ray(clientX, clientY);
-    const p = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
-    return p ? { u: p.x + HALF, v: p.z + HALF } : null;
-  }
-
   /** Show the lines between tiles while you are moving walls. */
   setWallMode(on: boolean) {
     this.wallMode = on;
     this.wallGrid.visible = on;
   }
 
-  /** The line between two tiles nearest a screen point (to add or take away a wall there), or null if it is not near one.
-   *  Walls stand 1.1 tall, so a tap on an existing wall is read at wall height: pass the walls you have as `existing`. */
-  edgeAt(clientX: number, clientY: number, existing: string[] = []): { axis: "v" | "h"; at: number; i: number } | null {
+  /** The line between two tiles nearest a screen point (to add or take away a wall there), or null if it is not near one. */
+  edgeAt(clientX: number, clientY: number): { axis: "v" | "h"; at: number; i: number } | null {
     this.ray(clientX, clientY);
+    const p = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+    if (!p) return null;
+    const u = p.x + HALF, v = p.z + HALF;
+    const vx = Math.round(u), hy = Math.round(v);
+    const dv = Math.abs(u - vx), dh = Math.abs(v - hy);
     const n = this.plan.size;
-    const nearest = (height: number) => {
-      const p = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -height), new THREE.Vector3());
-      if (!p) return null;
-      const u = p.x + HALF, v = p.z + HALF;
-      const vx = Math.round(u), hy = Math.round(v);
-      const dv = Math.abs(u - vx), dh = Math.abs(v - hy);
-      const vOk = vx >= 1 && vx < n && v >= 0 && v < n;
-      const hOk = hy >= 1 && hy < n && u >= 0 && u < n;
-      if (vOk && (!hOk || dv <= dh) && dv < 0.32) return { axis: "v" as const, at: vx, i: Math.floor(v) };
-      if (hOk && dh < 0.32) return { axis: "h" as const, at: hy, i: Math.floor(u) };
-      return null;
-    };
-    const wall = existing.length ? nearest(0.55) : null;
-    if (wall && existing.includes(`${wall.axis}:${wall.at}:${wall.i}`)) return wall;
-    return nearest(0);
+    const vOk = vx >= 1 && vx < n && v >= 0 && v < n;
+    const hOk = hy >= 1 && hy < n && u >= 0 && u < n;
+    if (vOk && (!hOk || dv <= dh) && dv < 0.32) return { axis: "v", at: vx, i: Math.floor(v) };
+    if (hOk && dh < 0.32) return { axis: "h", at: hy, i: Math.floor(u) };
+    return null;
   }
 
   /** Switch to a bigger (or smaller) flat after building an extension. Rebuilds the shell around the same tiles. */
   setPlan(plan: HomePlan) {
-    this.setPlans(plan, null);
-  }
-
-  /** The plans of both floors (upstairs is null until the second floor is built). Shows the floor you are on. */
-  setPlans(ground: HomePlan, upper: HomePlan | null) {
-    this.groundPlan = ground;
-    this.upperPlan = upper;
-    if (this.level === 1 && !upper) {
-      this.level = 0;
-      this.objects = onFloor(this.allObjects, 0);
-      this.furnitureKey = "";
-      this.compound.group.visible = true;
-      this.onLevel?.(0);
-    }
-    this.rebuildPlan(this.level === 1 && upper ? upper : ground);
-  }
-
-  /** Switch the floor on view. */
-  private applyLevel(l: number) {
-    if (l === this.level || (l === 1 && !this.upperPlan)) return;
-    this.level = l;
-    this.objects = onFloor(this.allObjects, l);
-    this.furnitureKey = "";
-    this.rebuildPlan(l === 1 ? this.upperPlan! : this.groundPlan);
-    this.compound.group.visible = l === 0;
-    this.setState(this.allObjects, this.info, this.selected);
-    this.onLevel?.(l);
-  }
-
-  /** Walk to the stairs and climb them (or go down). Does nothing until the second floor is built. */
-  goLevel(target: number) {
-    if (!this.upperPlan || target === this.level || this.climb || (target !== 0 && target !== 1)) return;
-    const st = this.plan.stairs!;
-    const at = this.level === 0 ? st.entry : st.exit;
-    this.activity = null;
-    this.afterPath = target === 1 ? "up" : "down";
-    if (this.simTile.x === at.x && this.simTile.y === at.y) { this.beginClimb(); return; }
-    const route = findPath(this.plan, this.objects, this.simTile, at);
-    if (route) this.path = route;
-    else this.afterPath = null;
-  }
-
-  private beginClimb() {
-    const dir = this.afterPath === "up" ? 1 : -1;
-    this.afterPath = null;
-    this.path = [];
-    if (dir === -1) this.applyLevel(0);   // going down: show the ground floor, with the Sim at the top of the stairs
-    this.climb = { dir, t: 0 };
-  }
-
-  private rebuildPlan(plan: HomePlan) {
-    const key = JSON.stringify([plan.size, plan.walls, plan.rooms, plan.floor, plan.floor2, plan.stairs ?? null, this.level]);
+    const key = JSON.stringify([plan.size, plan.walls, plan.rooms, plan.floor, plan.floor2]);
     if (key === this.planKey) return;
     this.planKey = key;
-    const shape = JSON.stringify([plan.size, plan.rooms, plan.floor, plan.floor2, plan.stairs ?? null, this.level]);
-    if (shape === this.shapeKey && this.shellGroup) {
-      // Only the walls moved (you are dragging one): rebuild just the inside walls
-      this.plan = plan;
-      for (const g of [this.innerWalls, this.fpInner]) {
-        g.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
-        for (const c of [...g.children]) g.remove(c);
-      }
-      this.buildInner();
-      return;
-    }
-    this.shapeKey = shape;
     this.plan = plan;
     if (this.shellGroup) {
       this.scene.remove(this.shellGroup);
@@ -533,9 +370,7 @@ export class HouseView {
   }
 
   /** Feed the latest furniture and light. Rebuilds furniture only when something changed. */
-  setState(allObjects: Placed[], info: ViewInfo, selected: number | null) {
-    this.allObjects = allObjects;
-    const objects = onFloor(allObjects, this.level);
+  setState(objects: Placed[], info: ViewInfo, selected: number | null) {
     this.objects = objects;
     this.info = info;
     this.selected = selected;
@@ -599,16 +434,6 @@ export class HouseView {
 
   /** Walk to a piece of furniture and act out using it for a few seconds. */
   use(uid: number, action: string) {
-    const there = this.allObjects.find(o => o.uid === uid);
-    if (!there) return;
-    if ((there.lvl ?? 0) !== this.level) {            // it is on the other floor: go there (no walk), and start from the stairs
-      this.climb = null;
-      this.afterPath = null;
-      this.applyLevel(there.lvl ?? 0);
-      this.simTile = { ...this.plan.door };
-      this.simPos = null;
-      this.path = [];
-    }
     const obj = this.objects.find(o => o.uid === uid);
     if (!obj) return;
     const best = routeToObject(this.plan, this.objects, this.simTile, obj);
@@ -616,7 +441,7 @@ export class HouseView {
     const walkSeconds = this.path.length / 3;
     this.activity = { uid, action, until: this.time + walkSeconds + (SLEEPS.has(action) ? 4 : 2.5) };
     this.furnitureKey = ""; // redraw so the item shows it's in use
-    this.setState(this.allObjects, this.info, this.selected);
+    this.setState(this.objects, this.info, this.selected);
   }
 
   private simTarget(): { pos: THREE.Vector3; yaw: number; pose: Pose } {
@@ -673,17 +498,9 @@ export class HouseView {
     const cam = this.camera.position;
     this.backWall.visible = cam.z > -HALF;
     this.leftWall.visible = cam.x > -HALF;
-    // A neighbour's block folds away only when it really stands between the camera and your rooms. (It used to vanish as soon
-    // as the camera moved left of the flat, even when it blocked nothing, leaving a hole in the compound.)
-    const mid = this.plan.size / 2 - HALF;
-    const aim = new THREE.Vector3(mid, 0.4, mid);
-    const toward = aim.clone().sub(cam);
-    const reach = toward.length();
-    const ray = new THREE.Ray(cam.clone(), toward.normalize());
-    const hit = new THREE.Vector3();
-    const blocks = (box: THREE.Box3) => !!ray.intersectBox(box, hit) && hit.distanceTo(cam) < reach;
-    this.compound.rearN.visible = !blocks(this.compound.blockers.rearN);
-    this.compound.rearW.visible = !blocks(this.compound.blockers.rearW);
+    // The neighbours' units behind and to the left fold away when the camera swings behind them.
+    this.compound.rearN.visible = cam.z > -HALF - 0.2;
+    this.compound.rearW.visible = cam.x > -HALF - 0.2;
     this.compound.update(dt, t, { night: day < 0.35, grid: this.info.grid });
 
     // Redraw furniture when an activity ends, so the TV switches off and so on.
@@ -701,31 +518,7 @@ export class HouseView {
       const c = tileCenter(end.x, end.y);
       this.marker.position.set(c.x, 0.02, c.z);
     }
-    if (this.info.home && this.climb) {
-      // On the stairs: up (or down) the steps along the left wall, rising with them
-      const c = this.climb;
-      c.t = Math.min(1, c.t + dt / 1.7);
-      const st = this.groundPlan.stairs!;
-      const zTop = st.tiles[0].y - HALF, zBot = zTop + st.tiles.length;
-      const zStart = st.entry.y + 0.5 - HALF, zEnd = st.exit.y + 0.5 - HALF;
-      const z = zStart + (zEnd - zStart) * (c.dir === 1 ? c.t : 1 - c.t);
-      this.simPos = new THREE.Vector3(0.5 - HALF, STAIR_H * Math.max(0, Math.min(1, (zBot - z) / st.tiles.length)), z);
-      const face = c.dir === 1 ? Math.PI : 0;                          // up is north (−z), down is south
-      let dy = face - this.simYaw;
-      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
-      this.simYaw += dy * Math.min(1, dt * 12);
-      this.sim.root.position.copy(this.simPos);
-      this.sim.root.rotation.y = this.simYaw;
-      this.pose("walk", t);
-      this.stepClock -= dt;
-      if (this.stepClock <= 0) { this.onStep?.(); this.stepClock = 0.3; }
-      if (c.t >= 1) {
-        this.climb = null;
-        if (c.dir === 1) { this.applyLevel(1); this.simTile = { ...this.plan.door }; } else this.simTile = { ...st.entry };
-        this.simPos = tileCenter(this.simTile.x, this.simTile.y);
-        this.simPos.y = 0;
-      }
-    } else if (this.info.home) {
+    if (this.info.home) {
       const { pos, yaw, pose } = this.simTarget();
       if (!this.simPos) this.simPos = pos.clone();
       const delta = pos.clone().sub(this.simPos);
@@ -756,7 +549,6 @@ export class HouseView {
       this.sim.root.position.copy(this.simPos);
       this.sim.root.rotation.y = this.simYaw;
       this.pose(moving && pose !== "lie" && pose !== "sit" ? "walk" : pose, t);
-      if (this.afterPath && !this.path.length && !moving) this.beginClimb();   // reached the stairs: climb them
     }
 
     if (this.fp && this.simPos) {
@@ -897,7 +689,6 @@ export class HouseView {
         if (n.userData.uid != null) return { kind: "object", uid: n.userData.uid as number };
       }
     }
-    if (this.shellGroup && this.raycaster.intersectObject(this.shellGroup, true).some(h => h.object.userData.stairs)) return { kind: "stairs" };
     const tile = this.tileAt(clientX, clientY);
     return tile ? { kind: "tile", ...tile } : null;
   }

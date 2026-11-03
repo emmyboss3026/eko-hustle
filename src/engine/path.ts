@@ -26,12 +26,9 @@ export function inside(home: HomePlan, x: number, y: number) {
   return x >= 0 && y >= 0 && x < home.size && y < home.size;
 }
 
-/** Is this tile one of the steps of the staircase? Nothing stands on the steps and nobody walks across them except to climb. */
-const onStairs = (home: HomePlan, x: number, y: number) => !!home.stairs?.tiles.some(t => t.x === x && t.y === y);
-
 /** Can the Sim stand on (x, y)? Inside the room, and no solid furniture there. */
 export function walkable(home: HomePlan, objects: Placed[], x: number, y: number): boolean {
-  if (!inside(home, x, y) || onStairs(home, x, y)) return false;
+  if (!inside(home, x, y)) return false;
   for (const o of objects) {
     if (CATALOG[o.type]?.walkable) continue;
     const [w, d] = footprint(o);
@@ -64,12 +61,12 @@ export function allReachable(home: HomePlan): boolean {
     for (const [dx, dy] of STEPS) {
       const n = { x: t.x + dx, y: t.y + dy };
       const k = n.x * 1000 + n.y;
-      if (!inside(home, n.x, n.y) || onStairs(home, n.x, n.y) || seen.has(k) || wallBetween(home, t, n)) continue;
+      if (!inside(home, n.x, n.y) || seen.has(k) || wallBetween(home, t, n)) continue;
       seen.add(k);
       queue.push(n);
     }
   }
-  return seen.size === home.size * home.size - (home.stairs?.tiles.length ?? 0);
+  return seen.size === home.size * home.size;
 }
 
 /** Shortest route from start to goal (start not included), or null. [] means you're there. */
@@ -132,7 +129,7 @@ export function canPlace(home: HomePlan, objects: Placed[], obj: Shape): boolean
   const others = objects.filter(o => o.uid !== obj.uid);
   const solid = !CATALOG[obj.type]?.walkable;
   for (const t of tiles) {
-    if (!inside(home, t.x, t.y) || onStairs(home, t.x, t.y)) return false;
+    if (!inside(home, t.x, t.y)) return false;
     if (solid && t.x === home.door.x && t.y === home.door.y) return false;
     for (const o of others) {
       if (CATALOG[o.type]?.walkable !== CATALOG[obj.type]?.walkable) continue; // a rug can sit under furniture

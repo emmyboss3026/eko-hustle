@@ -21,7 +21,7 @@ export type Furniture = {
   blurb: string;
 };
 
-export type Placed = { uid: number; type: FurnitureType; x: number; y: number; rot: number; lvl?: number };   // lvl 1: upstairs (see stairsFor)
+export type Placed = { uid: number; type: FurnitureType; x: number; y: number; rot: number };
 
 /** Walls are lines between tiles. axis "v" = vertical line at x = `at` covering rows from..to-1.
  *  axis "h" = horizontal line at y = `at` covering columns from..to-1. `doors` are openings. */
@@ -35,50 +35,36 @@ export type HomePlan = {
   floor: string;
   floor2: string;
   wall: string;
-  door: { x: number; y: number };   // where you stand when you come home (upstairs: where the stairs come out)
-  stairs?: Stairs;                  // the staircase, once you have built the second floor
+  door: { x: number; y: number };   // where you stand when you come home
 };
 
-/** The staircase between the floors: three tiles along the left wall near the front. You climb it northwards: from `entry`
- *  (downstairs, in front of the bottom step) to `exit` (upstairs, beyond the top step). The three tiles themselves are steps. */
-export type Stairs = { tiles: { x: number; y: number }[]; entry: { x: number; y: number }; exit: { x: number; y: number } };
-
-// Three rooms: kitchen and living room on the left, bathroom and bedroom on the right. The flat is 10 x 10 tiles, so every room is
-// roomy (it used to be 8 x 8). The front door is in the front wall, into the living room.
+// Three rooms: kitchen and living room on the left, bathroom and bedroom on the right.
+// The front door is in the front wall, into the living room.
 export const HOME: HomePlan = {
   name: "Self-contain, Mushin",
-  size: 10,
+  size: 8,
   walls: [
     { axis: "v", at: 5, from: 0, to: 3, doors: [1] },   // kitchen | bathroom
-    { axis: "h", at: 3, from: 5, to: 10, doors: [] },   // bathroom | bedroom
-    { axis: "v", at: 5, from: 3, to: 10, doors: [5] },  // living room | bedroom
+    { axis: "h", at: 3, from: 5, to: 8, doors: [] },    // bathroom | bedroom
+    { axis: "v", at: 5, from: 3, to: 8, doors: [5] },   // living room | bedroom
   ],
   rooms: [
     { name: "Kitchen",  x0: 0, y0: 0, x1: 5, y1: 3, floor: "#eef2f5", floor2: "#d9e2e8" },
-    { name: "Bathroom", x0: 5, y0: 0, x1: 10, y1: 3, floor: "#8fd6e4", floor2: "#aee6f0" },
-    { name: "Bedroom",  x0: 5, y0: 3, x1: 10, y1: 10, floor: "#d9b88f", floor2: "#cdab80" },
+    { name: "Bathroom", x0: 5, y0: 0, x1: 8, y1: 3, floor: "#8fd6e4", floor2: "#aee6f0" },
+    { name: "Bedroom",  x0: 5, y0: 3, x1: 8, y1: 8, floor: "#d9b88f", floor2: "#cdab80" },
   ],
   floor: "#e6c79a",   // living room: light wood
   floor2: "#dcbb8c",
   wall: "#fffaf0",
-  door: { x: 2, y: 9 },
+  door: { x: 2, y: 7 },
 };
 
 /** Extra rooms you can build onto the flat. The room grows right and down, so tiles you already filled never move.
- *  wing: 10 x 10 becomes 12 x 12, and so on up to 20 x 20 (the bigger ones need your own land). */
+ *  wing: 8 x 8 becomes 10 x 10. wing2: 12 x 12. */
 export const EXTRA_ROOMS = ["Study", "Guest room", "Dining area"] as const;
-export const MAX_SIZE = 20;
+export const MAX_SIZE = 12;
 
-/** How many tiles across the flat is, at this many extensions. */
-export const flatSize = (level: number) => HOME.size + 2 * Math.max(0, Math.min(5, level));
-export const MAX_WING = 5;
-const WING_KEYS = ["wing", "wing2", "wing3", "wing4", "wing5"] as const;
-/** How many extensions are built, in order: each one needs the one before it. */
-export function wingLevel(p?: Partial<Record<(typeof WING_KEYS)[number], boolean>>): number {
-  let n = 0;
-  while (n < MAX_WING && p?.[WING_KEYS[n]]) n++;
-  return n;
-}
+export const wingLevel = (p?: { wing?: boolean; wing2?: boolean }) => (p?.wing ? (p?.wing2 ? 2 : 1) : 0);
 
 /** Walls you can move are kept as single edges between two tiles: "v:5:2" is the vertical line at x = 5 beside row 2,
  *  "h:3:6" the horizontal line at y = 3 beside column 6. */
@@ -101,56 +87,6 @@ export function edgesToWalls(edges: string[]): Wall[] {
   return walls;
 }
 
-/** The walls a flat comes with at this wing level, as edges. */
-export const defaultEdges = (level: number) => wallsToEdges(basePlan(level).walls);
-
-/** Is this a wall edge inside a flat of this size? (Outer walls are not edges; they are fixed.) */
-export function validEdge(e: string, size: number): boolean {
-  const m = /^([vh]):(\d{1,2}):(\d{1,2})$/.exec(e);
-  return !!m && +m[2] >= 1 && +m[2] < size && +m[3] >= 0 && +m[3] < size;
-}
-
-/** Take out the pieces of wall that do nothing. Walls that join up form one piece of structure; if none of it touches the outer
- *  wall it floats in the middle of a room, divides nothing and wastes space, so it goes. A wall (or a half-wall) joined to the outer
- *  wall, directly or through other walls, stays. Also drops edges outside the flat and duplicates. */
-export function tidyEdges(edges: string[], size: number): string[] {
-  const all = [...new Set(edges.filter(e => validEdge(e, size)))];
-  const ends = (e: string): [string, string] => {
-    const [axis, at, i] = e.split(":");
-    return axis === "v" ? [`${at},${i}`, `${at},${+i + 1}`] : [`${i},${at}`, `${+i + 1},${at}`];
-  };
-  const onEdge = (v: string) => {
-    const [x, y] = v.split(",").map(Number);
-    return x === 0 || y === 0 || x === size || y === size;
-  };
-  // Start from the vertices on the outer wall and spread along touching walls
-  const reached = new Set<string>();
-  const keep = new Set<string>();
-  const byVertex = new Map<string, string[]>();
-  for (const e of all) for (const v of ends(e)) byVertex.set(v, [...(byVertex.get(v) ?? []), e]);
-  // A one-tile doorway does not break a wall: the pieces either side of it belong together
-  const linked = new Map<string, string[]>();
-  const set = new Set(all);
-  for (const e of all) {
-    const [axis, at, i] = e.split(":");
-    if (set.has(`${axis}:${at}:${+i + 1}`) || !set.has(`${axis}:${at}:${+i + 2}`)) continue;
-    const [, from] = ends(e);
-    const [to] = ends(`${axis}:${at}:${+i + 2}`);
-    linked.set(from, [...(linked.get(from) ?? []), to]);
-    linked.set(to, [...(linked.get(to) ?? []), from]);
-  }
-  const queue = [...byVertex.keys()].filter(onEdge);
-  for (const v of queue) reached.add(v);
-  for (let q = 0; q < queue.length; q++) {
-    for (const v of linked.get(queue[q]) ?? []) if (!reached.has(v)) { reached.add(v); queue.push(v); }
-    for (const e of byVertex.get(queue[q]) ?? []) {
-      keep.add(e);
-      for (const v of ends(e)) if (!reached.has(v)) { reached.add(v); queue.push(v); }
-    }
-  }
-  return all.filter(e => keep.has(e));
-}
-
 /** Floors you can lay in a room (two shades make the chequer). Keys of Home.floors are room names, "Living room" for the rest. */
 export const FLOORS = [
   { id: "wood", a: "#d8a878", b: "#cc9c6c" },
@@ -169,9 +105,8 @@ export type Floors = Record<string, string>;
 export const roomNames = (plan: HomePlan) => [...plan.rooms.map(r => r.name), "Living room"];
 
 /** The flat for this wing level. `edges`: the walls you have moved; `floors`: the floors you have laid (otherwise what it came with). */
-export function homePlan(level: number, edges?: string[], floors?: Floors, upstairs = false): HomePlan {
+export function homePlan(level: number, edges?: string[], floors?: Floors): HomePlan {
   let plan = basePlan(level);
-  if (upstairs) plan = { ...plan, stairs: stairsFor(plan.size) };
   if (edges) plan = { ...plan, walls: edgesToWalls(edges) };
   if (floors) {
     const pick = (room: string) => floorById(floors[room] ?? "");
@@ -189,57 +124,9 @@ export function homePlan(level: number, edges?: string[], floors?: Floors, upsta
   return plan;
 }
 
-/** The stairs of a flat this many tiles across. */
-export function stairsFor(size: number): Stairs {
-  const y0 = size - 4;
-  return { tiles: [0, 1, 2].map(k => ({ x: 0, y: y0 + k })), entry: { x: 0, y: size - 1 }, exit: { x: 0, y: y0 - 1 } };
-}
-
-/** The rooms upstairs: a lounge where the stairs come out, and two bedrooms on the right (one with the way in at each). */
-export function upperEdges(size: number): string[] {
-  const m = Math.floor(size / 2);
-  const out: string[] = [];
-  for (let i = 0; i < size; i++) if (i !== 2 && i !== m + 2) out.push(edgeKey("v", m, i));          // the wall between lounge and bedrooms
-  for (let i = m; i < size; i++) if (i !== m + 1) out.push(edgeKey("h", m, i));                     // between the two bedrooms
-  return out;
-}
-
-/** The plan of the floor above (when the second floor is built): same footprint, its own walls, the stairs coming out on the left. */
-export function upperPlan(level: number): HomePlan {
-  const base = basePlan(level);
-  const m = Math.floor(base.size / 2);
-  const stairs = stairsFor(base.size);
-  return {
-    ...base,
-    name: "Upstairs",
-    walls: edgesToWalls(upperEdges(base.size)),
-    rooms: [
-      { name: "Master bedroom", x0: m, y0: 0, x1: base.size, y1: m, floor: "#d4b896", floor2: "#c8ab88" },
-      { name: "Second bedroom", x0: m, y0: m, x1: base.size, y1: base.size, floor: "#d4b896", floor2: "#c8ab88" },
-    ],
-    floor: "#e2c8a0",
-    floor2: "#d7bb92",
-    door: stairs.exit,
-    stairs,
-  };
-}
-
-/** The plan for one floor of a player's home: floor 0 is the ground floor (with the stairs once the second floor is built). */
-export function planOf(
-  s: { property?: Partial<Record<string, boolean | number>>; home: { walls?: string[]; floors?: Floors } },
-  lvl = 0,
-): HomePlan {
-  const level = wingLevel(s.property as never);
-  if (lvl === 1 && s.property?.floor2) return upperPlan(level);
-  return homePlan(level, s.home.walls, s.home.floors, !!s.property?.floor2);
-}
-
-/** The pieces of furniture on one floor. */
-export const onFloor = (objs: Placed[], lvl: number) => objs.filter(o => (o.lvl ?? 0) === lvl);
-
 function basePlan(level: number): HomePlan {
   if (level <= 0) return HOME;
-  const size = HOME.size + 2 * Math.min(MAX_WING, level);
+  const size = HOME.size + 2 * Math.min(2, level);
   return {
     ...HOME,
     name: level > 1 ? "Large home, Mushin" : "Extended flat, Mushin",
@@ -262,7 +149,7 @@ function basePlan(level: number): HomePlan {
 /** The wing a visitor should see, worked out from where the owner's furniture stands (visitors are not told the upgrades). */
 export const levelForObjects = (objs: { x: number; y: number }[]) => {
   const far = Math.max(0, ...objs.map(o => Math.max(o.x, o.y)));
-  return far < HOME.size ? 0 : Math.min(MAX_WING, Math.floor((far - HOME.size) / 2) + 1);
+  return far >= HOME.size + 2 ? 2 : far >= HOME.size ? 1 : 0;
 };
 
 /** Which room a tile is in (for labels). */
