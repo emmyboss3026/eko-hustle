@@ -552,8 +552,3 @@ button.hud2-avatar:active { transform: scale(0.94); }
 }
 .hud2, .toast, .dock, .tip, .side-pop { background-color: rgba(16, 18, 52, 0.9); }
 @media (prefers-reduced-motion: reduce) { .vital.low, .need2.low { animation: none; } }
-
-/* the stick for walking about your room by hand */
-.room-joy { position: absolute; left: 14px; bottom: calc(138px + env(safe-area-inset-bottom)); width: 92px; height: 92px; z-index: 6; }
-.room-joy .joy-knob { width: 42px; height: 42px; margin: -21px 0 0 -21px; }
-.room-run { position: absolute; left: 112px; bottom: calc(138px + env(safe-area-inset-bottom)); z-index: 6; }

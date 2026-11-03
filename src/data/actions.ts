@@ -154,11 +154,6 @@ export const actions: Action[] = [
   // Gidi Cinema (added by map growth 1)
   { id: "cinema-film", label: "Watch a Nollywood film", emoji: "🎬", minutes: 150, cost: 3_500, category: "fun", where: "yaba", spot: "cinema", effect: { fun: 45, social: 8, energy: -5 }, mood: "goodGist" },
   { id: "cinema-popcorn", label: "Share popcorn with friends", emoji: "🍿", minutes: 30, cost: 1_800, category: "fun", where: "yaba", spot: "cinema", effect: { fun: 12, social: 20, hunger: 6 } },
-  // FreshMart Supermarket and Unity Stadium (added by map growth 2)
-  { id: "mart-shop", label: "Stock up on groceries (8 packs)", emoji: "🛒", minutes: 40, cost: 11_000, category: "home", where: "mushin", spot: "mart", effect: {}, stock: { food: 8 } },
-  { id: "mart-juice", label: "Fresh juice and plantain chips", emoji: "🧃", minutes: 10, cost: 900, category: "food", where: "mushin", spot: "mart", effect: { hunger: 12, fun: 3 } },
-  { id: "stadium-match", label: "Watch a local derby", emoji: "⚽", minutes: 120, cost: 2_500, category: "fun", where: "yaba", spot: "stadium", effect: { fun: 40, social: 22, energy: -8 }, mood: "goodGist" },
-  { id: "stadium-jog", label: "Jog round the track", emoji: "🏃🏾", minutes: 45, cost: 0, category: "fun", where: "yaba", spot: "stadium", effect: { energy: -15, fun: 8, hygiene: -6 }, skill: { fitness: 0.3 } },
   { id: "fuel", label: "Buy generator fuel (5 litres)", emoji: "⛽", minutes: 15, cost: 5_000, category: "home", where: "any", spot: "phone", effect: {}, stock: { fuel: 5 } },
   { id: "puff-puff", label: "Buy puff-puff from a hawker", emoji: "🍩", minutes: 5, cost: 300, category: "food", where: "any", spot: "phone", effect: { hunger: 15 } },
   { id: "pure-water", label: "Buy pure water", emoji: "💧", minutes: 2, cost: 50, category: "food", where: "any", spot: "phone", effect: { hunger: 3, bladder: -5 } },

@@ -3,11 +3,8 @@
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { Animator, type PoseName } from "./animator";
-import { QualityGovernor } from "./quality";
 import { CATALOG, HOME, onFloor, type FurnitureType, type HomePlan, type Placed } from "../data/home";
 import { findPath, footprint, routeToObject, walkable, type Tile } from "../engine/path";
-import { slideMove, smoothPath, solidsOf } from "../engine/roomMove";
 import { box, buildPiece, buildSim, daylight, mat, type Tick } from "./pieces";
 import { buildCompound } from "./compound.js";
 import type { Look } from "../data/characters";
@@ -89,15 +86,6 @@ export class HouseView {
   private shift = 0;
   // First-person view: the camera at the Sim's eyes; drag to look around.
   private fp = false;
-  /** Which camera you see through: the isometric overview, a third-person camera behind the Sim, or the Sim's own eyes. */
-  viewMode: "iso" | "third" | "first" = "iso";
-  private camYaw = 0;
-  private camPitch = 0.3;
-  private moveIn = { x: 0, z: 0 };     // the stick or the keys: x right, z down the screen, up to length 1
-  private free = false;                // the Sim has been walked by hand and stands where it stopped, not on a tile centre
-  private speed = 0;                   // how fast the Sim is going now, in tiles a second: it speeds up and slows down smoothly
-  run = false;                         // walk or run
-  private solidCache: ReturnType<typeof solidsOf> | null = null;
   private fpYaw = 0;
   private fpPitch = -0.15;
   private saved: { pos: THREE.Vector3; target: THREE.Vector3 } | null = null;
@@ -184,50 +172,11 @@ export class HouseView {
     return this.fp;
   }
 
-  /** Choose the camera: isometric overview, third person (behind the Sim) or first person. */
-  setViewMode(mode: "iso" | "third" | "first") {
-    if (mode === this.viewMode) return;
-    this.viewMode = mode;
-    this.setFirstPerson(mode === "first");
-    if (mode === "third") {
-      if (!this.saved) this.saved = { pos: this.camera.position.clone(), target: this.controls.target.clone() };
-      this.controls.enabled = false;
-      this.camera.fov = 55;
-      this.camYaw = this.simYaw;                     // start behind the Sim, looking the way it faces
-      this.camPitch = 0.3;
-      this.camera.updateProjectionMatrix();
-    } else if (mode === "iso") {
-      this.controls.enabled = true;
-      this.camera.fov = 45;
-      if (this.saved) {
-        this.camera.position.copy(this.saved.pos);
-        this.controls.target.copy(this.saved.target);
-      }
-      this.camera.updateProjectionMatrix();
-    }
-  }
-
-  /** The stick or the keys: x right, z down the screen. Zero means let go. Relative to the camera, so up is always away from you. */
-  setMoveInput(x: number, z: number) {
-    this.moveIn.x = x;
-    this.moveIn.z = z;
-  }
-
-  /** Drag to look around in first person, or to swing the camera round the Sim in third person. */
+  /** Drag to look around in first person. */
   look(dx: number, dy: number) {
-    if (this.viewMode === "third") {
-      this.camYaw -= dx * 0.006;
-      this.camPitch = Math.max(0.05, Math.min(1.2, this.camPitch + dy * 0.005));
-      return;
-    }
     if (!this.fp) return;
     this.fpYaw -= dx * 0.006;
     this.fpPitch = Math.max(-1.2, Math.min(0.6, this.fpPitch - dy * 0.005));
-  }
-
-  /** What the Sim cannot walk through on this floor (cached until the furniture or the walls change). */
-  private solids() {
-    return (this.solidCache ??= solidsOf(this.plan, this.objects));
   }
 
   /** Draw the room higher up the screen (0 = centred), e.g. while a panel covers the bottom. */
@@ -559,7 +508,6 @@ export class HouseView {
     if (shape === this.shapeKey && this.shellGroup) {
       // Only the walls moved (you are dragging one): rebuild just the inside walls
       this.plan = plan;
-      this.solidCache = null;
       for (const g of [this.innerWalls, this.fpInner]) {
         g.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
         for (const c of [...g.children]) g.remove(c);
@@ -569,7 +517,6 @@ export class HouseView {
     }
     this.shapeKey = shape;
     this.plan = plan;
-    this.solidCache = null;
     if (this.shellGroup) {
       this.scene.remove(this.shellGroup);
       this.shellGroup.traverse(o => {
@@ -590,7 +537,6 @@ export class HouseView {
     this.allObjects = allObjects;
     const objects = onFloor(allObjects, this.level);
     this.objects = objects;
-    this.solidCache = null;
     this.info = info;
     this.selected = selected;
     if (!info.home) {
@@ -642,20 +588,12 @@ export class HouseView {
     }
   }
 
-  /** Cut the corners off a route of tiles, so the Sim walks smooth lines instead of hopping tile to tile. */
-  private straight(route: Tile[]): Tile[] {
-    const p = this.simPos;
-    const from: [number, number] = p ? [p.x + HALF, p.z + HALF] : [this.simTile.x + 0.5, this.simTile.y + 0.5];
-    return smoothPath(this.plan, this.objects, from, route);
-  }
-
   /** Walk the Sim to a floor tile (just for show). */
   walkTo(x: number, y: number): boolean {
     const route = findPath(this.plan, this.objects, this.simTile, { x, y });
     if (!route) return false;
     this.activity = null;
-    this.free = false;
-    this.path = this.straight(route);
+    this.path = route;
     return true;
   }
 
@@ -674,8 +612,7 @@ export class HouseView {
     const obj = this.objects.find(o => o.uid === uid);
     if (!obj) return;
     const best = routeToObject(this.plan, this.objects, this.simTile, obj);
-    this.free = false;
-    this.path = this.straight(best?.route ?? []);
+    this.path = best?.route ?? [];
     const walkSeconds = this.path.length / 3;
     this.activity = { uid, action, until: this.time + walkSeconds + (SLEEPS.has(action) ? 4 : 2.5) };
     this.furnitureKey = ""; // redraw so the item shows it's in use
@@ -685,7 +622,7 @@ export class HouseView {
   private simTarget(): { pos: THREE.Vector3; yaw: number; pose: Pose } {
     const head = this.path[0];
     if (head) return { pos: tileCenter(head.x, head.y), yaw: this.simYaw, pose: "walk" };
-    const c = this.free && this.simPos ? this.simPos.clone().setY(0) : tileCenter(this.simTile.x, this.simTile.y);
+    const c = tileCenter(this.simTile.x, this.simTile.y);
     const act = this.activity && this.activity.until > this.time ? this.activity : null;
     const obj = act && this.objects.find(o => o.uid === act.uid);
     if (!act || !obj) return { pos: c, yaw: this.simYaw, pose: "stand" };
@@ -714,12 +651,6 @@ export class HouseView {
 
   private frame = (now: number) => {
     const dt = Math.min(0.1, (now - this.last) / 1000);
-    this.dtNow = dt;
-    if (this.quality.sample(dt * 1000)) {
-      this.renderer.setPixelRatio(this.quality.pixelRatio);
-      this.resize();
-      this.sun.castShadow = this.quality.shadows;
-    }
     this.last = now;
     this.time += dt;
     this.update(dt);
@@ -770,40 +701,7 @@ export class HouseView {
       const c = tileCenter(end.x, end.y);
       this.marker.position.set(c.x, 0.02, c.z);
     }
-    const stick = Math.hypot(this.moveIn.x, this.moveIn.z);
-    if (this.info.home && !this.climb && stick > 0.1) {
-      // Walking by hand (stick or keys): continuous movement in any direction, sliding along walls and furniture
-      let fx: number, fz: number;
-      if (this.viewMode === "iso") {
-        const f = new THREE.Vector3();
-        this.camera.getWorldDirection(f);
-        const l = Math.hypot(f.x, f.z) || 1;
-        fx = f.x / l; fz = f.z / l;
-      } else {
-        const yaw = this.viewMode === "first" ? this.fpYaw : this.camYaw;
-        fx = Math.sin(yaw); fz = Math.cos(yaw);
-      }
-      const k = Math.min(1, stick);
-      const nx = this.moveIn.x / stick, nz = this.moveIn.z / stick;
-      const dirX = fx * -nz + -fz * nx, dirZ = fz * -nz + fx * nx;     // up is forward, right is to the right of the camera
-      this.activity = null; this.path = []; this.afterPath = null; this.free = true;
-      const vmax = (this.run ? 4.4 : 2.6) * k;
-      this.speed += (vmax - this.speed) * Math.min(1, dt * 8);
-      const sp = Math.max(0.7, this.speed);
-      const cur = this.simPos ?? tileCenter(this.simTile.x, this.simTile.y);
-      const [mx, mz] = slideMove(this.plan, this.solids(), cur.x + HALF, cur.z + HALF, dirX * sp * dt, dirZ * sp * dt);
-      const moved = Math.hypot(mx - (cur.x + HALF), mz - (cur.z + HALF)) > 1e-4;
-      this.simPos = new THREE.Vector3(mx - HALF, 0, mz - HALF);
-      this.simTile = { x: Math.max(0, Math.min(this.plan.size - 1, Math.floor(mx))), y: Math.max(0, Math.min(this.plan.size - 1, Math.floor(mz))) };
-      let dy = Math.atan2(dirX, dirZ) - this.simYaw;
-      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
-      this.simYaw += dy * Math.min(1, dt * 14);
-      this.sim.root.position.copy(this.simPos);
-      this.sim.root.rotation.y = this.simYaw;
-      this.pose(moved ? "walk" : "stand", t, this.run);
-      this.stepClock -= dt;
-      if (moved && this.stepClock <= 0) { this.onStep?.(); this.stepClock = this.run ? 0.26 : 0.36; }
-    } else if (this.info.home && this.climb) {
+    if (this.info.home && this.climb) {
       // On the stairs: up (or down) the steps along the left wall, rising with them
       const c = this.climb;
       c.t = Math.min(1, c.t + dt / 1.7);
@@ -832,12 +730,8 @@ export class HouseView {
       if (!this.simPos) this.simPos = pos.clone();
       const delta = pos.clone().sub(this.simPos);
       const dist = delta.length();
-      // Speed up from a standstill, slow down into the last step, instead of a constant shuffle
-      const goTo = this.path.length > 0 ? 1 : 0;
-      const last = this.path.length === 1 ? Math.min(1, dist / 0.7 + 0.3) : 1;
-      this.speed += (goTo * (this.run ? 4.4 : 3) * last - this.speed) * Math.min(1, dt * 6);
-      const step = Math.max(goTo ? 0.8 : 3, this.speed) * dt;
-      if (dist > 3 && !this.path.length) this.simPos.copy(pos);
+      const step = 3 * dt;
+      if (dist > 3) this.simPos.copy(pos);
       else if (dist > step) this.simPos.addScaledVector(delta.normalize(), step);
       else {
         this.simPos.copy(pos);
@@ -861,7 +755,7 @@ export class HouseView {
       this.simYaw += dy * Math.min(1, dt * 12);
       this.sim.root.position.copy(this.simPos);
       this.sim.root.rotation.y = this.simYaw;
-      this.pose(moving && pose !== "lie" && pose !== "sit" ? "walk" : pose, t, this.run && this.speed > 3.2);
+      this.pose(moving && pose !== "lie" && pose !== "sit" ? "walk" : pose, t);
       if (this.afterPath && !this.path.length && !moving) this.beginClimb();   // reached the stairs: climb them
     }
 
@@ -877,22 +771,6 @@ export class HouseView {
       const dir = new THREE.Vector3(Math.sin(this.fpYaw) * Math.cos(this.fpPitch), Math.sin(this.fpPitch), Math.cos(this.fpYaw) * Math.cos(this.fpPitch));
       this.camera.position.copy(eye);
       this.camera.lookAt(eye.clone().add(dir));
-      this.renderer.render(this.scene, this.camera);
-      return;
-    }
-    if (this.viewMode === "third" && this.simPos) {
-      const head = this.simPos.clone().setY(1.0);
-      const dist = 3.2;
-      const want = head.clone().add(new THREE.Vector3(-Math.sin(this.camYaw) * Math.cos(this.camPitch) * dist, Math.sin(this.camPitch) * dist + 0.4, -Math.cos(this.camYaw) * Math.cos(this.camPitch) * dist));
-      const f = 1 - Math.exp(-dt * 6);
-      this.camera.position.lerp(want, f);
-      this.camera.lookAt(head);
-      if (stick > 0.1) {                          // walking: the camera drifts round to look where you are going
-        let d = this.simYaw - this.camYaw;
-        d = Math.atan2(Math.sin(d), Math.cos(d));
-        this.camYaw += d * Math.min(1, dt * 1.6);
-      }
-      this.updateRemotes(dt);
       this.renderer.render(this.scene, this.camera);
       return;
     }
@@ -962,17 +840,37 @@ export class HouseView {
     }
   }
 
-  /** Blend the Sim into a pose (walk, run, sit, lie, use or stand). */
-  private pose(name: Pose, t: number, run = false) {
-    if (!this.animator || this.animatorFor !== this.sim) { this.animator = new Animator(this.sim); this.animatorFor = this.sim; }
-    const pose: PoseName = name === "walk" ? (run ? "run" : "walk") : name === "stand" ? "idle" : name;
-    this.animator.update(this.dtNow, pose, t);
+  private pose(name: Pose, t: number) {
+    const { body, legL, legR, armL, armR, head } = this.sim;
+    body.rotation.set(0, 0, 0);
+    body.position.set(0, 0, 0);
+    legL.rotation.set(0, 0, 0);
+    legR.rotation.set(0, 0, 0);
+    armL.rotation.set(0, 0, 0);
+    armR.rotation.set(0, 0, 0);
+    head.rotation.set(0, 0, 0);
+    if (name === "walk") {
+      const sw = Math.sin(t * 11) * 0.6;
+      legL.rotation.x = sw;
+      legR.rotation.x = -sw;
+      armL.rotation.x = -sw * 0.8;
+      armR.rotation.x = sw * 0.8;
+      body.position.y = Math.abs(Math.sin(t * 11)) * 0.03;
+    } else if (name === "sit") {
+      legL.rotation.x = legR.rotation.x = -Math.PI / 2;
+      body.position.z = -0.05;
+      armL.rotation.x = armR.rotation.x = -0.4;
+    } else if (name === "lie") {
+      body.rotation.x = -Math.PI / 2;
+      body.position.set(0, 0.1, 0.5);
+      head.rotation.y = 0.3;
+    } else if (name === "use") {
+      armL.rotation.x = -1.0 + Math.sin(t * 6) * 0.25;
+      armR.rotation.x = -1.0 - Math.sin(t * 6) * 0.25;
+    } else {
+      body.position.y = Math.sin(t * 2) * 0.006;
+    }
   }
-
-  private quality = new QualityGovernor(Math.min(typeof devicePixelRatio === "number" ? devicePixelRatio : 1, 1.5));
-  private animator: Animator | null = null;
-  private animatorFor: unknown = null;
-  private dtNow = 0.016;
 
   private ray(clientX: number, clientY: number) {
     const r = this.renderer.domElement.getBoundingClientRect();

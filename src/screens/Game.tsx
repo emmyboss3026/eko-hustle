@@ -28,7 +28,6 @@ import Loading from "../components/Loading";
 import { placingValid, type Placing } from "../components/RoomScene";
 import BlueprintSheet from "../components/BlueprintSheet";
 import PhotoSheet from "../components/PhotoSheet";
-import { weatherAt } from "../data/weather";
 import LandSheet from "../components/LandSheet";
 import { moveHome } from "../three/world.js";
 import { plotTier } from "../data/estate";
@@ -135,7 +134,6 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   const [placing, setPlacing] = useState<Placing | null>(null);
   // The wall editor: walls as drawn so far (nothing is paid until Apply), with undo and redo
   const [draft, setDraft] = useState<{ tool: "move" | "draw" | "erase"; edges: string[]; committed: string[]; past: string[][]; future: string[][]; note: string | null } | null>(null);
-  const [thirdPerson, setThirdPerson] = useState(false);   // the room camera behind the Sim
   const [floorLevel, setFloorLevel] = useState(0);   // 0 ground floor, 1 upstairs
   const [sideMenu, setSideMenu] = useState(false);   // the ⋯ menu on the right: Help, Feedback, Speed
   const [floorStyle, setFloorStyle] = useState<string | null>(null);   // set while you are laying floors
@@ -414,8 +412,6 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             onPlaceTile={(x, y) => placing && setPlacing({ ...placing, x, y })}
             shift={narrow && (panel || selected !== null) ? 0.12 : 0}
             firstPerson={firstPerson}
-            thirdPerson={thirdPerson}
-            controls={!placing && draft === null && floorStyle === null && !panel && selected === null && !phone && !eventOpen && !guide}
             userId={userId}
             net={visiting === null}
             onLevel={setFloorLevel}
@@ -466,7 +462,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             <b aria-hidden>{moodFace(m)}</b><span className="vital-bar"><i style={{ width: `${m}%` }} /></span><em>{m}</em>
           </span>
           <span className={`vital power ${lit ? "" : "low"}`} title={state.power.grid ? t("hud.lightOn") : generatorOn(state) ? t("hud.genOn") : t("hud.lightOff")}>
-            <b>{state.power.grid ? "💡" : generatorOn(state) ? "⚡" : "🕯️"}{weatherAt(state.time).raining ? " 🌧️" : ""}</b>
+            <b>{state.power.grid ? "💡" : generatorOn(state) ? "⚡" : "🕯️"}</b>
           </span>
         </div>
         <div className="hud2-needs" aria-label={t("hud.needs")}>
@@ -490,20 +486,13 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
         <button
           aria-pressed={firstPerson}
           onClick={() => {
-            if (showRoom) {
-              // In your room the view goes round: overview, behind the Sim, through its eyes
-              if (firstPerson) dispatch({ type: "camera", mode: "top" });
-              else if (thirdPerson) { setThirdPerson(false); dispatch({ type: "camera", mode: "first" }); setCamHint(true); }
-              else setThirdPerson(true);
-              return;
-            }
             dispatch({ type: "camera", mode: firstPerson ? "top" : "first" });
             setCamHint(!firstPerson);
           }}
-          aria-label={showRoom ? (firstPerson ? t("camera.toTop") : thirdPerson ? t("camera.toFirst") : t("camera.toThird")) : (firstPerson ? t("camera.toTop") : t("camera.toFirst"))}
-          title={showRoom ? (firstPerson ? t("camera.toTop") : thirdPerson ? t("camera.toFirst") : t("camera.toThird")) : (firstPerson ? t("camera.toTop") : t("camera.toFirst"))}
+          aria-label={firstPerson ? t("camera.toTop") : t("camera.toFirst")}
+          title={firstPerson ? t("camera.toTop") : t("camera.toFirst")}
         >
-          {firstPerson ? "🗺️" : thirdPerson && showRoom ? "👁️" : showRoom ? "🧍" : "🎥"}<small>{t("camera.view")}</small>
+          {firstPerson ? "🗺️" : "🎥"}<small>{t("camera.view")}</small>
         </button>
         <button aria-expanded={sideMenu} aria-label={t("side.menu")} onClick={() => setSideMenu(o => !o)}>
           ⋯<small>{t("side.menu")}</small>
