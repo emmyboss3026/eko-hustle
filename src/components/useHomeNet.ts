@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { HouseView } from "../three/HouseView";
-import { Multiplayer, multiplayerUrl, type Peer, type Say } from "../lib/multiplayer";
+import { Multiplayer, multiplayerUrl, type PartyKind, type Peer, type Say } from "../lib/multiplayer";
+
+/** A party game in this home, as the server last described it. Times are on this device's clock. */
+export type Party = {
+  kind: PartyKind; phase: "countdown" | "play" | "done"; startsAt: number; endsAt: number; beatMs: number; finish: number;
+  names: Record<string, string>; scores: Record<string, number>; ranking: [string, string, number][] | null;
+};
 
 export type HomeNet = {
+  me: string | null;
+  party: Party | null;
+  startParty: (kind: PartyKind) => void;       // owner only: the server ignores it from anyone else
+  tap: () => void;
+  closeParty: () => void;
   status: "off" | "connecting" | "online" | "offline" | "ended";
   ended: "denied" | "removed" | "replaced" | "kicked" | null;
   peers: { id: string; name: string }[];       // the others in the room
@@ -18,6 +29,8 @@ export function useHomeNet(view: RefObject<HouseView | null>, owner: string | nu
   const [ended, setEnded] = useState<HomeNet["ended"]>(null);
   const [peers, setPeers] = useState<HomeNet["peers"]>([]);
   const [said, setSaid] = useState<HomeNet["said"]>([]);
+  const [party, setParty] = useState<Party | null>(null);
+  const [me, setMe] = useState<string | null>(null);
   const conn = useRef<Multiplayer | null>(null);
   const whoRef = useRef(who);
   whoRef.current = who;
@@ -29,7 +42,13 @@ export function useHomeNet(view: RefObject<HouseView | null>, owner: string | nu
     const sync = () => setPeers([...known].map(([id, name]) => ({ id, name })));
     const c = new Multiplayer(
       {
-        onStatus: s => setStatus(s.state),
+        onStatus: s => { setStatus(s.state); if (s.state === "online") setMe(conn.current?.me ?? null); },
+        onEvent: e => {
+          const now = Date.now();
+          setParty({ kind: e.kind, phase: "countdown", startsAt: now + e.countdownMs, endsAt: now + e.countdownMs + e.durationMs, beatMs: e.beatMs, finish: e.finish, names: Object.fromEntries(e.players), scores: Object.fromEntries(e.players.map(([id]) => [id, 0])), ranking: null });
+        },
+        onEventScore: sc => setParty(p => (p ? { ...p, scores: Object.fromEntries(sc) } : p)),
+        onEventEnd: (_kind, ranking) => setParty(p => (p ? { ...p, phase: "done", ranking } : p)),
         onWelcome: ps => {
           view.current?.clearRemotes();
           known.clear();
@@ -70,8 +89,9 @@ export function useHomeNet(view: RefObject<HouseView | null>, owner: string | nu
       setStatus("off");
       setPeers([]);
       setSaid([]);
+      setParty(null);
     };
   }, [enabled, owner, view]);
 
-  return { status, ended, peers, said, say: t => conn.current?.say(t), remove: id => conn.current?.remove(id) };
+  return { status, ended, peers, said, me, party, say: t => conn.current?.say(t), remove: id => conn.current?.remove(id), startParty: k => conn.current?.startEvent(k), tap: () => conn.current?.tap(), closeParty: () => setParty(null) };
 }

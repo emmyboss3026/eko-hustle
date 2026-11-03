@@ -105,6 +105,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       labelFor: (id: string) => (id === "flats" ? `🏢 ${t("land.oldFlat")}` : `${spots[id as SpotId]?.emoji ?? "🏠"} ${tx.spot(id as SpotId)}`),
       // A passer-by says something (only while you're walking about)
       onEngine: (speed: number, throttle: number) => engine(speed, throttle),
+      onHit: () => { play("pop"); dispatch({ type: "roadHit" }); },
       onChatter: (persona: Persona) => {
         if (!walkingRef.current || blocked.current) return null;
         const { state: st, t: tt } = live.current;

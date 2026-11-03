@@ -34,6 +34,17 @@ export const GROWTH = [
       clinic: { cx: 330, cz: -150, face: 'w', solids: [[0, 0, 22, 18, 7]] },
     },
   },
+  {
+    level: 4,
+    note: 'Fourth growth: a kart track and a dance hall on the south edge, a skate park on the north, a bakery on the east and a water park on the west.',
+    places: {
+      kart: { cx: -150, cz: 390, face: 'n', solids: [[0, 6, 20, 10, 5]] },
+      dancehall: { cx: 90, cz: 390, face: 'n', solids: [[0, -2, 24, 18, 8]] },
+      skate: { cx: 30, cz: -390, face: 's', solids: [[0, 8, 14, 8, 3]] },
+      bakery: { cx: 390, cz: -30, face: 'w', solids: [[0, 0, 18, 14, 6]] },
+      waterpark: { cx: -390, cz: 210, face: 'e', solids: [[0, 6, 20, 12, 6]] },
+    },
+  },
 ];
 
 /** How many times the map has grown. */

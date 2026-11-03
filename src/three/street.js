@@ -420,6 +420,77 @@ export function buildPlace(id, labelFor, property) {
       height = ch + 6;
       break;
     }
+    case 'kart': {
+      add(plane(48, 48, '#6b6e75', 0, 0.07, 0));
+      const [, klz, kw, kd, kh] = solids[0];
+      add(box(kw, kh, kd, '#fafafa', 0, kh / 2, klz));                              // the pit building
+      add(box(kw + 1, 0.5, kd + 1, '#e53935', 0, kh + 0.25, klz));
+      add(box(2.4, 3.2, 0.25, '#37474f', 0, 1.6, klz - kd / 2 - 0.12, false));
+      sign('NAIJA KARTING', 14, 2.4, kh + 1.7, klz - kd / 2 - 0.3, { bg: '#e53935' });
+      for (let i = 0; i < 18; i++) {                                                 // the track: a loop of tyres with a chequered start line
+        const a = (i / 18) * Math.PI * 2;
+        add(cyl(0.7, 0.7, 0.6, i % 2 ? '#212121' : '#e53935', Math.cos(a) * 16, 0.3, -6 + Math.sin(a) * 9, 10));
+      }
+      for (let i = 0; i < 6; i++) add(box(1, 0.02, 1, i % 2 ? '#fff' : '#222', -2.5 + i, 0.14, -15, false));
+      height = kh + 6;
+      break;
+    }
+    case 'dancehall': {
+      add(plane(48, 48, '#8d7fa8', 0, 0.07, 0));
+      const [, dlz, dw, dd, dh] = solids[0];
+      add(box(dw, dh, dd, '#3a2a5e', 0, dh / 2, dlz));                              // the hall
+      add(box(dw + 1, 0.5, dd + 1, '#ff3d81', 0, dh + 0.25, dlz));
+      add(box(2.8, 3.6, 0.25, '#14142a', 0, 1.8, dlz - dd / 2 - 0.12, false));
+      for (const [i, c] of ['#ff3d81', '#7df9ff', '#ffe066', '#9b5de5', '#43e97b'].entries()) add(box(1.6, 5.5, 0.3, c, -8 + i * 4, 4.4, dlz - dd / 2 - 0.35, false));   // neon bars
+      const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 1), mat('#e0e0e0', { roughness: 0.1 }));   // the mirror ball
+      ball.position.set(0, dh + 3.2, dlz);
+      add(ball);
+      sign('AFROBEAT DANCE HALL', 18, 2.6, dh + 1.7, dlz - dd / 2 - 0.3, { bg: '#14142a' });
+      height = dh + 7;
+      break;
+    }
+    case 'skate': {
+      add(plane(48, 48, '#9a9a9a', 0, 0.07, 0));
+      const [, slz, sw, sd, sh] = solids[0];
+      add(box(sw, sh, sd, '#37474f', 0, sh / 2, slz));                              // the changing hut
+      sign('EKO SKATE PARK', 12, 2.2, sh + 1.4, slz - sd / 2 - 0.3, { bg: '#00acc1' });
+      for (const [x, z, c] of [[-12, -8, '#e53935'], [10, -10, '#fdd835'], [-6, -16, '#43a047'], [14, -4, '#1e88e5']]) {   // ramps
+        const ramp = new THREE.Mesh(new THREE.BoxGeometry(6, 0.4, 5), mat(c));
+        ramp.position.set(x, 1.1, z);
+        ramp.rotation.x = -0.35;
+        ramp.castShadow = true;
+        add(ramp);
+        add(box(6, 1.1, 0.3, '#546e7a', x, 0.55, z + 2.4));
+      }
+      add(box(12, 0.15, 0.15, '#cfd8dc', 0, 0.9, -2, false));                         // a grind rail
+      height = sh + 4;
+      break;
+    }
+    case 'bakery': {
+      add(plane(48, 48, '#b9a88a', 0, 0.07, 0));
+      const [, blz, bw, bd, bh] = solids[0];
+      add(box(bw, bh, bd, '#f6d9a8', 0, bh / 2, blz));                              // the shop
+      add(box(bw + 1, 0.5, bd + 1, '#8d5a2b', 0, bh + 0.25, blz));
+      for (let i = 0; i < 6; i++) add(box(3, 0.25, 2.2, i % 2 ? '#fff' : '#e57373', -7.5 + i * 3, 3.2, blz - bd / 2 - 1.2));   // the striped awning
+      add(box(bw - 6, 2.6, 0.2, mat('#bfe3ff', { transparent: true, opacity: 0.55, roughness: 0.2 }), 0, 1.8, blz - bd / 2 - 0.1, false));
+      add(box(2.2, 3.2, 0.25, '#5d4037', 0, 1.6, blz - bd / 2 - 0.12, false));
+      add(cyl(0.6, 0.6, 5, '#8d6e63', bw / 2 - 2, bh + 2.5, blz + 2, 10));          // the oven chimney
+      sign('SWEET CRUMBS', 12, 2.4, bh + 1.8, blz - bd / 2 - 0.3, { bg: '#8d5a2b' });
+      height = bh + 8;
+      break;
+    }
+    case 'waterpark': {
+      add(plane(48, 48, '#c9d6a8', 0, 0.07, 0));
+      const [, wlz, ww, wd, wh] = solids[0];
+      add(box(ww, wh, wd, '#fff3e0', 0, wh / 2, wlz));                              // the changing rooms
+      add(box(ww + 1, 0.5, wd + 1, '#039be5', 0, wh + 0.25, wlz));
+      sign('LAGOON WATER PARK', 16, 2.4, wh + 1.7, wlz - wd / 2 - 0.3, { bg: '#039be5' });
+      add(box(16, 0.3, 9, '#4fc3f7', -4, 0.2, -8));                                  // the pool
+      add(box(16.8, 0.45, 9.8, '#eceff1', -4, 0.12, -8));
+      for (let i = 0; i < 5; i++) add(box(1.6, 0.2 + i * 0.9, 2.4, i % 2 ? '#ff7043' : '#ffca28', 12 + i * 0.4, 0.1 + (0.2 + i * 0.9) / 2 + i * 0.3, -2 - i * 2.2));   // the slide steps
+      height = wh + 6;
+      break;
+    }
     case 'mart': {
       add(plane(48, 48, '#a9b0a5', 0, 0.07, 0));
       const [, mlz, mw, md, mh] = solids[0];
@@ -690,6 +761,8 @@ export class StreetView {
     this.remotes = new Map(); // other real players, by id (see lib/multiplayer.ts)
     this.parked = new Map();  // cars you own, by uid: { v3d, model, color }
     this.drive = null;        // the car you are driving, if any
+    this.safeUntil = 0;       // a car cannot hit you again until this time (seconds)
+    this.hurtUntil = 0;       // the Sim lies flat until this time
     this.estateKey = '';
     this.propKey = '';
     this.extraSolids = [];
@@ -911,11 +984,24 @@ export class StreetView {
       const lane = lanes[(i * 5) % lanes.length];
       const kind = i % 3 === 0 ? 'danfo' : i % 3 === 1 ? 'keke' : 'car';
       const g = kind === 'danfo' ? buildDanfo() : kind === 'keke' ? buildKeke() : buildCar(colours[i % colours.length]);
-      const car = { g, lane, t: -(LAND_HALF - 6) + ((i * 97) % (2 * (LAND_HALF - 6))), speed: kind === 'keke' ? 9 : kind === 'danfo' ? 12 : 14, base: 0 };
+      const car = { g, lane, t: -(LAND_HALF - 6) + ((i * 97) % (2 * (LAND_HALF - 6))), speed: kind === 'keke' ? 9 : kind === 'danfo' ? 12 : 14, base: 0, reckless: i % 4 === 1 };   // reckless drivers do not slow down for you
       car.base = car.speed;
       this.cars.push(car);
       this.scene.add(g);
     }
+  }
+
+  /** A car hit the Sim: tell the game, throw the Sim to the pavement, and give a few safe seconds. */
+  knockDown(car, axis, line, t) {
+    this.safeUntil = t + 4;
+    this.hurtUntil = t + 1.2;
+    const side = (axis === 'x' ? this.player.z - line : this.player.x - line) >= 0 ? 1 : -1;
+    const out = line + side * (ROAD_HALF + 2.2);
+    if (axis === 'x') this.player.z = out; else this.player.x = out;
+    this.route = [];
+    this.routeDoor = null;
+    car.speed = 0;
+    this.hooks.onHit?.();
   }
 
   buildPeople() {
@@ -1256,6 +1342,7 @@ export class StreetView {
     this.sim.root.visible = this.mode === 'street' && !firstPerson && !driving;
     this.sim.root.position.copy(this.player);
     this.sim.root.rotation.y = this.yaw;
+    this.sim.root.rotation.z = t < this.hurtUntil ? 1.4 : 0;   // knocked flat for a moment
     this.animate(this.sim, moving ? (this.running ? 16 : 11) : 0, t, moving);
     this.updateRemotes(dt, t);
 
@@ -1273,7 +1360,9 @@ export class StreetView {
         const along = axis === 'x' ? this.player.x : this.player.z;
         const across = axis === 'x' ? this.player.z - (line + offset) : this.player.x - (line + offset);
         const ahead = (along - c.t) * dir;
-        blockedAhead = ahead > 0 && ahead < 9 && Math.abs(across) < 2.6;
+        blockedAhead = !c.reckless && ahead > 0 && ahead < 9 && Math.abs(across) < 2.6;
+        // A moving car that reaches you hits you (not while you are driving, or just after a hit)
+        if (!driving && !paused && t > this.safeUntil && c.speed > 3 && ahead > -2.2 && ahead < 2.2 && Math.abs(across) < 1.5) this.knockDown(c, axis, line, t);
       }
       c.speed += ((blockedAhead || paused ? 0 : c.base) - c.speed) * Math.min(1, dt * 4);
       c.t += dir * c.speed * dt;

@@ -654,6 +654,20 @@ describe("town map data", () => {
   });
 });
 
+describe("road hits", () => {
+  it("a car hit costs health and a shaken mood", () => {
+    const s = reduce(fresh({ health: 80 }), { type: "roadHit" });
+    expect(s.health).toBe(45);
+    expect(s.moodlets.some(m => m.id === "accident")).toBe(true);
+    expect(s.ending).toBeNull();
+  });
+  it("a hit at low health collapses you", () => {
+    const s = reduce(fresh({ health: 30 }), { type: "roadHit" });
+    expect(s.health).toBe(0);
+    expect(s.ending?.kind).toBe("collapsed");
+  });
+});
+
 describe("map growth", () => {
   it("each growth adds a ring of land and two places, with spots, doors on roads, and no overlapping lots", async () => {
     const { GROWTH, MAP_LEVEL } = await import("../three/growth.js");

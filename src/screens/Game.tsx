@@ -397,6 +397,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
         {showRoom && (
           <RoomScene
             state={state}
+            onParty={(place, players) => dispatch({ type: "partyDone", place, players })}
             viewRef={viewRef}
             selected={selected}
             onSelect={uid => {
@@ -437,7 +438,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
             net={visiting === null}
           />
         )}
-        {visiting && <VisitScene owner={visiting} state={state} onLeave={() => setVisiting(null)} />}
+        {visiting && <VisitScene owner={visiting} state={state} onLeave={() => setVisiting(null)} onParty={(place, players) => dispatch({ type: "partyDone", place, players })} />}
       </Suspense>
       {camHint && firstPerson && (showRoom || walking) && <div className="cam-hint" onAnimationEnd={() => setCamHint(false)}>{t("camera.look")}</div>}
       {!showRoom && !showStreet && <CityBackdrop time={state.time} name={tx.district(state.location)} />}

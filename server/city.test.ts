@@ -315,3 +315,69 @@ describe("visiting a home", () => {
     expect(s.cities.list()).toEqual([]);
   });
 });
+
+describe("party games in a home", () => {
+  const party = () => {
+    const s = setup();
+    const home = (id: string, owner: string) => {
+      s.inbox.set(id, []);
+      return s.cities.joinHome({ id, name: id, send: m => s.inbox.get(id)!.push(m) }, owner);
+    };
+    home("host", "host"); home("guest", "host");
+    return { ...s, home };
+  };
+
+  it("only the owner can start one, and only with a guest in the room", () => {
+    const s = setup();
+    s.inbox.set("solo", []);
+    s.cities.joinHome({ id: "solo", name: "solo", send: m => s.inbox.get("solo")!.push(m) }, "solo");
+    expect(s.cities.startEvent("solo", "race")).toBe(false);   // nobody to play with
+    const p = party();
+    expect(p.cities.startEvent("guest", "race")).toBe(false);  // a guest cannot start it
+    expect(p.cities.startEvent("host", "nonsense")).toBe(false);
+    expect(p.cities.startEvent("host", "race")).toBe(true);
+    expect(p.cities.startEvent("host", "dance")).toBe(false);  // one at a time
+    expect(last(p.inbox, "guest", "event")).toMatchObject({ kind: "race", countdownMs: 3000 });
+  });
+
+  it("race: taps before the start do not count, then the first to 60 wins", () => {
+    const p = party();
+    p.cities.startEvent("host", "race");
+    expect(p.cities.tap("guest")).toBe(false);                 // still counting down
+    p.advance(3_100);
+    for (let i = 0; i < 60; i++) { p.advance(70); expect(p.cities.tap("host")).toBe(true); }
+    p.advance(70);
+    p.cities.tap("guest");
+    p.cities.tick();
+    const end = last(p.inbox, "guest", "eventEnd") as { ranking: [string, string, number][] };
+    expect(end.ranking[0]).toEqual(["host", "host", 60]);
+    expect(end.ranking[1][2]).toBe(1);
+  });
+
+  it("taps faster than a thumb can tap are ignored", () => {
+    const p = party();
+    p.cities.startEvent("host", "race");
+    p.advance(3_100);
+    expect(p.cities.tap("guest")).toBe(true);
+    p.advance(10);
+    expect(p.cities.tap("guest")).toBe(false);
+  });
+
+  it("dance: only taps on the beat score, once per beat", () => {
+    const p = party();
+    p.cities.startEvent("host", "dance");
+    p.advance(3_000 + 600);                                    // exactly on a beat
+    expect(p.cities.tap("host")).toBe(true);
+    p.advance(100);
+    expect(p.cities.tap("host")).toBe(false);                  // same beat already counted
+    p.advance(250);                                            // 350 ms after: a whole beat off
+    expect(p.cities.tap("guest")).toBe(false);
+    p.advance(250 + 0);                                        // 600 after the first beat
+    expect(p.cities.tap("guest")).toBe(true);
+    p.advance(20_000);
+    p.cities.tick();
+    const end = last(p.inbox, "host", "eventEnd") as { ranking: [string, string, number][] };
+    expect(end.ranking[0][0]).toBe("host");
+    expect(end.ranking[0][2]).toBe(2);                         // a perfect beat scores double
+  });
+});

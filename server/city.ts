@@ -25,6 +25,17 @@ const CAR_SCALE = 0.36;              // in-game top speed is real km/h × this (
 const CAR_RADIUS = 0.8;              // how close to a wall a car centre may be
 const carTop = (model: string) => (CARS.find(c => c.id === model)?.topKmh ?? 0) / 3.6 * CAR_SCALE;
 
+// Party games in a home: the owner starts one, everyone in the room plays, and the server counts the taps (so nobody can fake a score).
+export type EventKind = "race" | "dance";
+export const EVENT_KINDS: EventKind[] = ["race", "dance"];
+export const EVENT_COUNTDOWN_MS = 3_000;
+export const EVENT_MS: Record<EventKind, number> = { race: 20_000, dance: 20_000 };
+export const RACE_FINISH = 60;       // taps to cross the line
+export const BEAT_MS = 600;          // dance: one beat every 0.6 seconds
+export const BEAT_WINDOW_MS = 220;   // a tap this close to a beat scores (the best ones score double)
+const TAP_EVERY_MS = 60;             // taps arriving faster than this are dropped (about 16 a second is the most a thumb can do)
+type EventState = { kind: EventKind; startsAt: number; endsAt: number; scores: Map<string, number>; names: Map<string, string>; lastTap: Map<string, number>; lastBeat: Map<string, number>; changed: boolean };
+
 export type Out = (msg: Record<string, unknown>) => void;
 export type Look = Record<string, string>;
 export type Car = { model: string; color: string };
@@ -79,6 +90,7 @@ const publicOf = (m: Member) => ({ id: m.id, name: m.name, look: m.look, x: m.x,
 export class Cities {
   readonly capacity: number;
   private rooms = new Map<string, Map<string, Member>>();
+  private events = new Map<string, EventState>();
   private byId = new Map<string, Member>();
   private now: () => number;
   private opts: Options;
@@ -177,7 +189,8 @@ export class Cities {
       for (const g of [...(room?.values() ?? [])]) { g.send({ t: "removed" }); this.leave(g.id); }
     }
     for (const o of room?.values() ?? []) o.send({ t: "leave", id });
-    if (room && room.size === 0) this.rooms.delete(m.instance); // clean up empty instances
+    this.events.get(m.instance)?.scores.delete(id);
+    if (room && room.size === 0) { this.rooms.delete(m.instance); this.events.delete(m.instance); } // clean up empty instances
   }
 
   /** The player says which cars they own (after a purchase, sale or repaint). Driving a car they no longer have ends. */
@@ -249,8 +262,65 @@ export class Cities {
     return heard;
   }
 
+  /** The owner starts a party game in their own home. It needs at least one guest, and only one runs at a time. */
+  startEvent(hostId: string, kind: unknown): boolean {
+    const h = this.byId.get(hostId);
+    if (!h || !h.home || h.instance !== `home:${hostId}` || !EVENT_KINDS.includes(kind as EventKind)) return false;
+    const room = this.rooms.get(h.instance);
+    if (!room || room.size < 2 || this.events.has(h.instance)) return false;
+    const t = this.now();
+    const e: EventState = {
+      kind: kind as EventKind, startsAt: t + EVENT_COUNTDOWN_MS, endsAt: t + EVENT_COUNTDOWN_MS + EVENT_MS[kind as EventKind],
+      scores: new Map([...room.keys()].map(id => [id, 0])), names: new Map([...room.values()].map(m => [m.id, m.name])),
+      lastTap: new Map(), lastBeat: new Map(), changed: false,
+    };
+    this.events.set(h.instance, e);
+    for (const o of room.values()) o.send({ t: "event", kind: e.kind, countdownMs: EVENT_COUNTDOWN_MS, durationMs: EVENT_MS[e.kind], beatMs: BEAT_MS, finish: RACE_FINISH, players: [...e.names] });
+    return true;
+  }
+
+  /** A tap in a party game. The server decides whether it scores. */
+  tap(id: string): boolean {
+    const m = this.byId.get(id);
+    const e = m && this.events.get(m.instance);
+    if (!m || !e || !e.scores.has(id)) return false;
+    const t = this.now();
+    if (t < e.startsAt || t > e.endsAt) return false;
+    if (t - (e.lastTap.get(id) ?? -1e9) < TAP_EVERY_MS) return false;
+    e.lastTap.set(id, t);
+    let add = 0;
+    if (e.kind === "race") add = 1;
+    else {
+      const since = t - e.startsAt;
+      const beat = Math.round(since / BEAT_MS);
+      const off = Math.abs(since - beat * BEAT_MS);
+      if (off <= BEAT_WINDOW_MS && e.lastBeat.get(id) !== beat) { e.lastBeat.set(id, beat); add = off <= BEAT_WINDOW_MS / 2 ? 2 : 1; }
+    }
+    if (!add) return false;
+    e.scores.set(id, (e.scores.get(id) ?? 0) + add);
+    e.changed = true;
+    return true;
+  }
+
+  private finishEvents() {
+    const t = this.now();
+    for (const [rid, e] of this.events) {
+      const winner = e.kind === "race" ? [...e.scores.values()].some(v => v >= RACE_FINISH) : false;
+      if (t < e.endsAt && !winner) continue;
+      const ranking = [...e.scores].map(([id, score]) => [id, e.names.get(id) ?? "Player", score] as [string, string, number]).sort((a, b) => b[2] - a[2]);
+      for (const o of this.rooms.get(rid)?.values() ?? []) o.send({ t: "eventEnd", kind: e.kind, ranking });
+      this.events.delete(rid);
+    }
+  }
+
   /** Send each player the movements of the players near them that changed. Call about ten times a second. */
   tick() {
+    for (const [rid, e] of this.events) {
+      if (!e.changed) continue;
+      e.changed = false;
+      for (const o of this.rooms.get(rid)?.values() ?? []) o.send({ t: "eventScore", scores: [...e.scores] });
+    }
+    this.finishEvents();
     for (const room of this.rooms.values()) {
       const moved = [...room.values()].filter(m => m.dirty);
       if (moved.length) {

@@ -4,6 +4,7 @@ import { ARCADE_GAMES, ARCADE_PAID_PLAYS, arcadeLeft, arcadePrize, type ArcadeGa
 import { naira } from "../../engine/economy";
 import { useLang } from "../../i18n/react";
 import { play } from "../../lib/audio";
+import { Checkers, Chess, Game2048, LudoGame, SnakeGame, Sudoku } from "./BoardGames";
 
 type Done = (score: number) => void;   // score from 0 to 100
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -148,7 +149,10 @@ function Rush({ onDone }: { onDone: Done }) {
 
 // ------------------------------------------------------------------ the arcade
 
-const META: Record<ArcadeGame, { emoji: string }> = { memory: { emoji: "🍛" }, maths: { emoji: "🧮" }, rush: { emoji: "🚌" } };
+const META: Record<ArcadeGame, { emoji: string }> = {
+  memory: { emoji: "🍛" }, maths: { emoji: "🧮" }, rush: { emoji: "🚌" },
+  ludo: { emoji: "🎲" }, chess: { emoji: "♟️" }, checkers: { emoji: "🔴" }, sudoku: { emoji: "🔢" }, snake: { emoji: "🐍" }, g2048: { emoji: "🧱" },
+};
 
 /** Mini-games: a few minutes of fun that lift your mood and pay a little (a few paid plays of each game per day). */
 export default function GamesApp({ state, dispatch }: { state: GameState; dispatch: (c: Command) => void }) {
@@ -183,6 +187,12 @@ export default function GamesApp({ state, dispatch }: { state: GameState; dispat
         {game === "memory" && <Memory key={round} onDone={finish("memory")} />}
         {game === "maths" && <Maths key={round} onDone={finish("maths")} />}
         {game === "rush" && <Rush key={round} onDone={finish("rush")} />}
+        {game === "ludo" && <LudoGame key={round} onDone={finish("ludo")} />}
+        {game === "chess" && <Chess key={round} onDone={finish("chess")} />}
+        {game === "checkers" && <Checkers key={round} onDone={finish("checkers")} />}
+        {game === "sudoku" && <Sudoku key={round} onDone={finish("sudoku")} />}
+        {game === "snake" && <SnakeGame key={round} onDone={finish("snake")} />}
+        {game === "g2048" && <Game2048 key={round} onDone={finish("g2048")} />}
       </>
     );
   }

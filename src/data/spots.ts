@@ -14,6 +14,7 @@ export type SpotId =
   | "station" | "cinema"   // added by map growth 1
   | "mart" | "stadium"     // added by map growth 2
   | "chapel" | "library" | "plaza" | "arcade" | "clinic"   // added by map growth 3
+  | "kart" | "dancehall" | "skate" | "bakery" | "waterpark"   // added by map growth 4
   | "phone";
 
 export type Spot = {
@@ -65,6 +66,11 @@ export const spots: Record<SpotId, Spot> = {
   plaza: { id: "plaza", name: "Oja Fashion Plaza", emoji: "🛍️", district: "yaba", open: [9, 20], blurb: "Rows of tailors, fabric sellers and shoe stalls. Even window shopping is a good outing.", lot: true },
   arcade: { id: "arcade", name: "Pixel Arcade", emoji: "🕹️", district: "yaba", open: [10, 23], blurb: "Neon lights, loud cabinets and a leaderboard everyone wants to top.", lot: true },
   clinic: { id: "clinic", name: "Lifeline Clinic", emoji: "🏥", district: "mushin", open: [7, 21], blurb: "A clean little clinic: check-ups, rest and a nurse who knows your name.", lot: true },
+  kart: { id: "kart", name: "Naija Karting", emoji: "🏎️", district: "yaba", open: [10, 22], blurb: "A little go-kart track with tyre walls and a lap board. Bragging rights included.", lot: true },
+  dancehall: { id: "dancehall", name: "Afrobeat Dance Hall", emoji: "💃🏾", district: "yaba", open: [16, 4], blurb: "Mirrors, speakers and a floor that never sleeps. Learn the moves, then battle for the crowd.", lot: true },
+  skate: { id: "skate", name: "Eko Skate Park", emoji: "🛹", district: "mushin", open: [7, 21], blurb: "Ramps, rails and a bowl. Free to enter, easy to fall.", lot: true },
+  bakery: { id: "bakery", name: "Sweet Crumbs Bakery", emoji: "🥖", district: "mushin", open: [5, 20], blurb: "Hot bread, meat pies and puff-puff from before sunrise.", lot: true },
+  waterpark: { id: "waterpark", name: "Lagoon Water Park", emoji: "🌊", district: "yaba", open: [9, 19], blurb: "Pools, a big slide and lifeguards with whistles. Perfect for a hot Lagos day.", lot: true },
   phone: { id: "phone", name: "Your phone", emoji: "📱", district: "any", blurb: "Works anywhere: call home, hustle on WhatsApp, order delivery." },
 };
 

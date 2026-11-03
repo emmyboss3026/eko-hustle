@@ -10,8 +10,8 @@ export type AppsCommand =
   | { type: "arcade"; game: string; score: number }
   | { type: "gramPost"; caption: number };
 
-export type ArcadeGame = "memory" | "maths" | "rush";
-export const ARCADE_GAMES: ArcadeGame[] = ["memory", "maths", "rush"];
+export type ArcadeGame = "memory" | "maths" | "rush" | "ludo" | "chess" | "checkers" | "sudoku" | "snake" | "g2048";
+export const ARCADE_GAMES: ArcadeGame[] = ["ludo", "snake", "sudoku", "chess", "checkers", "g2048", "memory", "maths", "rush"];
 export const ARCADE_PAID_PLAYS = 2;      // paid plays per game per day; more is just for fun
 export const ARCADE_TOP_PRIZE = 1_000;   // for a perfect score (100)
 const isGame = (g: unknown): g is ArcadeGame => ARCADE_GAMES.includes(g as ArcadeGame);

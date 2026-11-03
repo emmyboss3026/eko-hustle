@@ -22,10 +22,10 @@ it's inspired by Lagos Life but must not copy its text, art, characters or brand
 
 ## Growing the map (do this with every update or fix)
 The owner wants the town to get bigger with every update, fix included. Each time, add one entry at the END of `GROWTH` in
-`src/three/growth.js`: it grows the land by one ring (roads and lots 60 further out) and adds TWO new places. Then:
-1. Pick two free lots in the new ring (centres at ±(150 + 60 × level)); the door must face the inner road. Give each a `solids` list.
-2. Add both ids to `SpotId` and `spots` in `src/data/spots.ts` (`lot: true`, a district, opening hours, a blurb).
-3. Add 2 to 4 actions per place in `src/data/actions.ts` (give them something useful: supplies, fun, skills, money).
+`src/three/growth.js`: it grows the land by one ring (roads and lots 60 further out) and adds new places (two at least; the owner asked for FIVE on 4 Nov 2026, so use five from now on). Then:
+1. Pick free lots in the new ring (centres at ±(150 + 60 × level)); the door must face the inner road. Give each a `solids` list.
+2. Add every id to `SpotId` and `spots` in `src/data/spots.ts` (`lot: true`, a district, opening hours, a blurb).
+3. Add 2 actions per place in `src/data/actions.ts` (give them something useful: supplies, fun, skills, money).
 4. Add a `case` for each id in `buildPlace` (`src/three/street.js`): lot plane, building, sign, matching `solids`.
 5. Add German and Pidgin text: `MISSING_OUT=/tmp/missing.json npx vitest run scripts/missing-i18n.test.ts`, then add every key it lists.
 6. Run the usual checks. The "map growth" test checks spots, lots, doors and the new size. Restart the multiplayer server (it shares the world).

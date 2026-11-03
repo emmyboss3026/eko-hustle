@@ -6,11 +6,12 @@ import { homePlan, levelForObjects } from "../data/home";
 import { multiplayerUrl } from "../lib/multiplayer";
 import { useLang } from "../i18n/react";
 import { useHomeNet } from "./useHomeNet";
+import PartyEvent from "./PartyEvent";
 
-type Props = { owner: { id: string; name: string }; state: GameState; onLeave: () => void };
+type Props = { owner: { id: string; name: string }; state: GameState; onLeave: () => void; onParty?: (place: number, players: number) => void };
 
 /** A friend's home, full screen. You see their furniture, walk around (tap the floor) and chat with whoever is there. */
-export default function VisitScene({ owner, state, onLeave }: Props) {
+export default function VisitScene({ owner, state, onLeave, onParty }: Props) {
   const { t } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const view = useRef<HouseView | null>(null);
@@ -73,6 +74,7 @@ export default function VisitScene({ owner, state, onLeave }: Props) {
       </header>
       {problem && <div className="scene-msg" role="alert">{problem}</div>}
       {net.said.length > 0 && <div className="mp-said visit-said" aria-live="polite">{net.said.map(m => <div key={m.n}><b>{m.name}</b> {m.text}</div>)}</div>}
+      <PartyEvent net={net} canStart={false} onDone={onParty} />
       {net.status === "online" && (
         <form className="visit-say" onSubmit={e => { e.preventDefault(); if (line.trim()) net.say(line); setLine(""); }}>
           <input value={line} maxLength={120} onChange={e => setLine(e.target.value)} placeholder={t("mp.sayPlaceholder")} aria-label={t("mp.sayPlaceholder")} />

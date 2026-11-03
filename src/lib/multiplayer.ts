@@ -9,6 +9,8 @@ export const multiplayerUrl = (import.meta.env.VITE_MULTIPLAYER_URL as string | 
 export type PeerCar = { model: string; color: string };
 export type Peer = { id: string; name: string; look: Record<string, string>; x: number; z: number; yaw: number; anim: number; car?: PeerCar | null };
 export type Say = { id: string; name: string; text: string };
+export type PartyKind = "race" | "dance";
+export type PartyStart = { kind: PartyKind; countdownMs: number; durationMs: number; beatMs: number; finish: number; players: [string, string][] };
 
 export type Handlers = {
   onStatus: (s: { state: "connecting" | "online" | "offline"; instance?: string; capacity?: number }) => void;
@@ -19,6 +21,9 @@ export type Handlers = {
   onFix: (x: number, z: number) => void;   // the server refused a move: you are really here
   onSay: (s: Say) => void;
   onCar?: (id: string, car: PeerCar | null) => void;   // someone got into or out of a car
+  onEvent?: (e: PartyStart) => void;                                  // the owner started a party game
+  onEventScore?: (scores: [string, number][]) => void;
+  onEventEnd?: (kind: string, ranking: [string, string, number][]) => void;
   onEnded?: (why: "denied" | "removed" | "replaced" | "kicked") => void;   // the server will not let you stay: do not retry
 };
 
@@ -36,6 +41,7 @@ export class Multiplayer {
   private mine: PeerCar[] = [];
 
   private home: string | null;
+  me: string | null = null;   // your id, once the server has welcomed you
 
   /** `home`: the owner's id to join their home instead of the city. */
   constructor(h: Handlers, who: { name: string; look: Record<string, unknown> }, at: () => { x: number; z: number }, home: string | null = null) {
@@ -70,6 +76,7 @@ export class Multiplayer {
         case "welcome":
           this.retry = 0;
           this.instance = m.instance as string;
+          this.me = m.id as string;
           this.h.onStatus({ state: "online", instance: this.instance, capacity: m.capacity as number });
           this.h.onWelcome(m.players as Peer[], m.x as number, m.z as number);
           break;
@@ -79,6 +86,9 @@ export class Multiplayer {
         case "fix": this.h.onFix(m.x as number, m.z as number); break;
         case "say": this.h.onSay(m as unknown as Say); break;
         case "car": this.h.onCar?.(m.id as string, (m.car as PeerCar | null) ?? null); break;
+        case "event": this.h.onEvent?.(m as unknown as PartyStart); break;
+        case "eventScore": this.h.onEventScore?.(m.scores as [string, number][]); break;
+        case "eventEnd": this.h.onEventEnd?.(m.kind as string, m.ranking as [string, string, number][]); break;
         case "removed": this.closed = true; this.h.onEnded?.("removed"); break;
         case "denied": this.closed = true; this.h.onEnded?.("denied"); break;
       }
@@ -112,6 +122,16 @@ export class Multiplayer {
   /** Get into one of your cars (others see it), or out of it (null). */
   drive(car: PeerCar | null) {
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ t: "drive", car }));
+  }
+
+  /** The owner starts a party game in their home (the server ignores it from anyone else). */
+  startEvent(kind: PartyKind) {
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ t: "event", kind }));
+  }
+
+  /** A tap in a party game: the server decides whether it scores. */
+  tap() {
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ t: "tap" }));
   }
 
   say(text: string) {

@@ -101,6 +101,8 @@ wss.on("connection", ws => {
     else if (msg.t === "say") cities.say(id, msg.text);
     else if (msg.t === "cars") cities.setCars(id, msg.cars);
     else if (msg.t === "drive") cities.drive(id, msg.car);
+    else if (msg.t === "event") cities.startEvent(id, msg.kind);   // works only in your own home
+    else if (msg.t === "tap") cities.tap(id);
     else if (msg.t === "remove" && typeof msg.id === "string") cities.removeVisitor(id, msg.id); // works only in your own home
   });
 

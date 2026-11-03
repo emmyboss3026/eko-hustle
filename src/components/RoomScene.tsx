@@ -8,6 +8,7 @@ import { footstep } from "../lib/audio";
 import { publishHome } from "../lib/homes";
 import { multiplayerUrl } from "../lib/multiplayer";
 import { useHomeNet } from "./useHomeNet";
+import PartyEvent from "./PartyEvent";
 
 /** The wall editor: which tool is chosen, the walls as drawn so far, and how to report a change. `commit` is false while a
  *  drag is still going (just show it) and true when it is let go. */
@@ -33,6 +34,7 @@ export type Placing = { type: FurnitureType; uid: number | null; x: number | nul
 
 type Props = {
   state: GameState;
+  onParty?: (place: number, players: number) => void;   // you finished a party game with friends
   viewRef: MutableRefObject<HouseView | null>;
   selected: number | null;
   onSelect: (uid: number | null) => void;
@@ -61,7 +63,7 @@ export function placingValid(state: GameState, p: Placing | null): boolean {
 }
 
 /** Your room in 3D, filling the whole screen. Tap furniture to use it, tap the floor to walk. */
-export default function RoomScene({ state, viewRef, selected, onSelect, placing, editor, floorMode, onFloorTile, onPlaceTile, shift, firstPerson, thirdPerson, controls, userId, net: netOn, onLevel }: Props) {
+export default function RoomScene({ state, viewRef, selected, onSelect, placing, editor, floorMode, onFloorTile, onPlaceTile, shift, firstPerson, thirdPerson, controls, userId, net: netOn, onLevel, onParty }: Props) {
   const { t } = useLang();
   const box = useRef<HTMLDivElement>(null);
   const [noGl, setNoGl] = useState(false);
@@ -338,6 +340,7 @@ export default function RoomScene({ state, viewRef, selected, onSelect, placing,
           </div>
         </>
       )}
+      <PartyEvent net={net} canStart onDone={onParty} />
       {net.peers.length > 0 && (
         <div className="visit-guests" role="status">
           <b>{t("visit.guests")}</b>

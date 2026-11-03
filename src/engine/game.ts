@@ -136,12 +136,15 @@ export type Command =
   | { type: "greet" }     // you answered a passer-by in the streets
   | { type: "revive"; how: ReviveHow; ref?: string } // back from hospital (ref: the server's id for the gem used)
   | { type: "finalize" }  // the player chose to end this life instead of reviving
+  | { type: "roadHit" }   // a car knocked you down in the streets
+  | { type: "partyDone"; place: number; players: number }   // you finished a party game with friends at home
   | StoryCommand
   | EstateCommand
   | AppsCommand
   | PhoneCommand;
 
 export const AD_REWARD = 3_000;
+export const ROAD_HIT_DAMAGE = 35;   // health lost when a car hits you
 
 const LOG_SIZE = 40;
 
@@ -674,6 +677,24 @@ function step(s: GameState, cmd: Command): GameState {
 
     case "relaxed": {
       return { ...s, relaxed: cmd.on };
+    }
+
+    case "partyDone": {
+      // Fun and company for playing, a little more for winning. No money: scores come from other players, so they never pay out cash
+      const place = Math.max(1, Math.min(8, Math.floor(Number(cmd.place) || 8)));
+      const players = Math.max(2, Math.min(8, Math.floor(Number(cmd.players) || 2)));
+      let next = passTime(s, 20, { fun: 20, social: 25 });
+      if (next.ending) return next;
+      if (place === 1) next = addRep(next, 1);
+      return say(next, msg(s, place === 1 ? "log.partyWin" : "log.partyPlayed", { place, players }));
+    }
+
+    case "roadHit": {
+      // A car hit you: a big loss of health, a shaken mood, and at zero health you collapse (the hospital / revive screen)
+      if (s.ending) return s;
+      const next = say(addRep(addMood({ ...s, health: Math.max(0, s.health - ROAD_HIT_DAMAGE) }, "accident"), -1), msg(s, "log.roadHit", { hp: ROAD_HIT_DAMAGE }));
+      if (next.health <= 0) return end(say(next, msg(next, "log.collapsed")), "collapsed");
+      return next;
     }
 
     case "greet": {
