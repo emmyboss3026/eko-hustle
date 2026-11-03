@@ -13,7 +13,6 @@ export type SpotId =
   | "campus" | "hospital" | "chambers" | "court" | "tower" | "studio" | "pavilion" | "residences" | "family"
   | "station" | "cinema"   // added by map growth 1
   | "mart" | "stadium"     // added by map growth 2
-  | "chapel" | "plaza"     // added by map growth 3
   | "phone";
 
 export type Spot = {
@@ -60,8 +59,6 @@ export const spots: Record<SpotId, Spot> = {
   cinema: { id: "cinema", name: "Gidi Cinema", emoji: "🎬", district: "yaba", open: [10, 24], blurb: "Nollywood premieres, cold air conditioning and popcorn you share whether you want to or not.", lot: true },
   mart: { id: "mart", name: "FreshMart Supermarket", emoji: "🛒", district: "mushin", open: [7, 22], blurb: "Aisles of rice, tomatoes and tinned fish at honest prices, with a juice stand by the door.", lot: true },
   stadium: { id: "stadium", name: "Unity Stadium", emoji: "🏟️", district: "yaba", open: [9, 23], blurb: "Floodlights, a loud crowd and a running track that anybody can use before the match.", lot: true },
-  chapel: { id: "chapel", name: "Grace Chapel", emoji: "⛪", district: "mushin", open: [6, 21], blurb: "A white chapel with a tall steeple, a choir that never misses a Sunday and benches for a quiet minute.", lot: true },
-  plaza: { id: "plaza", name: "Oja Fashion Plaza", emoji: "🛍️", district: "yaba", open: [9, 20], blurb: "Rows of tailors, fabric sellers and shoe stalls. Even window shopping is a good outing.", lot: true },
   phone: { id: "phone", name: "Your phone", emoji: "📱", district: "any", blurb: "Works anywhere: call home, hustle on WhatsApp, order delivery." },
 };
 

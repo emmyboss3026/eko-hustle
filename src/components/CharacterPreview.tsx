@@ -2,13 +2,11 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { buildSim } from "../three/pieces";
 import type { Look } from "../data/characters";
-import { ensureCitizens } from "../lib/citizenAssets";
 
 /** A small turning 3D preview of your character. */
-export default function CharacterPreview({ look, clip = "Idle" }: { look: Look; clip?: string | null }) {
+export default function CharacterPreview({ look }: { look: Look }) {
   const box = useRef<HTMLDivElement>(null);
   const setLook = useRef<(l: Look) => void>(() => {});
-  const setClip = useRef<(c: string | null) => void>(() => {});
 
   useEffect(() => {
     const el = box.current;
@@ -53,16 +51,10 @@ export default function CharacterPreview({ look, clip = "Idle" }: { look: Look; 
       });
       sim = buildSim(l);
       scene.add(sim.root);
-      (sim as { playClip?: (n: string | null) => void }).playClip?.(clipName);
     };
-    let clipName: string | null = "Idle";
-    setClip.current = c => { clipName = c; (sim as { playClip?: (n: string | null) => void }).playClip?.(c); };
     let raf = 0;
     const t0 = performance.now();
-    let last = t0;
     const frame = (now: number) => {
-      (sim as { mixer?: THREE.AnimationMixer }).mixer?.update(Math.min(0.1, (now - last) / 1000));
-      last = now;
       sim.root.rotation.y = Math.sin((now - t0) / 1600) * 0.9;
       renderer.render(scene, camera);
       raf = requestAnimationFrame(frame);
@@ -84,13 +76,7 @@ export default function CharacterPreview({ look, clip = "Idle" }: { look: Look; 
 
   useEffect(() => {
     setLook.current(look);
-    // A citizen needs the library: build it again once that has loaded
-    if (look.model === "citizen") void ensureCitizens().then(() => setLook.current(look));
   }, [look]);
-
-  useEffect(() => {
-    setClip.current(clip);
-  }, [clip, look.model]);
 
   return <div ref={box} className="char-preview" aria-hidden />;
 }

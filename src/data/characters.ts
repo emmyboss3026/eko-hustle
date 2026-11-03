@@ -19,11 +19,6 @@ export type Look = {
   shoes?: string;   // shoe colour
   fit?: Fit;        // body shape
   acc?: AccId[];    // accessories
-  // The skinned "citizen" characters (see three/citizen.ts). All of these are short strings so other players can be sent them.
-  model?: "classic" | "citizen";   // the little classic figure, or a citizen on a real skeleton
-  cz?: string;                     // which of the 24 library citizens it started from ("1" to "24")
-  style?: string;                  // outfit shape: tee, long, tank, shorts, dress or kaftan
-  stature?: string;                // short, average or tall
 };
 
 export const skinTones = ["#3b2219", "#5a3825", "#7b4a2d", "#9c6644", "#c68a5e", "#e0b48c"];

@@ -17,8 +17,6 @@ import CreateSim from "./screens/CreateSim";
 import Ending from "./screens/Ending";
 import Game from "./screens/Game";
 import ReviveScreen from "./components/ReviveScreen";
-import Loading from "./components/Loading";
-import { useCitizenAssets } from "./lib/citizenAssets";
 import ConsentBanner from "./components/ConsentBanner";
 
 // Everything that can happen: a game command, starting a new life, loading a cloud save, or resetting.
@@ -132,9 +130,6 @@ function Root() {
     dispatch({ type: "reset" });
   }
 
-  // Your skinned citizen (and anyone else's that shows up) needs its skeleton file; the classic figure needs nothing
-  const assets = useCitizenAssets(state?.sim.look?.model === "citizen");
-  if (state?.sim.look?.model === "citizen" && !assets) return <Loading />;
   if (!state) return <CreateSim onDone={sim => dispatch({ type: "start", sim, lang, seed: Math.floor(Math.random() * 2 ** 31) })} />;
   if (state.ending && !over) return <ReviveScreen state={state} dispatch={dispatch} />;
   if (state.ending) return <Ending state={state} onRestart={restart} />;
