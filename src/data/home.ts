@@ -6,7 +6,7 @@ export type FurnitureType =
   | "chair" | "sofa" | "fan" | "plant" | "generator" | "rug" | "toilet"
   | "mirror" | "dumbbells" | "desk" | "bookshelf"
   | "wardrobe" | "dining" | "lamp" | "art" | "curtain" | "armchair" | "aircon" | "leathersofa"
-  | "tvstand" | "coffeetable" | "sidetable" | "kingbed" | "dresser" | "island" | "shoerack" | "washer" | "ottoman" | "cabinet" | "vase" | "grandclock" | "frames" | "candles" | "basket" | "trophy" | "globe" | "speaker" | "lantern" | "cactus" | "runner" | "doormat";
+  | "tvstand" | "coffeetable" | "sidetable" | "kingbed" | "dresser" | "island" | "shoerack" | "washer" | "ottoman" | "cabinet" | "vase" | "grandclock" | "frames" | "candles" | "basket" | "trophy" | "globe" | "speaker" | "lantern" | "cactus" | "runner" | "doormat" | "books" | "fishbowl" | "calabash" | "drum" | "umbrella";
 
 export type Furniture = {
   name: string;
@@ -317,6 +317,11 @@ export const CATALOG: Record<FurnitureType, Furniture> = {
   lantern: { name: "Lantern", emoji: "\ud83c\udfee", price: 12000, w: 1, d: 1, decor: true, blurb: "A brass lantern with a warm glow that needs no electricity." },
   cactus: { name: "Cactus", emoji: "\ud83c\udf35", price: 5000, w: 1, d: 1, decor: true, blurb: "A tough little plant. Water it never, love it always." },
   runner: { name: "Hallway runner", emoji: "\ud83d\udfeb", price: 22000, w: 1, d: 3, walkable: true, decor: true, blurb: "A long striped runner. Walk on it." },
+  books: { name: "Book stack", emoji: "\ud83d\udcda", price: 8000, w: 1, d: 1, decor: true, blurb: "A tidy pile of textbooks and novels. You will read them one day." },
+  fishbowl: { name: "Fish bowl", emoji: "\ud83d\udc1f", price: 14000, w: 1, d: 1, decor: true, blurb: "A little fish that swims in slow circles and judges nobody." },
+  calabash: { name: "Calabash set", emoji: "\ud83e\udd63", price: 9000, w: 1, d: 1, decor: true, blurb: "Carved calabash bowls, the kind Grandma used for pounded yam." },
+  drum: { name: "Talking drum", emoji: "\ud83e\udd41", price: 20000, w: 1, d: 1, decor: true, blurb: "A hourglass drum that really can talk. Neighbours may disagree about the volume." },
+  umbrella: { name: "Umbrella stand", emoji: "\u2602\ufe0f", price: 7000, w: 1, d: 1, decor: true, blurb: "Brass stand with two umbrellas, ready for the next downpour." },
   doormat: { name: "Doormat", emoji: "\ud83d\udeaa", price: 6000, w: 1, d: 1, walkable: true, decor: true, blurb: "Wipe your feet. It says so right on it." },
   leathersofa: { name: "Leather sofa (luxury)", emoji: "🛋️", price: 350_000, w: 3, d: 1, blurb: "A three-seat leather sofa. The room looks richer at once." },
 };

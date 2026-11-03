@@ -665,7 +665,7 @@ describe("map growth", () => {
     expect(w.ROAD_LINES.at(-1)).toBe(180 + 60 * MAP_LEVEL);
     const used = new Set<string>();
     for (const g of GROWTH) {
-      expect(Object.keys(g.places), `growth ${g.level}`).toHaveLength(2);
+      expect(Object.keys(g.places).length, `growth ${g.level}`).toBeGreaterThanOrEqual(2);
       for (const [id, p] of Object.entries(g.places) as [string, { cx: number; cz: number; face: string }][]) {
         expect(spots[id as keyof typeof spots], `${id} needs a spot in spots.ts`).toBeTruthy();
         expect(spots[id as keyof typeof spots].lot).toBe(true);

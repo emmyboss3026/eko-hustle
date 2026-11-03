@@ -351,6 +351,75 @@ export function buildPlace(id, labelFor, property) {
       height = sh + 6;
       break;
     }
+    case 'chapel': {
+      add(plane(48, 48, '#a8b59c', 0, 0.07, 0));
+      const [, hlz, hw, hd, hh] = solids[0];
+      add(box(hw, hh, hd, '#f7f3ea', 0, hh / 2, hlz));                              // the hall
+      add(box(hw + 1.5, 0.6, hd + 1.5, '#8a4b38', 0, hh + 0.3, hlz));               // the roof
+      add(box(4.4, 14, 4.4, '#f7f3ea', 0, 7, hlz - hd / 2 - 1));                     // the steeple
+      add(box(5, 0.6, 5, '#8a4b38', 0, 14.3, hlz - hd / 2 - 1));
+      add(box(0.3, 2.6, 0.3, '#d4a017', 0, 16, hlz - hd / 2 - 1));                   // the cross
+      add(box(1.4, 0.3, 0.3, '#d4a017', 0, 16.4, hlz - hd / 2 - 1));
+      add(box(2.6, 3.6, 0.25, '#5d4037', 0, 1.8, hlz - hd / 2 - 0.12, false));       // the doors
+      for (const x of [-5, 5]) add(box(1.6, 3, 0.15, '#bfe3ff', x, 4, hlz - hd / 2 - 0.1, false));
+      sign('GRACE CHAPEL', 11, 2.2, hh + 1.6, hlz - hd / 2 - 0.3, { bg: '#5d4037' });
+      height = 18;
+      break;
+    }
+    case 'library': {
+      add(plane(48, 48, '#b0b8a2', 0, 0.07, 0));
+      const [, llz, lw, ld, lh] = solids[0];
+      add(box(lw, lh, ld, '#e8dcc4', 0, lh / 2, llz));                              // the building
+      add(box(lw + 1, 0.5, ld + 1, '#3f51b5', 0, lh + 0.25, llz));
+      for (const x of [-8, -4, 0, 4, 8]) add(box(1, lh - 1, 1, '#f4efe2', x, (lh - 1) / 2, llz - ld / 2 - 0.8));   // the front columns
+      add(box(lw - 8, 0.4, 2.4, '#f4efe2', 0, lh - 0.8, llz - ld / 2 - 0.8));
+      add(box(2.6, 3.4, 0.25, '#37474f', 0, 1.7, llz - ld / 2 - 0.12, false));
+      sign('PUBLIC LIBRARY', 14, 2.4, lh + 1.7, llz - ld / 2 - 0.3, { bg: '#3f51b5' });
+      height = lh + 5;
+      break;
+    }
+    case 'plaza': {
+      add(plane(48, 48, '#b7ad9c', 0, 0.07, 0));
+      const [, plz, pw, pd, ph] = solids[0];
+      add(box(pw, ph, pd, '#f1e3cf', 0, ph / 2, plz));                              // the market hall
+      add(box(pw + 1, 0.5, pd + 1, '#7e57c2', 0, ph + 0.25, plz));
+      sign('OJA FASHION PLAZA', 16, 2.6, ph + 1.7, plz - pd / 2 - 0.3, { bg: '#7e57c2' });
+      const awn = ['#e74c3c', '#f1c40f', '#27ae60', '#3498db', '#e67e22'];
+      for (let i = 0; i < 5; i++) {                                                  // stalls along the front, each with a coloured awning
+        const x = -9 + i * 4.5;
+        add(box(3.4, 0.2, 2.4, awn[i], x, 3, plz - pd / 2 - 1.4));
+        add(box(0.12, 3, 0.12, '#5d4037', x - 1.6, 1.5, plz - pd / 2 - 2.4));
+        add(box(0.12, 3, 0.12, '#5d4037', x + 1.6, 1.5, plz - pd / 2 - 2.4));
+        add(box(3, 0.9, 1.1, '#8d6e63', x, 0.45, plz - pd / 2 - 1.8));
+      }
+      height = ph + 6;
+      break;
+    }
+    case 'arcade': {
+      add(plane(48, 48, '#8d8fa3', 0, 0.07, 0));
+      const [, alz, aw, ad, ah] = solids[0];
+      add(box(aw, ah, ad, '#2b2d4a', 0, ah / 2, alz));                              // the hall
+      add(box(aw + 0.6, 0.4, ad + 0.6, '#ff3d81', 0, ah + 0.2, alz));
+      add(box(aw - 4, 3.2, 0.2, mat('#7df9ff', { transparent: true, opacity: 0.6, roughness: 0.2 }), 0, 2, alz - ad / 2 - 0.1, false));   // the neon glass front
+      add(box(2.4, 3.4, 0.25, '#14142a', 0, 1.7, alz - ad / 2 - 0.12, false));
+      for (const [i, c] of ['#ff3d81', '#7df9ff', '#ffe066', '#9b5de5'].entries()) add(box(2.4, 0.3, 0.3, c, -4.5 + i * 3, ah + 1, alz - ad / 2 - 0.3, false));   // the neon strips
+      sign('PIXEL ARCADE', 12, 2.4, ah + 2.6, alz - ad / 2 - 0.3, { bg: '#14142a' });
+      height = ah + 6;
+      break;
+    }
+    case 'clinic': {
+      add(plane(48, 48, '#aab3ad', 0, 0.07, 0));
+      const [, clz, cw, cd, ch] = solids[0];
+      add(box(cw, ch, cd, '#f4f8fb', 0, ch / 2, clz));                              // the clinic
+      add(box(cw + 1, 0.5, cd + 1, '#26a69a', 0, ch + 0.25, clz));
+      add(box(cw - 6, 3.2, 0.2, mat('#bfe3ff', { transparent: true, opacity: 0.55, roughness: 0.2 }), 0, 2, clz - cd / 2 - 0.1, false));
+      add(box(2.4, 3.4, 0.25, '#37474f', 0, 1.7, clz - cd / 2 - 0.12, false));
+      add(box(1.2, 4, 0.5, '#e53935', 7, ch + 2.2, clz - cd / 2 - 0.4, false));     // the red cross on the roof
+      add(box(4, 1.2, 0.5, '#e53935', 7, ch + 2.2, clz - cd / 2 - 0.4, false));
+      sign('LIFELINE CLINIC', 14, 2.4, ch + 1.7, clz - cd / 2 - 0.3, { bg: '#26a69a' });
+      height = ch + 6;
+      break;
+    }
     case 'mart': {
       add(plane(48, 48, '#a9b0a5', 0, 0.07, 0));
       const [, mlz, mw, md, mh] = solids[0];

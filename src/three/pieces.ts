@@ -528,6 +528,42 @@ export function buildPiece(type: FurnitureType, { powered, active }: { powered: 
       g.add(box(0.12, 0.05, 0.05, '#2e8b57', -0.09, 0.52, 0));
       break;
     }
+    case 'books': {
+      g.add(box(0.5, 0.1, 0.36, '#c0392b', 0, 0.05, 0));
+      g.add(box(0.46, 0.09, 0.34, '#2980b9', 0.02, 0.145, 0));
+      g.add(box(0.42, 0.08, 0.3, '#27ae60', -0.02, 0.23, 0.01));
+      g.add(box(0.38, 0.07, 0.28, '#f1c40f', 0.01, 0.305, 0));
+      break;
+    }
+    case 'fishbowl': {
+      g.add(cyl(0.18, 0.2, 0.06, '#5d4037', 0, 0.03, 0, 10));
+      g.add(cyl(0.26, 0.2, 0.36, new THREE.MeshStandardMaterial({ color: '#9fdcff', transparent: true, opacity: 0.5, roughness: 0.1 }), 0, 0.24, 0, 14));
+      const fish = box(0.14, 0.07, 0.05, '#ff7043', 0, 0.26, 0);
+      g.add(fish);
+      tick = (_dt, t) => { fish.position.x = Math.cos(t * 1.4) * 0.1; fish.position.z = Math.sin(t * 1.4) * 0.1; fish.rotation.y = -t * 1.4; };
+      break;
+    }
+    case 'calabash': {
+      g.add(cyl(0.28, 0.2, 0.06, '#6d4c41', 0, 0.03, 0, 12));
+      g.add(cyl(0.22, 0.14, 0.2, '#c58b4a', -0.1, 0.16, 0, 12));
+      g.add(cyl(0.16, 0.1, 0.14, '#a0672f', 0.14, 0.13, 0.05, 12));
+      break;
+    }
+    case 'drum': {
+      g.add(cyl(0.14, 0.14, 0.04, '#e8d8b0', 0, 0.58, 0, 12));
+      g.add(cyl(0.1, 0.14, 0.18, '#8d5524', 0, 0.45, 0, 12));
+      g.add(cyl(0.05, 0.1, 0.2, '#8d5524', 0, 0.26, 0, 12));
+      g.add(cyl(0.12, 0.05, 0.2, '#8d5524', 0, 0.1, 0, 12));
+      g.add(cyl(0.145, 0.145, 0.03, '#c0392b', 0, 0.51, 0, 12));
+      break;
+    }
+    case 'umbrella': {
+      g.add(cyl(0.2, 0.2, 0.05, '#b8860b', 0, 0.025, 0, 12));
+      g.add(cyl(0.2, 0.2, 0.4, '#b8860b', 0, 0.22, 0, 12));
+      g.add(cyl(0.02, 0.02, 0.9, '#2c3e50', -0.06, 0.65, 0.02, 6));
+      g.add(cyl(0.02, 0.02, 0.8, '#c0392b', 0.07, 0.6, -0.03, 6));
+      break;
+    }
     case 'runner': {
       const base = box(0.9, 0.02, 2.8, '#1f4e79', 0, 0.011);
       base.castShadow = false;

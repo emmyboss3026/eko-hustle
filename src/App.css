@@ -2838,3 +2838,15 @@ a.row { color: inherit; text-decoration: none; }
 .week-card { margin-top: 12px; background: #fff8e1; border: 2px solid var(--danfo); border-radius: 12px; padding: 10px 12px; }
 .week-card h3 { margin: 0 0 4px; }
 .week-card p { margin: 4px 0; }
+
+/* Daily rewards: these cards are light, so the text on them must be dark (it inherited the phone's light text) */
+.streak, .streak b { color: #4a3600; }
+.cal-day { color: #1f2340; }
+.cal-day small { color: #4a4f73; font-weight: 700; }
+.cal-day b { color: #1f2340; font-weight: 800; }
+.cal-day.done { opacity: 1; background: #e4e6f2; border-color: #b9bddb; }
+.cal-day.done .cal-coin { opacity: 0.6; }
+.claim-pop { color: #0d4a24; }
+.next-reward { color: #1f2340; }
+.next-reward small { color: #4a4f73; font-weight: 700; }
+.next-reward b { color: #1f2340; }

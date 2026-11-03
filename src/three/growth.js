@@ -23,6 +23,17 @@ export const GROWTH = [
       stadium: { cx: 270, cz: 90, face: 'w', solids: [[0, 2, 34, 28, 10]] },
     },
   },
+  {
+    level: 3,
+    note: 'Third growth: a chapel and a library on the south edge, a fashion plaza and an arcade on the west edge, a clinic on the east edge.',
+    places: {
+      chapel: { cx: -90, cz: 330, face: 'n', solids: [[0, -2, 18, 22, 8]] },
+      library: { cx: 150, cz: 330, face: 'n', solids: [[0, -2, 24, 16, 8]] },
+      plaza: { cx: -330, cz: -90, face: 'e', solids: [[0, -4, 26, 16, 7]] },
+      arcade: { cx: -330, cz: 150, face: 'e', solids: [[0, -2, 22, 14, 6]] },
+      clinic: { cx: 330, cz: -150, face: 'w', solids: [[0, 0, 22, 18, 7]] },
+    },
+  },
 ];
 
 /** How many times the map has grown. */
