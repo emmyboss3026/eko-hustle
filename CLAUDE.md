@@ -65,4 +65,4 @@ Every line of code gets a short comment saying what it does, in plain words, not
 - Every update also grows the map by FIVE places (see "Growing the map").
 
 ### Comment progress
-Done: src/games, src/lib (see git log "Comment pass"). Not yet: everything else (engine, data, components, three, server, scripts, supabase).
+Done: src/games (chess, checkers, ludo, puzzles). Not yet: everything else (about 25,000 lines: engine, data, components, three, lib, screens, server, scripts, supabase). Tool: scripts/annotate.py.
