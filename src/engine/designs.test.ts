@@ -62,3 +62,16 @@ describe("buying a design", () => {
     expect(big.home.objects).toEqual(start().home.objects);
   });
 });
+
+describe("dev unlock", () => {
+  it("leaves a furnished 20 x 20 home with a second floor, nothing blocked", () => {
+    const sim = { name: "T", avatar: "🙂" } as never;
+    const s = reduce(newGame(sim), { type: "devUnlock" });
+    const plan = homePlan(5, s.home.walls, undefined, true);
+    expect(allReachable(plan)).toBe(true);
+    const ground = s.home.objects.filter(o => (o.lvl ?? 0) === 0);
+    expect(everyPieceReachable(plan, ground)).toBe(true);
+    expect(s.home.objects.some(o => o.lvl === 1)).toBe(true);
+    expect(new Set(s.home.objects.map(o => o.uid)).size).toBe(s.home.objects.length);
+  });
+});

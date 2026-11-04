@@ -1173,6 +1173,7 @@ export class StreetView {
     if (mode === 'street' && (this.mode !== 'street' || this.syncedFrom !== a)) {
       // Entering the street (or a save was loaded): put the Sim where the state says.
       this.player.set(a.x, 0, a.z);
+      this.safeUntil = this.time + 6;   // a few safe seconds after stepping out, so a car cannot hit you the moment you arrive
       this.yaw = a.yaw ?? 0;
       this.fpYaw = this.yaw;
       this.route = [];

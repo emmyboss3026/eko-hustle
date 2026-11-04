@@ -14,7 +14,7 @@ import { eventById, pickEvent, EVENT_CHANCE, EVENT_COOLDOWN, type Outcome } from
 import { addSkills, meets, describeReq, startSkills, type Skills } from "../data/skills";
 import { goalSteps, ieltsChance, visaChance, PROOF_OF_FUNDS, type GoalStepId } from "../data/goals";
 import {
-  CATALOG, EVICT_AFTER_WEEKS, HOME, onFloor, planOf, POWER, SELL_BACK, START_OBJECTS, START_SUPPLIES,
+  CATALOG, EVICT_AFTER_WEEKS, HOME, homePlan, onFloor, planOf, roomNames, POWER, SELL_BACK, START_OBJECTS, START_SUPPLIES,
   type FurnitureType, type Placed,
 } from "../data/home";
 import { canPlace } from "./path";
@@ -33,6 +33,8 @@ import type { ContactId } from "../data/contacts";
 import { REVIVE, type ReviveHow } from "../data/revive";
 import { storyFlag } from "./progress";
 import { STORY } from "../data/story";
+import { designById } from "../data/designs";
+import { designEdges, layoutFor } from "./designs";
 import { syncStory, storyStep, type StoryCommand, type StoryState } from "./story";
 import { estateStep, type EstateCommand } from "./estate";
 import { appsStep, type AppsCommand } from "./apps";
@@ -696,8 +698,16 @@ function step(s: GameState, cmd: Command): GameState {
       if (!import.meta.env.DEV) return s;
       const done = Array.from(new Set([...(s.story?.done ?? []), ...STORY.filter(m => !m.side && m.ch <= 4).map(m => m.id)]));
       const everything = Object.fromEntries(["driveway", "gate", "garden", "garage", "balcony", "floor2", "pool", "wing", "wing2", "wing3", "wing4", "wing5"].map(k => [k, true]));
+      // The home grows to 20 x 20 with a second floor, so the old walls and furniture no longer fit: furnish it with the Grand Mansion design
+      const mansion = designById("mansion")!;
+      const keep = s.home.objects.filter(o => CATALOG[o.type].fixed);
+      const lay = layoutFor(mansion, 5, true, keep);
+      let uid = s.home.nextUid;
+      const placed = [...lay.ground, ...lay.upper].map(o => ({ ...o, uid: uid++ }));
+      const floors = Object.fromEntries(Object.entries(mansion.floors).filter(([room]) => roomNames(homePlan(5)).includes(room)));
       return checkStory({
         ...s,
+        home: { ...s.home, walls: designEdges(mansion, 5), floors, objects: [...keep, ...placed], nextUid: uid },
         money: Math.max(s.money, 1_000_000_000),
         health: 100,
         needs: { hunger: 100, energy: 100, fun: 100, social: 100, hygiene: 100, bladder: 100 },

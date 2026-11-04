@@ -166,8 +166,8 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     try {
-      if (localStorage.getItem("eko-dev-unlocked-v1")) return;
-      localStorage.setItem("eko-dev-unlocked-v1", "1");
+      if (localStorage.getItem("eko-dev-unlocked-v2")) return;
+      localStorage.setItem("eko-dev-unlocked-v2", "1");
     } catch {
       return;
     }
