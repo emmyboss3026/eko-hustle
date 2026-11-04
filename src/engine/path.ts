@@ -128,6 +128,14 @@ export function routeToObject(home: HomePlan, objects: Placed[], start: Tile, ob
 /** Can this object go at its x/y/rot? Inside, on free tiles, not across a wall,
  *  not blocking the front door, and every usable piece can still be reached. */
 export function canPlace(home: HomePlan, objects: Placed[], obj: Shape): boolean {
+  if (!fitsOnTiles(home, objects, obj)) return false;
+  if (CATALOG[obj.type]?.walkable) return true;
+  const after = [...objects.filter(o => o.uid !== obj.uid), { ...obj, uid: obj.uid ?? -1 } as Placed];
+  return after.every(o => CATALOG[o.type].walkable || routeToObject(home, after, home.door, o) !== null);
+}
+
+/** The cheap half of canPlace: inside, on free tiles, not across a wall, not on the door or stairs. */
+export function fitsOnTiles(home: HomePlan, objects: Placed[], obj: Shape): boolean {
   const tiles = tilesOf(obj);
   const others = objects.filter(o => o.uid !== obj.uid);
   const solid = !CATALOG[obj.type]?.walkable;
@@ -144,8 +152,22 @@ export function canPlace(home: HomePlan, objects: Placed[], obj: Shape): boolean
       if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1 && wallBetween(home, a, b)) return false;
     }
   }
-  if (!solid) return true;
-  // Don't box anything in: from the door, you must still reach every piece.
-  const after = [...others, { ...obj, uid: obj.uid ?? -1 } as Placed];
-  return after.every(o => CATALOG[o.type].walkable || routeToObject(home, after, home.door, o) !== null);
+  return true;
+}
+
+/** One sweep from the door over every free tile: is each solid piece touched by a tile you can reach? (A fast stand-in for checking each piece on its own.) */
+export function everyPieceReachable(home: HomePlan, objects: Placed[]): boolean {
+  const key = (x: number, y: number) => x * 1000 + y;
+  const seen = new Set<number>([key(home.door.x, home.door.y)]);
+  const queue: Tile[] = [home.door];
+  for (let q = 0; q < queue.length; q++) {
+    const t = queue[q];
+    for (const [dx, dy] of STEPS) {
+      const n = { x: t.x + dx, y: t.y + dy };
+      if (seen.has(key(n.x, n.y)) || !walkable(home, objects, n.x, n.y) || wallBetween(home, t, n)) continue;
+      seen.add(key(n.x, n.y));
+      queue.push(n);
+    }
+  }
+  return objects.every(o => CATALOG[o.type].walkable || tilesAround(home, objects, o).some(t => seen.has(key(t.x, t.y))));
 }

@@ -558,6 +558,76 @@ export function buildPlace(id, labelFor, property) {
       height = fh + 5;
       break;
     }
+    case 'museum': {
+      add(plane(48, 48, '#c8c4b4', 0, 0.07, 0));
+      const [, mlz, mw, md, mh] = solids[0];
+      add(box(mw, mh, md, '#efe6d2', 0, mh / 2, mlz));                              // the hall
+      add(box(mw + 1.5, 0.6, md + 1.5, '#8d6e63', 0, mh + 0.3, mlz));
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(5, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat('#b87333', { metalness: 0.4, roughness: 0.5 }));
+      dome.position.set(0, mh + 0.6, mlz);
+      dome.castShadow = true;
+      add(dome);
+      for (let i = -3; i <= 3; i++) add(cyl(0.6, 0.6, mh - 1, '#faf6ea', i * 3.4, (mh - 1) / 2, mlz - md / 2 - 1.2, 10));   // the front columns
+      add(box(mw - 4, 0.5, 2.4, '#faf6ea', 0, mh - 0.8, mlz - md / 2 - 1.2));
+      add(box(3, 3.6, 0.25, '#4e342e', 0, 1.8, mlz - md / 2 - 0.12, false));
+      sign('HERITAGE MUSEUM', 14, 2.4, mh + 1.8, mlz - md / 2 - 0.3, { bg: '#5d4037' });
+      height = mh + 8;
+      break;
+    }
+    case 'nightmarket': {
+      add(plane(48, 48, '#4a4036', 0, 0.07, 0));
+      const [, nlz, nw, nd, nh] = solids[0];
+      add(box(nw, 0.4, nd, '#6d4c41', 0, nh, nlz));                                 // the long awning
+      for (let i = 0; i < 6; i++) {                                                  // the stalls
+        const x = -10 + i * 4;
+        add(box(3, 1, 1.6, '#8d6e63', x, 0.5, nlz - nd / 2 - 1.2));
+        add(box(0.12, nh, 0.12, '#5d4037', x - 1.4, nh / 2, nlz - nd / 2 - 1.2));
+        add(box(0.12, nh, 0.12, '#5d4037', x + 1.4, nh / 2, nlz - nd / 2 - 1.2));
+        add(box(3.4, 0.2, 2.2, ['#e53935', '#fdd835', '#43a047', '#1e88e5', '#fb8c00', '#8e24aa'][i], x, nh + 0.2, nlz - nd / 2 - 1.2));
+      }
+      for (let i = 0; i < 12; i++) add(box(0.4, 0.4, 0.4, '#ffe082', -12 + i * 2.2, nh + 1.2, nlz - nd / 2 - 2.4, false));   // the string lights
+      sign("OBA'S NIGHT MARKET", 14, 2.4, nh + 2.6, nlz - nd / 2 - 0.3, { bg: '#4e342e' });
+      height = nh + 6;
+      break;
+    }
+    case 'ferry': {
+      add(plane(48, 48, '#5f8fa8', 0, 0.07, 0));
+      const [, flz, fw, fd, fh] = solids[0];
+      add(box(fw, fh, fd, '#eceff1', 0, fh / 2, flz));                              // the terminal
+      add(box(fw + 1, 0.5, fd + 1, '#0277bd', 0, fh + 0.25, flz));
+      add(box(2.8, 3.4, 0.25, '#263238', 0, 1.7, flz - fd / 2 - 0.12, false));
+      add(box(24, 0.4, 5, '#8d6e63', 0, 0.3, -12));                                  // the pier
+      add(box(14, 1.4, 4, '#ffffff', 2, 1, -18));                                    // the ferry
+      add(box(6, 1.6, 3, '#0277bd', 4, 2.4, -18));
+      sign('LAGOON FERRY', 12, 2.4, fh + 1.7, flz - fd / 2 - 0.3, { bg: '#0277bd' });
+      height = fh + 6;
+      break;
+    }
+    case 'bowling': {
+      add(plane(48, 48, '#8a8fa3', 0, 0.07, 0));
+      const [, blz, bw, bd, bh] = solids[0];
+      add(box(bw, bh, bd, '#37306b', 0, bh / 2, blz));                              // the alley
+      add(box(bw + 1, 0.5, bd + 1, '#ff3d81', 0, bh + 0.25, blz));
+      add(box(2.8, 3.4, 0.25, '#14142a', 0, 1.7, blz - bd / 2 - 0.12, false));
+      for (let i = 0; i < 5; i++) add(cyl(0.5, 0.8, 3, '#fafafa', -4 + i * 2, bh + 2.5, blz - bd / 2 + 0.5, 10));   // giant pins on the roof
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(1.6, 14, 10), mat('#1a1a40', { roughness: 0.2 }));
+      ball.position.set(8, bh + 2, blz - bd / 2 + 0.5);
+      add(ball);
+      sign('STRIKE BOWLING', 14, 2.4, bh + 1.7, blz - bd / 2 - 0.3, { bg: '#14142a' });
+      height = bh + 6;
+      break;
+    }
+    case 'carwash': {
+      add(plane(48, 48, '#7d8187', 0, 0.07, 0));
+      const [, wlz, ww, wd, wh] = solids[0];
+      add(box(ww, 0.4, wd, '#26a69a', 0, wh, wlz));                                  // the canopy
+      for (const [x, z] of [[-ww / 2 + 0.5, -wd / 2 + 0.5], [ww / 2 - 0.5, -wd / 2 + 0.5], [-ww / 2 + 0.5, wd / 2 - 0.5], [ww / 2 - 0.5, wd / 2 - 0.5]]) add(box(0.5, wh, 0.5, '#455a64', x, wh / 2, wlz + z));
+      add(box(ww - 2, 0.1, 1, '#4fc3f7', 0, 0.2, wlz, false));                       // the wash lane
+      add(box(2.6, 1.2, 1.2, '#b0bec5', 5, 0.6, wlz - wd / 2 - 2));                  // the foam bucket stand
+      sign('SPARKLE CAR WASH', 14, 2.4, wh + 1.7, wlz - wd / 2 - 0.3, { bg: '#26a69a' });
+      height = wh + 5;
+      break;
+    }
     case 'mart': {
       add(plane(48, 48, '#a9b0a5', 0, 0.07, 0));
       const [, mlz, mw, md, mh] = solids[0];

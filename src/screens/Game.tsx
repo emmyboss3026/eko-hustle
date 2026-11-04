@@ -1,3 +1,4 @@
+import { usePresence } from "../lib/presence";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { CLASSIC, RELAXED, isRelaxed } from "../data/survival";
 import { canDo, clockOf, dayOf, generatorOn, mood, type Command, type GameState } from "../engine/game";
@@ -161,6 +162,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
       : DISTRICT_VIEW[state.location];
   const showRoom = atHome && !walking;
   const showStreet = walking || (!atHome && focus !== null);
+  usePresence(userId, showRoom ? "home" : walking ? "street" : focus ?? "street");
 
   // The clock: game minutes per real second (slower with relaxed survival, see data/survival.ts). It waits while a panel, event, the guide or a ride is open,
   // so you can read in peace.

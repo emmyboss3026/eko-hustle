@@ -16,6 +16,7 @@ export type SpotId =
   | "chapel" | "library" | "plaza" | "arcade" | "clinic"   // added by map growth 3
   | "kart" | "dancehall" | "skate" | "bakery" | "waterpark"   // added by map growth 4
   | "salon" | "suya" | "cowork" | "travel" | "pitch"   // added by map growth 5
+  | "museum" | "nightmarket" | "ferry" | "bowling" | "carwash"   // added by map growth 6
   | "phone";
 
 export type Spot = {
@@ -77,6 +78,11 @@ export const spots: Record<SpotId, Spot> = {
   cowork: { id: "cowork", name: "Hustle Hub Co-working", emoji: "🏢", district: "yaba", open: [7, 22], blurb: "Desks, fast Wi-Fi, coffee and people building things. Good for your Hustle.", lot: true },
   travel: { id: "travel", name: "Japa Travel Agency", emoji: "✈️", district: "yaba", open: [9, 18], blurb: "Posters of far-away cities, visa advice and IELTS practice. Where the japa dream starts.", lot: true },
   pitch: { id: "pitch", name: "Estate Football Pitch", emoji: "⚽", district: "mushin", open: [6, 21], blurb: "A dusty pitch with goalposts made of pipe. Five-a-side starts whenever enough people show up.", lot: true },
+  museum: { id: "museum", name: "Eko Heritage Museum", emoji: "🏛️", district: "yaba", open: [9, 18], blurb: "Bronzes, drums and old Lagos photographs. Quiet halls and a guide who loves a good story.", lot: true },
+  nightmarket: { id: "nightmarket", name: "Oba's Night Market", emoji: "🏮", district: "mushin", open: [18, 4], blurb: "String lights, grills and a hundred stalls that only open after dark. Bargain hard.", lot: true },
+  ferry: { id: "ferry", name: "Lagoon Ferry Terminal", emoji: "⛴️", district: "yaba", open: [6, 20], blurb: "Ferries across the lagoon with the whole skyline on show.", lot: true },
+  bowling: { id: "bowling", name: "Strike Bowling Alley", emoji: "🎳", district: "yaba", open: [12, 24], blurb: "Neon lanes, rented shoes and a league night that gets loud.", lot: true },
+  carwash: { id: "carwash", name: "Sparkle Car Wash", emoji: "🧼", district: "mushin", open: [7, 19], blurb: "Foam, hoses and boys who will argue about football while they scrub.", lot: true },
   phone: { id: "phone", name: "Your phone", emoji: "📱", district: "any", blurb: "Works anywhere: call home, hustle on WhatsApp, order delivery." },
 };
 

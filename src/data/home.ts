@@ -296,7 +296,7 @@ export const CATALOG: Record<FurnitureType, Furniture> = {
   curtain:   { name: "Curtains",             emoji: "🪟", price: 18_000,  w: 1, d: 1, blurb: "Ankara curtains on a rail. Colour for the window." },
   armchair:  { name: "Armchair",             emoji: "💺", price: 60_000,  w: 1, d: 1, blurb: "A deep chair for reading and rest." },
   aircon:    { name: "Air conditioner",      emoji: "❄️", price: 220_000, w: 1, d: 1, power: true, blurb: "Cool air all night. Needs light." },
-  tvstand: { name: "Furniture", emoji: "\ud83d\udcfa", price: 45000, w: 2, d: 1, blurb: "A low cabinet for the TV, the decoder and the console." },
+  tvstand: { name: "TV stand", emoji: "\ud83d\udcfa", price: 45000, w: 2, d: 1, blurb: "A low cabinet for the TV, the decoder and the console." },
   coffeetable: { name: "Coffee table", emoji: "\u2615", price: 30000, w: 2, d: 1, blurb: "A low table with a shelf underneath. Drinks, remotes and gist." },
   sidetable: { name: "Bedside table", emoji: "\ud83d\udecf\ufe0f", price: 12000, w: 1, d: 1, blurb: "A small table with a drawer for your phone and your keys." },
   kingbed: { name: "King-size bed", emoji: "\ud83d\udecc", price: 140000, w: 3, d: 2, blurb: "A huge bed with a headboard and two pillows. Sleep like a chief." },

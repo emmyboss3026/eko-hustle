@@ -4,7 +4,7 @@
 import { supabase } from "./supabase";
 
 export type Found = { id: string; name: string; avatar: string | null; level: number };
-export type Friend = { id: string; name: string; avatar: string | null; status: "pending" | "accepted"; incoming: boolean };
+export type Friend = { id: string; name: string; avatar: string | null; status: "pending" | "accepted"; incoming: boolean; place?: string | null };
 export type HomeInvite = { id: string; name: string; expires_at: string };
 
 type Result = { ok: boolean; status?: string; reason?: string };
@@ -23,8 +23,12 @@ export const respondFriend = (id: string, accept: boolean) => call<Result>("frie
 export const removeFriend = (id: string) => call<Result>("friend_remove", { p_other: id });
 export const blockPlayer = (id: string) => call<Result>("block_player", { p_other: id });
 export const reportPlayer = (id: string, reason: string) => call<Result>("report_player", { p_other: id, p_reason: reason });
-export type Dm = { id: number; mine: boolean; body: string; created_at: string };
+export type Dm = { id: number; mine: boolean; body: string; created_at: string; has_audio?: boolean; audio_secs?: number | null };
 export const sendDm = (id: string, text: string) => call<Result>("send_dm", { p_to: id, p_text: text });
+/** Voice notes: a short recording sent as a data URL, and fetched only when played. Presence tells friends where you are. */
+export const sendVoice = (id: string, audio: string, secs: number) => call<Result>("send_voice", { p_to: id, p_audio: audio, p_secs: secs });
+export const dmAudio = (id: number) => call<string>("dm_audio", { p_id: id });
+export const touchPresence = (place: string) => call<void>("touch_presence", { p_place: place });
 export const dmThread = (id: string) => call<Dm[]>("dm_thread", { p_other: id });
 export const dmUnread = () => call<{ from: string; count: number }[]>("dm_unread");
 /** Your private friend code, and typing someone else's (see supabase/update-2026-11-friend-codes.sql). */

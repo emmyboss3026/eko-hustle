@@ -56,6 +56,17 @@ export const GROWTH = [
       pitch: { cx: 450, cz: 90, face: 'w', solids: [[0, 10, 16, 6, 4]] },
     },
   },
+  {
+    level: 6,
+    note: 'Sixth growth: a museum and a night market on the south edge, a ferry terminal and a bowling alley on the north, a car wash on the east.',
+    places: {
+      museum: { cx: -30, cz: 510, face: 'n', solids: [[0, -2, 26, 16, 9]] },
+      nightmarket: { cx: 210, cz: 510, face: 'n', solids: [[0, -4, 24, 8, 4]] },
+      ferry: { cx: -210, cz: -510, face: 's', solids: [[0, 6, 20, 10, 6]] },
+      bowling: { cx: 90, cz: -510, face: 's', solids: [[0, 4, 24, 16, 7]] },
+      carwash: { cx: 510, cz: -90, face: 'w', solids: [[0, 0, 14, 14, 5]] },
+    },
+  },
 ];
 
 /** How many times the map has grown. */

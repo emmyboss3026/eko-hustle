@@ -811,6 +811,7 @@ function step(s: GameState, cmd: Command): GameState {
     case "walls":
     case "blueprint":
     case "restoreLayout":
+    case "design":
     case "floor":
     case "homeGoal":
     case "buyCar":

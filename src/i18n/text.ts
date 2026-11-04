@@ -2,6 +2,7 @@
 // and looks up the German or Pidgin version by key. `contentEntries()` lists every key
 // with its English text (used by the translation test and to write new translations).
 
+import { DESIGN_TEXT } from "../data/designs";
 import { content, type Lang } from "./core";
 import { actions, categoryInfo, type Action, type Category } from "../data/actions";
 import { spots, type SpotId } from "../data/spots";
@@ -72,6 +73,7 @@ export function text(lang: Lang) {
       const b = BLUEPRINTS.find(x => x.id === id);
       return { name: c(`blueprint.${id}.name`, b?.name ?? id), desc: c(`blueprint.${id}.desc`, b?.desc ?? "") };
     },
+    design: (id: string) => ({ name: c(`design.${id}.name`, DESIGN_TEXT[id]?.name ?? id), desc: c(`design.${id}.desc`, DESIGN_TEXT[id]?.desc ?? "") }),
     homeGoal: (id: string) => {
       const g = HOME_GOALS.find(x => x.id === id);
       return { name: c(`homegoal.${id}.name`, g?.name ?? id), desc: c(`homegoal.${id}.desc`, g?.desc ?? "") };

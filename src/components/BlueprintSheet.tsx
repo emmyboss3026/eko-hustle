@@ -3,6 +3,8 @@ import { BLUEPRINTS, type Blueprint } from "../data/blueprints";
 import { defaultEdges, flatSize, tidyEdges, wingLevel } from "../data/home";
 import { naira } from "../engine/economy";
 import { useLang } from "../i18n/react";
+import { useState } from "react";
+import DesignSheet from "./DesignSheet";
 
 /** A small drawing of the layout: the walls of a flat with this many tiles across. */
 function Plan({ edges, size }: { edges: string[]; size: number }) {
@@ -23,6 +25,7 @@ function Plan({ edges, size }: { edges: string[]; size: number }) {
 /** House blueprints: buy a layout once, use it any time. Using one replaces your walls and floors; you can go back. */
 export default function BlueprintSheet({ state, dispatch }: { state: GameState; dispatch: (c: Command) => void }) {
   const { t, tx } = useLang();
+  const [tab, setTab] = useState<"homes" | "layouts">("homes");
   const size = flatSize(wingLevel(state.property));
   const owned = state.home.blueprints ?? [];
   const now = tidyEdges(state.home.walls ?? defaultEdges(wingLevel(state.property)), size);
@@ -44,8 +47,18 @@ export default function BlueprintSheet({ state, dispatch }: { state: GameState; 
     );
   };
 
+  if (tab === "homes") {
+    return (
+      <>
+        <div className="row plan-tabs"><button className="btn" onClick={() => setTab("homes")}>{t("plans.tabHomes")}</button><button className="btn plain" onClick={() => setTab("layouts")}>{t("plans.tabLayouts")}</button></div>
+        <DesignSheet state={state} dispatch={dispatch} />
+      </>
+    );
+  }
+
   return (
     <>
+      <div className="row plan-tabs"><button className="btn plain" onClick={() => setTab("homes")}>{t("plans.tabHomes")}</button><button className="btn" onClick={() => setTab("layouts")}>{t("plans.tabLayouts")}</button></div>
       <p className="note">{t("plans.lede", { n: size })}</p>
       <div className="plan-card current">
         <Plan edges={now} size={size} />

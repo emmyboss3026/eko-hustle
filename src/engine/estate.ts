@@ -3,8 +3,10 @@
 
 import type { GameState } from "./game";
 import type { Kit } from "./phone";
-import { CATALOG, FLOOR_PRICE, WALL_PRICE, defaultEdges, flatSize, onFloor, stairsFor, edgeKey, floorById, homePlan, roomNames, tidyEdges, wallsToEdges, wingLevel } from "../data/home";
+import { CATALOG, SELL_BACK, FLOOR_PRICE, WALL_PRICE, defaultEdges, flatSize, onFloor, stairsFor, edgeKey, floorById, homePlan, roomNames, tidyEdges, wallsToEdges, wingLevel } from "../data/home";
 import { blueprintById } from "../data/blueprints";
+import { designById } from "../data/designs";
+import { designEdges, layoutFor } from "./designs";
 import { allReachable, footprint, tilesOf } from "./path";
 import { HOME_GOALS, homeGoalById, type HomeGoal } from "../data/homeGoals";
 import { applyEffect, chapterOf, taskProgress } from "./story";
@@ -20,6 +22,7 @@ export type EstateCommand =
   | { type: "walls"; edges: string[] }
   | { type: "blueprint"; id: string }
   | { type: "restoreLayout" }
+  | { type: "design"; id: string }   // a furnished home design: walls, floors and furniture in one go
   | { type: "floor"; room: string; style: string }
   | { type: "homeGoal"; id: string }
   | { type: "buyCar"; model: string; color: string }
@@ -198,6 +201,30 @@ export function estateStep(s: GameState, cmd: EstateCommand, kit: Kit): GameStat
       return kit.say(
         { ...paid, home: { ...paid.home, walls: edges, floors, blueprints: owned ? paid.home.blueprints : [...(paid.home.blueprints ?? []), b.id], prevWalls: edgesNow(s), prevFloors: s.home.floors } },
         `${b.emoji} ${b.name}`,
+      );
+    }
+
+    case "design": {
+      // Buy a furnished design: your furniture is sold back at half price, then the design is built and furnished (both floors if you have them)
+      const d = designById(cmd.id);
+      if (!d) return s;
+      const level = wingLevel(s.property);
+      if (level < d.minLevel) return kit.say(s, "This design needs a bigger home.");
+      const floor2 = !!s.property?.floor2;
+      const keep = s.home.objects.filter(o => CATALOG[o.type].fixed);
+      const sold = s.home.objects.filter(o => !CATALOG[o.type].fixed);
+      const refund = sold.reduce((sum, o) => sum + Math.round(CATALOG[o.type].price * SELL_BACK), 0);
+      const lay = layoutFor(d, level, floor2, keep);
+      if (s.money + refund < lay.price) return kit.say(s, "Not enough money for this design.");
+      const names = roomNames(homePlan(level));
+      const floors = Object.fromEntries(Object.entries(d.floors).filter(([room]) => names.includes(room)));
+      let next = refund > 0 ? kit.move(s, refund, "home", "Old furniture") : s;
+      next = kit.charge(next, lay.price, "home", d.id);
+      let uid = s.home.nextUid;
+      const placed = [...lay.ground, ...lay.upper].map(o => ({ ...o, uid: uid++ }));
+      return kit.say(
+        { ...next, home: { ...next.home, walls: designEdges(d, level), floors, objects: [...keep, ...placed], nextUid: uid, prevWalls: edgesNow(s), prevFloors: s.home.floors } },
+        `${d.emoji} ${d.id}`,
       );
     }
 

@@ -40,11 +40,40 @@ function DPad({ onDir }: { onDir: (d: Dir) => void }) {
   );
 }
 
+// ------------------------------------------------------------------ Pieces that slide
+// A piece keeps its id from move to move, so the screen can glide it to its new square (and shrink it away when it is taken).
+
+type Piece = { id: number; p: string; sq: number; dead?: boolean };
+const piecesOf = (board: string[]): Piece[] => board.flatMap((p, sq) => (p === "." ? [] : [{ id: sq, p, sq }]));
+
+/** Move the piece on `from` to `to` (changing its letter if it was crowned) and mark whatever stood on `to`, or on `taken`, as captured. */
+function glide(list: Piece[], from: number, to: number, nextLetter: string | null, taken: number[] = []): Piece[] {
+  return list.map(x => {
+    if (x.dead) return x;
+    if (x.sq === from) return { ...x, sq: to, p: nextLetter ?? x.p };
+    if (x.sq === to || taken.includes(x.sq)) return { ...x, dead: true };
+    return x;
+  });
+}
+
+function PieceLayer({ list, cls }: { list: Piece[]; cls: (p: string) => string }) {
+  return (
+    <div className="piece-layer" aria-hidden>
+      {list.map(x => (
+        <span key={x.id} className={`piece ${cls(x.p)} ${x.dead ? "gone" : ""}`} style={{ left: `${(x.sq & 7) * 12.5}%`, top: `${(x.sq >> 3) * 12.5}%` }}>
+          {cls(x.p).includes("chesspc") ? chess.GLYPH[x.p] : x.p === "R" || x.p === "B" ? "♛" : ""}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // ------------------------------------------------------------------ Chess
 
 export function Chess({ onDone }: { onDone: Done }) {
   const { t } = useLang();
   const [board, setBoard] = useState(chess.newBoard);
+  const [pieces, setPieces] = useState(() => piecesOf(chess.newBoard()));
   const [turn, setTurn] = useState<chess.Side>("w");
   const [sel, setSel] = useState<number | null>(null);
   const [last, setLast] = useState<chess.Move | null>(null);
@@ -54,30 +83,41 @@ export function Chess({ onDone }: { onDone: Done }) {
   const legal = useMemo(() => (turn === "w" ? chess.legalMoves(board, "w") : []), [board, turn]);
   const targets = sel === null ? [] : legal.filter(m => m.from === sel).map(m => m.to);
 
+  const play1 = useCallback((b: string[], m: chess.Move) => {
+    const next = chess.apply(b, m);
+    setPieces(ps => glide(ps, m.from, m.to, next[m.to] !== b[m.from] ? next[m.to] : null));
+    setBoard(next);
+    setLast(m);
+  }, []);
+
   useEffect(() => {
     if (over.current) return;
-    if (st === "mate") { over.current = true; setTimeout(() => onDone(turn === "b" ? 100 : 20), 900); return; }
-    if (st === "stalemate") { over.current = true; setTimeout(() => onDone(50), 900); return; }
+    if (st === "mate") { over.current = true; setTimeout(() => onDone(turn === "b" ? 100 : 20), 1100); return; }
+    if (st === "stalemate") { over.current = true; setTimeout(() => onDone(50), 1100); return; }
     if (turn === "b") {
       const id = setTimeout(() => {
         const m = chess.bestMove(board, "b", 2);
         if (!m) return;
         play("pop");
-        setBoard(chess.apply(board, m));
-        setLast(m);
+        play1(board, m);
         setTurn("w");
-      }, 450);
+      }, 600);
       return () => clearTimeout(id);
     }
-  }, [board, turn, st, onDone]);
+  }, [board, turn, st, onDone, play1]);
+
+  // captured pieces are removed from the list once their fade-out is over
+  useEffect(() => {
+    if (!pieces.some(x => x.dead)) return;
+    const id = setTimeout(() => setPieces(ps => ps.filter(x => !x.dead)), 450);
+    return () => clearTimeout(id);
+  }, [pieces]);
 
   function tap(i: number) {
     if (turn !== "w" || over.current) return;
     if (sel !== null && targets.includes(i)) {
-      const m = { from: sel, to: i };
-      play("coin");
-      setBoard(chess.apply(board, m));
-      setLast(m);
+      play(board[i] === "." ? "coin" : "pop");
+      play1(board, { from: sel, to: i });
       setSel(null);
       setTurn("b");
     } else setSel(chess.sideOf(board[i]) === "w" ? i : null);
@@ -86,12 +126,13 @@ export function Chess({ onDone }: { onDone: Done }) {
   return (
     <>
       <p className="note">{st === "mate" ? t(turn === "b" ? "games.win" : "games.lose") : st === "stalemate" ? t("games.draw") : turn === "w" ? (st === "check" ? t("games.check") : t("games.yourMove")) : t("games.thinking")}</p>
-      <div className="bg-board chess">
-        {board.map((p, i) => (
-          <button key={i} className={`sq ${(i + (i >> 3)) % 2 ? "dark" : "light"} ${sel === i ? "sel" : ""} ${targets.includes(i) ? "target" : ""} ${last && (last.from === i || last.to === i) ? "last" : ""} ${chess.sideOf(p) === "w" ? "white-piece" : "black-piece"}`} onClick={() => tap(i)} aria-label={p}>
-            {p !== "." ? chess.GLYPH[p] : ""}
-          </button>
-        ))}
+      <div className="bg-stage">
+        <div className="bg-board chess">
+          {board.map((p, i) => (
+            <button key={i} className={`sq ${(i + (i >> 3)) % 2 ? "dark" : "light"} ${sel === i ? "sel" : ""} ${targets.includes(i) ? (p === "." ? "target" : "target hit") : ""} ${last && (last.from === i || last.to === i) ? "last" : ""} ${st === "check" && p === "K" ? "checked" : ""}`} onClick={() => tap(i)} aria-label={p === "." ? t("games.emptySquare") : p} />
+          ))}
+          <PieceLayer list={pieces} cls={p => `chesspc ${chess.sideOf(p) === "w" ? "white-piece" : "black-piece"}`} />
+        </div>
       </div>
       <button className="btn plain" onClick={() => { if (!over.current) { over.current = true; onDone(10); } }}>{t("games.giveUp")}</button>
     </>
@@ -103,6 +144,7 @@ export function Chess({ onDone }: { onDone: Done }) {
 export function Checkers({ onDone }: { onDone: Done }) {
   const { t } = useLang();
   const [board, setBoard] = useState(checkers.newBoard);
+  const [pieces, setPieces] = useState(() => piecesOf(checkers.newBoard()));
   const [turn, setTurn] = useState<checkers.Side>("r");
   const [sel, setSel] = useState<number | null>(null);
   const over = useRef(false);
@@ -112,28 +154,41 @@ export function Checkers({ onDone }: { onDone: Done }) {
   const targets = sel === null ? [] : mine.filter(m => m.from === sel).map(m => m.path[m.path.length - 1]);
   const mustCapture = mine.some(m => m.captured.length > 0);
 
+  const go = useCallback((b: string[], m: checkers.Move) => {
+    const end = m.path[m.path.length - 1];
+    const next = checkers.apply(b, m);
+    setPieces(ps => glide(ps, m.from, end, next[end] !== b[m.from] ? next[end] : null, m.captured));
+    setBoard(next);
+  }, []);
+
   useEffect(() => {
     if (over.current) return;
     const w = checkers.winner(board, turn);
-    if (w) { over.current = true; setTimeout(() => onDone(w === "r" ? 100 : 20), 900); return; }
+    if (w) { over.current = true; setTimeout(() => onDone(w === "r" ? 100 : 20), 1100); return; }
     if (turn === "b") {
       const id = setTimeout(() => {
         const m = checkers.bestMove(board, "b", 4);
         if (!m) return;
         play("pop");
-        setBoard(checkers.apply(board, m));
+        go(board, m);
         setTurn("r");
-      }, 550);
+      }, 700);
       return () => clearTimeout(id);
     }
-  }, [board, turn, onDone]);
+  }, [board, turn, onDone, go]);
+
+  useEffect(() => {
+    if (!pieces.some(x => x.dead)) return;
+    const id = setTimeout(() => setPieces(ps => ps.filter(x => !x.dead)), 450);
+    return () => clearTimeout(id);
+  }, [pieces]);
 
   function tap(i: number) {
     if (turn !== "r" || over.current) return;
     if (sel !== null && targets.includes(i)) {
       const m = mine.find(x => x.from === sel && x.path[x.path.length - 1] === i)!;
-      play("coin");
-      setBoard(checkers.apply(board, m));
+      play(m.captured.length ? "pop" : "coin");
+      go(board, m);
       setSel(null);
       setTurn("b");
     } else setSel(mine.some(m => m.from === i) ? i : null);
@@ -142,15 +197,15 @@ export function Checkers({ onDone }: { onDone: Done }) {
   return (
     <>
       <p className="note">{turn === "r" ? (mustCapture ? t("games.mustJump") : t("games.yourMove")) : t("games.thinking")} · 🔴 {board.filter(p => p.toLowerCase() === "r").length} ⚫ {board.filter(p => p.toLowerCase() === "b").length}</p>
-      <div className="bg-board checkers">
-        {board.map((p, i) => {
-          const dark = ((i >> 3) + (i & 7)) % 2 === 1;
-          return (
-            <button key={i} className={`sq ${dark ? "dark" : "light"} ${sel === i ? "sel" : ""} ${targets.includes(i) ? "target" : ""}`} onClick={() => tap(i)} disabled={!dark} aria-label={p}>
-              {p !== "." && <span className={`disc ${checkers.sideOf(p) === "r" ? "red" : "black"} ${p === "R" || p === "B" ? "king" : ""}`}>{p === "R" || p === "B" ? "♛" : ""}</span>}
-            </button>
-          );
-        })}
+      <div className="bg-stage">
+        <div className="bg-board checkers">
+          {board.map((_, i) => {
+            const dark = ((i >> 3) + (i & 7)) % 2 === 1;
+            const canPick = turn === "r" && mine.some(m => m.from === i);
+            return <button key={i} className={`sq ${dark ? "dark" : "light"} ${sel === i ? "sel" : ""} ${targets.includes(i) ? "target" : ""} ${canPick && mustCapture ? "must" : ""}`} onClick={() => tap(i)} disabled={!dark} aria-label={board[i]} />;
+          })}
+          <PieceLayer list={pieces} cls={p => `disc ${checkers.sideOf(p) === "r" ? "red" : "black"} ${p === "R" || p === "B" ? "king" : ""}`} />
+        </div>
       </div>
       <button className="btn plain" onClick={() => { if (!over.current) { over.current = true; onDone(10); } }}>{t("games.giveUp")}</button>
     </>
