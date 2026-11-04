@@ -28,16 +28,16 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [returnStatus] = useState(takeReturnStatus);
 
-  async function load(userId: string | undefined, email: string | undefined) {
-    setProfile(userId ? await fetchProfile(userId, email ?? "") : null);
+  async function load(userId: string | undefined, email: string | undefined, guest = false) {
+    setProfile(userId ? { ...(await fetchProfile(userId, email ?? "")), guest } : null);
     setReady(true);
   }
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => load(data.session?.user.id, data.session?.user.email));
+    supabase.auth.getSession().then(({ data }) => load(data.session?.user.id, data.session?.user.email, !!data.session?.user.is_anonymous));
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      void load(session?.user.id, session?.user.email);
+      void load(session?.user.id, session?.user.email, !!session?.user.is_anonymous);
     });
     return () => data.subscription.unsubscribe();
   }, []);

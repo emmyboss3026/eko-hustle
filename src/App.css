@@ -3079,3 +3079,17 @@ html body .group .row-price.earn, html body .good-text { color: #0f7a4a; }
 .friends-perks li { padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.1); }
 .friends-signin .group { background: rgba(255, 255, 255, 0.1); color: #f3f4ff; }
 .friends-signin .note { color: #c9ceef; }
+
+/* ---- Me tab: sections that open and close ---- */
+.fold { border-radius: 14px; margin: 8px 0; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); overflow: hidden; }
+.fold > summary { display: flex; align-items: center; gap: 10px; padding: 12px; cursor: pointer; list-style: none; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold-icon { font-size: 22px; }
+.fold-title { display: grid; flex: 1; min-width: 0; }
+.fold-title small { opacity: 0.75; font-size: 12px; font-weight: 500; }
+.fold-caret { font-size: 24px; transition: transform 0.2s; }
+.fold[open] > summary .fold-caret { transform: rotate(90deg); }
+.fold-body { padding: 0 10px 12px; }
+.fold-body > h3:first-child, .fold-body > div > h3:first-child { margin-top: 4px; }
+.fold .fold { background: rgba(255, 255, 255, 0.06); }
+.me-h { margin-top: 14px; }

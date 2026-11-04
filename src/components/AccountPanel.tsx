@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAccount } from "../lib/account";
-import { signInWithEmail, signInWithGoogle, signOut } from "../lib/cloud";
+import { linkEmail, signInAsGuest, signInWithEmail, signInWithGoogle, signOut } from "../lib/cloud";
 import { buySupporterPack, paymentsEnabled, SUPPORTER_PRICE_NAIRA } from "../lib/payments";
 import { naira } from "../engine/economy";
 import { useLang } from "../i18n/react";
@@ -73,7 +73,46 @@ export default function AccountPanel({ synced }: Props) {
         >
           {t("account.google")}
         </button>
+        <button
+          className="btn plain block"
+          disabled={!signInReady || busy}
+          onClick={async () => {
+            setBusy(true);
+            const err = await signInAsGuest();
+            setBusy(false);
+            if (err) setMessage(err);
+          }}
+        >
+          👤 {t("account.guest")}
+        </button>
+        <p className="note">{t("account.otherDevice")}</p>
         {message && <p className="note">{t(message)}</p>}
+      </div>
+    );
+  }
+
+  if (profile.guest) {
+    return (
+      <div className="group" style={{ padding: 12 }}>
+        <div className="row-title">👤 {t("account.guestTag")}</div>
+        <p className="note">{t("account.guestNow")}</p>
+        <form
+          onSubmit={async e => {
+            e.preventDefault();
+            setBusy(true);
+            const err = await linkEmail(email.trim());
+            setBusy(false);
+            setMessage(err ?? t("account.linkSent", { email: email.trim() }));
+          }}
+        >
+          <label className="field">
+            {t("account.email")}
+            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
+          </label>
+          <button className="btn block" disabled={busy || !email.includes("@")}>{t("account.linkEmail")}</button>
+        </form>
+        <button className="btn plain block" onClick={() => void signOut()}>{t("account.signOut")}</button>
+        {message && <p className="note">{message.startsWith("account.") ? t(message) : message}</p>}
       </div>
     );
   }

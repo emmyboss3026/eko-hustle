@@ -1,6 +1,5 @@
 import { useState } from "react";
 import Avatar from "./Avatar";
-import LegalLinks from "./LegalLinks";
 import { dayOf, mood, moodPay, type GameState } from "../engine/game";
 import { moodlets } from "../data/moodlets";
 import { skillInfo, MAX_SKILL, type SkillId } from "../data/skills";
@@ -8,6 +7,7 @@ import { traits } from "../data/traits";
 import { naira } from "../engine/economy";
 import { Progress } from "./ui";
 import AccountPanel from "./AccountPanel";
+import Fold from "./Fold";
 import GemsSection from "./GemsSection";
 import PrivacySettings from "./PrivacySettings";
 import LangPicker from "./LangPicker";
@@ -66,11 +66,11 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
       <p className="lede">{traits[state.sim.trait].emoji} {tr.name}: {tr.desc}</p>
       {state.sim.preset && tx.presetStory(state.sim.preset) && <p className="note">“{tx.presetStory(state.sim.preset)}”</p>}
 
-      <h3>🌍 {t("me.language")}</h3>
-      <LangPicker />
+      <h3 className="me-h">{t("me.account")}</h3>
+      <AccountPanel synced={synced} />
 
-      <SoundSettings />
-
+      <Fold icon="📊" title={t("me.fold.progress")} hint={t("me.fold.progressHint")}>
+        <div>
       <h3>{t("me.skills")}</h3>
       <div className="group">
         {(Object.keys(skillInfo) as SkillId[]).map(id => (
@@ -140,11 +140,18 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
       </div>
       <button className="btn block" onClick={onDiary}>📖 {t("me.openDiary")}</button>
 
-      <h3>{t("me.account")}</h3>
-      <AccountPanel synced={synced} />
-      <GemsSection />
+        </div>
+      </Fold>
 
-      <h3>{t("me.settings")}</h3>
+      <Fold icon="🔊" title={t("me.fold.sound")} hint={t("me.fold.soundHint")}>
+        <div>
+          <h3>🌍 {t("me.language")}</h3>
+          <LangPicker />
+        </div>
+        <SoundSettings />
+      </Fold>
+
+      <Fold icon="⚙️" title={t("me.fold.settings")} hint={t("me.fold.settingsHint")}>
       <div className="group">
         <button className="row" onClick={onGuide}>
           <span className="row-emoji" aria-hidden>❓</span>
@@ -176,8 +183,15 @@ export default function MeTab({ state, onRestart, onLoad, onGuide, onDiary, onFe
       </div>
       {fileMsg && <p className="note" role="status">{t(fileMsg)}</p>}
 
-      <PrivacySettings state={state} />
-      <LegalLinks />
+      </Fold>
+
+      <Fold icon="💎" title={t("me.fold.gems")}>
+        <GemsSection />
+      </Fold>
+
+      <Fold icon="🔒" title={t("me.fold.privacy")} hint={t("me.fold.privacyHint")}>
+        <PrivacySettings state={state} />
+      </Fold>
 
       <div className="confirm">
         {confirming ? (

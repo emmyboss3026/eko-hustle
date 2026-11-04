@@ -4,7 +4,7 @@
 import { upgrade, type GameState } from "../engine/game";
 import { supabase } from "./supabase";
 
-export type Profile = { id: string; email: string; supporter: boolean };
+export type Profile = { id: string; email: string; supporter: boolean; guest?: boolean };
 export type Run = { sim_name: string; trait: string; ending: string; days: number; earned: number };
 
 export async function signInWithEmail(email: string): Promise<string | null> {
@@ -22,6 +22,20 @@ export async function signInWithGoogle(): Promise<string | null> {
     provider: "google",
     options: { redirectTo: window.location.origin },
   });
+  return error ? error.message : null;
+}
+
+/** Play without an email: the server makes a private account for this device (needs "Anonymous sign-ins" switched on in Supabase). */
+export async function signInAsGuest(): Promise<string | null> {
+  if (!supabase) return "account.notSetUp";
+  const { error } = await supabase.auth.signInAnonymously();
+  return error ? "account.guestOff" : null;
+}
+
+/** A guest adds an email: the account stays the same (friends, progress), and the email can then log in on other devices. */
+export async function linkEmail(email: string): Promise<string | null> {
+  if (!supabase) return "account.notSetUp";
+  const { error } = await supabase.auth.updateUser({ email }, { emailRedirectTo: window.location.origin });
   return error ? error.message : null;
 }
 

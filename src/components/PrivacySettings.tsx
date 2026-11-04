@@ -4,6 +4,7 @@ import { deleteMyAccount, exportMyData } from "../lib/cloud";
 import { useAccount } from "../lib/account";
 import type { GameState } from "../engine/game";
 import { useLang } from "../i18n/react";
+import Fold from "./Fold";
 
 const AGES: AgeBand[] = ["under13", "13-15", "16-17", "adult"];
 import { LEGAL_PAGES } from "../data/legal";
@@ -71,7 +72,7 @@ export default function PrivacySettings({ state }: { state: GameState }) {
 
   return (
     <>
-      <h3>🔒 {t("privacy.title")}</h3>
+      <Fold icon="🎂" title={t("privacy.sub.choices")}>
       <div className="group">
         <div className="row static">
           <span className="row-emoji" aria-hidden>🎂</span>
@@ -96,6 +97,9 @@ export default function PrivacySettings({ state }: { state: GameState }) {
         </button>
       </div>
 
+      </Fold>
+
+      <Fold icon="📄" title={t("privacy.sub.legal")}>
       <div className="group legal-links">
         {LEGAL_PAGES.map(page => (
           <a key={page} className="row" href={`/${page}.html`} target="_blank" rel="noopener">
@@ -106,6 +110,9 @@ export default function PrivacySettings({ state }: { state: GameState }) {
         ))}
       </div>
 
+      </Fold>
+
+      <Fold icon="🧾" title={t("privacy.sub.data")}>
       <div className="group">
         <button className="row" disabled={busy} onClick={() => void download()}>
           <span className="row-emoji" aria-hidden>⬇️</span>
@@ -122,6 +129,7 @@ export default function PrivacySettings({ state }: { state: GameState }) {
           </button>
         )}
       </div>
+      </Fold>
       {msg && <p className="note">{t(msg)}</p>}
 
       {confirm && (
