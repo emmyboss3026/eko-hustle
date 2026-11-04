@@ -4812,4 +4812,9 @@ export const de: Dict = {
   "designs.bought": "{name} gehört dir! Geh in dein Zimmer, um es zu sehen.",
   "designs.short": "Dir fehlen noch {money}.",
   "friends.newCodeYes": "Zum Bestätigen erneut tippen",
+  "friends.signInTitle": "Finde Freunde in Eko Hustle",
+  "friends.perk1": "Erhalte deinen eigenen privaten Freundescode zum Teilen",
+  "friends.perk2": "Chatte mit deinen Freunden per Text und Sprachnachricht",
+  "friends.perk3": "Lade Freunde in dein Zuhause ein und besuche ihres",
+  "friends.signInNote": "Das ist kostenlos. Du meldest dich einmal mit E-Mail oder Google an, und dein Spiel wird ebenfalls in deinem Konto gespeichert.",
 };

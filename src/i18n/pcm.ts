@@ -4812,4 +4812,9 @@ export const pcm: Dict = {
   "designs.bought": "{name} don be your own! Go your room make you see am.",
   "designs.short": "You need {money} more.",
   "friends.newCodeYes": "Tap again to confirm",
+  "friends.signInTitle": "Make friends for Eko Hustle",
+  "friends.perk1": "Get your own private friend code to share",
+  "friends.perk2": "Chat with text and voice note with your friends",
+  "friends.perk3": "Invite friends come your house and visit their own",
+  "friends.signInNote": "E free. You go sign in one time with your email or Google, and your game go save for your account too.",
 };

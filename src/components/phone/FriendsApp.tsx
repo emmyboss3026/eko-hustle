@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLang } from "../../i18n/react";
+import AccountPanel from "../AccountPanel";
 import { spots, type SpotId } from "../../data/spots";
 import {
   addByCode, blockPlayer, cleanCode, dmAudio, dmThread, dmUnread, findPlayers, inviteHome, myFriendCode, myFriends, myHomeInvites, removeFriend, reportPlayer,
@@ -156,7 +157,20 @@ export default function FriendsApp({ userId: signedIn, onVisit }: { userId: stri
   }, [chat, t]);
   const mic = useRecorder(sendVoiceNote, why => setNote(t(why === "denied" ? "friends.micDenied" : "friends.micUnsupported")));
 
-  if (!userId) return <p className="note">{t("friends.signIn")}</p>;
+  if (!userId) {
+    return (
+      <div className="friends-signin">
+        <h3>👫 {t("friends.signInTitle")}</h3>
+        <ul className="friends-perks">
+          <li>🔑 {t("friends.perk1")}</li>
+          <li>💬 {t("friends.perk2")}</li>
+          <li>🏠 {t("friends.perk3")}</li>
+        </ul>
+        <AccountPanel synced="off" />
+        <p className="note">{t("friends.signInNote")}</p>
+      </div>
+    );
+  }
 
   // Run an action, then show what happened and refresh the lists
   const run = async (what: () => Promise<{ ok: boolean; reason?: string; status?: string } | null>, done: string) => {

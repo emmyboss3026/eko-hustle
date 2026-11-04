@@ -3073,3 +3073,9 @@ html body .phone-screen .invite-card small, html body .phone-screen .invite-card
 html body .friends-app .chip-btn, html body .friends-app .btn.plain { color: #1d5fd8; background: #eef0fb; border-color: #c9d3fb; box-shadow: none; }
 html body .group .chip-btn { color: #1f2340; background: #eef0fb; border-color: #c9d3fb; }
 html body .group .row-price.earn, html body .good-text { color: #0f7a4a; }
+.friends-signin { display: grid; gap: 10px; padding: 6px 2px; color: #f3f4ff; }
+.friends-signin h3 { margin: 0; }
+.friends-perks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.friends-perks li { padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.1); }
+.friends-signin .group { background: rgba(255, 255, 255, 0.1); color: #f3f4ff; }
+.friends-signin .note { color: #c9ceef; }
