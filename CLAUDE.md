@@ -61,7 +61,7 @@ Every line of code gets a short comment saying what it does, in plain words, not
 - Applies to ALL new and changed code from now on, in every update. Use an end-of-line `// ...` (or `# ...` in Python, `-- ...` in SQL) for statements,
   and a one-line comment above a block of CSS rules. In JSX, comment the logic around it; inside JSX children use `{/* ... */}` only where it is valid.
 - Never put a comment inside a template string, a regex or a multi-line string. Keep existing comments; improve them if they are wrong.
-- The older code base is being commented folder by folder (see "Comment progress" below); each update should also comment a few more files.
+- The older code base is commented in batches: the owner chose "batches each update" (4 Nov 2026), so every update also comments a few older files (about 500 lines, smallest and most central first). Update "Comment progress" below each time.
 - Every update also grows the map by FIVE places (see "Growing the map").
 
 ### Comment progress
