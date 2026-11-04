@@ -3000,7 +3000,7 @@ a.row { color: inherit; text-decoration: none; }
 .friend-main b { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .presence { font-size: 12px; font-weight: 700; }
 .presence.on { color: #1b7a3a; }
-.presence.off { color: #8a8fb0; }
+.presence.off { color: #5c6188; }
 .pill { padding: 7px 12px; border: 0; border-radius: 999px; background: #eef0fb; color: #1d5fd8; font-weight: 800; font-size: 13px; cursor: pointer; }
 .pill.go { background: #1d5fd8; color: #fff; }
 .pill.danger { background: #fdecef; color: #c2185b; }
@@ -3043,3 +3043,33 @@ a.row { color: inherit; text-decoration: none; }
 .friend-row .presence { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .friend-row .pill { padding: 7px 10px; }
 .friend-row .friend-menu { grid-column: 1 / -1; padding-left: 0; }
+
+/* Messages and cards on a light background always use dark text (they used to inherit the game's light text) */
+div.scene-msg { color: #1f2340; font-weight: 700; line-height: 1.4; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+
+/* ---- Readability pass: every light card gets dark text, every dark panel keeps light text ---- */
+html body .invite-card, html body .biz-card, html body .peek-card, html body .board-row, html body .flow > div, html body .build-confirm, html body .plan-card, html body .bigmap-pick, html body .bubble.them {
+  color: #1f2340;
+}
+html body .invite-card small, html body .invite-card .note, html body .biz-card small, html body .biz-card .note, html body .peek-card .note, html body .board-row small, html body .plan-card .note {
+  color: #4a4f73;
+}
+html body .chip.up { color: #0d6b3a; background: #d8f2e4; }
+html body .chip.down { color: #a02a15; background: #fde0da; }
+html body .btn.plain, html body .sheet .btn.plain { color: #1f2340; }
+html body .chip-btn { background: #fff; color: #1f2340; }
+html body .tag.tag-money, html body .tag.tag-open, html body .cal-tick { color: #0b6b43; }
+html body .friends-app { background: #fff; color: #1f2340; border-radius: 16px; padding: 10px; }
+html body .friends-app .note { color: #4a4f73; }
+html body .friends-app h3 { color: #1f2340; margin: 10px 2px 4px; }
+/* Inside the phone the cards are dark glass with light text, like the rest of the phone */
+html body .phone-screen .invite-card, html body .phone-screen .biz-card, html body .phone-screen .board-row, html body .phone-screen .flow > div, html body .phone-screen .bubble.them {
+  background: rgba(255, 255, 255, 0.1); color: #f3f4ff; border-color: rgba(255, 255, 255, 0.2);
+}
+html body .phone-screen .invite-card small, html body .phone-screen .invite-card .note, html body .phone-screen .biz-card small, html body .phone-screen .biz-card .note, html body .phone-screen .board-row small {
+  color: #c9ceef;
+}
+/* the Friends app is a white card, so its buttons are dark-on-light */
+html body .friends-app .chip-btn, html body .friends-app .btn.plain { color: #1d5fd8; background: #eef0fb; border-color: #c9d3fb; box-shadow: none; }
+html body .group .chip-btn { color: #1f2340; background: #eef0fb; border-color: #c9d3fb; }
+html body .group .row-price.earn, html body .good-text { color: #0f7a4a; }
