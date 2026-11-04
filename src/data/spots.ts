@@ -17,6 +17,7 @@ export type SpotId =
   | "kart" | "dancehall" | "skate" | "bakery" | "waterpark"   // added by map growth 4
   | "salon" | "suya" | "cowork" | "travel" | "pitch"   // added by map growth 5
   | "museum" | "nightmarket" | "ferry" | "bowling" | "carwash"   // added by map growth 6
+  | "zoo" | "lounge" | "police" | "school" | "gallery"   // added by map growth 7
   | "phone";
 
 export type Spot = {
@@ -83,6 +84,11 @@ export const spots: Record<SpotId, Spot> = {
   ferry: { id: "ferry", name: "Lagoon Ferry Terminal", emoji: "⛴️", district: "yaba", open: [6, 20], blurb: "Ferries across the lagoon with the whole skyline on show.", lot: true },
   bowling: { id: "bowling", name: "Strike Bowling Alley", emoji: "🎳", district: "yaba", open: [12, 24], blurb: "Neon lanes, rented shoes and a league night that gets loud.", lot: true },
   carwash: { id: "carwash", name: "Sparkle Car Wash", emoji: "🧼", district: "mushin", open: [7, 19], blurb: "Foam, hoses and boys who will argue about football while they scrub.", lot: true },
+  zoo: { id: "zoo", name: "Eko City Zoo", emoji: "🦒", district: "yaba", open: [9, 18], blurb: "Giraffes, lions and monkeys that steal snacks. A good day out for the whole family.", lot: true }, // opens 9 to 18
+  lounge: { id: "lounge", name: "Skyline Rooftop Lounge", emoji: "🍹", district: "yaba", open: [17, 4], blurb: "Cocktails, a live DJ and the whole city lit up below you.", lot: true }, // evening venue
+  police: { id: "police", name: "Community Police Station", emoji: "🚓", district: "mushin", open: [0, 24], blurb: "Always open. Report a problem, or join the community watch.", lot: true }, // open all day
+  school: { id: "school", name: "Eko Evening School", emoji: "🏫", district: "yaba", open: [16, 22], blurb: "Evening classes and a language club for people who work by day.", lot: true }, // evening classes
+  gallery: { id: "gallery", name: "Naija Art Gallery", emoji: "🎨", district: "mushin", open: [10, 19], blurb: "Bold paintings, bronze work and a studio where you can sketch.", lot: true }, // art space
   phone: { id: "phone", name: "Your phone", emoji: "📱", district: "any", blurb: "Works anywhere: call home, hustle on WhatsApp, order delivery." },
 };
 

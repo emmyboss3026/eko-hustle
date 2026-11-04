@@ -628,6 +628,72 @@ export function buildPlace(id, labelFor, property) {
       height = wh + 5;
       break;
     }
+    case 'zoo': {
+      add(plane(48, 48, '#8fb36a', 0, 0.07, 0)); // grassy ground
+      const [, zlz, zw, zd, zh] = solids[0]; // the ticket hall: centre z, width, depth, height
+      add(box(zw, zh, zd, '#f4e4c1', 0, zh / 2, zlz)); // the hall walls
+      add(box(zw + 1, 0.5, zd + 1, '#2e7d32', 0, zh + 0.25, zlz)); // green roof
+      add(box(2.6, 3.2, 0.25, '#4e342e', 0, 1.6, zlz - zd / 2 - 0.12, false)); // entrance door
+      for (let i = 0; i < 8; i++) add(box(0.3, 3, 0.3, '#6d4c41', -14 + i * 4, 1.5, -10)); // fence posts of the animal park
+      add(box(28, 0.3, 0.3, '#6d4c41', 0, 2.6, -10)); // fence rail
+      add(cyl(0.5, 0.7, 7, '#f0b429', -8, 3.5, -16, 8)); // giraffe neck and body (a tall yellow cylinder)
+      add(box(1.6, 1, 1, '#f0b429', -8, 7.4, -16)); // giraffe head
+      sign('EKO CITY ZOO', 12, 2.4, zh + 1.7, zlz - zd / 2 - 0.3, { bg: '#2e7d32' }); // name sign
+      height = zh + 6; // for the camera framing
+      break;
+    }
+    case 'lounge': {
+      add(plane(48, 48, '#59546b', 0, 0.07, 0)); // dark paving
+      const [, llz, lw, ld, lh] = solids[0]; // the tower: centre z, width, depth, height
+      add(box(lw, lh, ld, '#37306b', 0, lh / 2, llz)); // main tower
+      add(box(lw + 1, 0.5, ld + 1, '#ff3d81', 0, lh + 0.25, llz)); // pink roof edge
+      for (let i = 0; i < 5; i++) add(box(1.4, 1.4, 0.15, GLOW.window, -8 + i * 4, 5, llz - ld / 2 - 0.1, false)); // lit windows
+      add(box(2.6, 3.4, 0.25, '#14142a', 0, 1.7, llz - ld / 2 - 0.12, false)); // door
+      for (let i = 0; i < 6; i++) add(box(1.2, 0.1, 1.2, '#ffe082', -7 + i * 2.8, lh + 1.5, llz, false)); // roof terrace lights
+      sign('SKYLINE LOUNGE', 14, 2.4, lh + 2.6, llz - ld / 2 - 0.3, { bg: '#14142a' }); // name sign above the roof
+      height = lh + 6; // camera framing
+      break;
+    }
+    case 'police': {
+      add(plane(48, 48, '#9aa0a8', 0, 0.07, 0)); // grey paving
+      const [, plz, pw, pd, ph] = solids[0]; // the station: centre z, width, depth, height
+      add(box(pw, ph, pd, '#dfe6ee', 0, ph / 2, plz)); // station walls
+      add(box(pw + 1, 0.5, pd + 1, '#1a237e', 0, ph + 0.25, plz)); // navy roof
+      add(box(2.6, 3.4, 0.25, '#263238', 0, 1.7, plz - pd / 2 - 0.12, false)); // door
+      add(box(pw - 6, 1.2, 0.2, '#1a237e', 0, ph - 1.2, plz - pd / 2 - 0.1, false)); // blue band across the front
+      add(box(3.4, 1.4, 1.6, '#fafafa', 8, 0.9, -8)); // a parked patrol car body
+      add(box(3.4, 0.4, 1.6, '#1a237e', 8, 1.8, -8)); // patrol car roof stripe
+      sign('POLICE STATION', 13, 2.4, ph + 1.7, plz - pd / 2 - 0.3, { bg: '#1a237e' }); // name sign
+      height = ph + 6; // camera framing
+      break;
+    }
+    case 'school': {
+      add(plane(48, 48, '#b7c58f', 0, 0.07, 0)); // school yard
+      const [, slz, sw, sd, sh] = solids[0]; // the school: centre z, width, depth, height
+      add(box(sw, sh, sd, '#ffe0b2', 0, sh / 2, slz)); // school walls
+      add(box(sw + 1, 0.5, sd + 1, '#e65100', 0, sh + 0.25, slz)); // orange roof
+      for (let i = 0; i < 6; i++) add(box(1.8, 1.6, 0.15, mat('#90caf9', { transparent: true, opacity: 0.6 }), -10 + i * 4, 3.5, slz - sd / 2 - 0.1, false)); // classroom windows
+      add(box(2.6, 3.4, 0.25, '#4e342e', 0, 1.7, slz - sd / 2 - 0.12, false)); // door
+      add(cyl(0.12, 0.12, 9, '#b0bec5', 14, 4.5, -10, 6)); // flagpole
+      add(box(2, 1.2, 0.1, '#43a047', 15, 8.4, -10, false)); // green flag
+      sign('EVENING SCHOOL', 13, 2.4, sh + 1.7, slz - sd / 2 - 0.3, { bg: '#e65100' }); // name sign
+      height = sh + 6; // camera framing
+      break;
+    }
+    case 'gallery': {
+      add(plane(48, 48, '#c9c3b8', 0, 0.07, 0)); // stone paving
+      const [, glz, gw, gd, gh] = solids[0]; // the gallery: centre z, width, depth, height
+      add(box(gw, gh, gd, '#fafafa', 0, gh / 2, glz)); // white gallery walls
+      add(box(gw + 1, 0.5, gd + 1, '#37474f', 0, gh + 0.25, glz)); // dark roof edge
+      const pics = ['#e53935', '#fdd835', '#1e88e5', '#43a047']; // the colours of the big paintings
+      for (let i = 0; i < 4; i++) add(box(2.6, 3.2, 0.15, pics[i], -7.5 + i * 5, 3.6, glz - gd / 2 - 0.1, false)); // paintings on the front wall
+      add(box(2.6, 3.4, 0.25, '#263238', 0, 1.7, glz - gd / 2 - 0.12, false)); // door
+      add(cyl(1.2, 1.6, 2.4, '#8d6e63', 9, 1.2, -9, 10)); // a bronze statue base
+      add(cyl(0.6, 0.6, 2.6, '#b87333', 9, 3.7, -9, 8)); // the statue itself
+      sign('ART GALLERY', 12, 2.4, gh + 1.7, glz - gd / 2 - 0.3, { bg: '#37474f' }); // name sign
+      height = gh + 6; // camera framing
+      break;
+    }
     case 'mart': {
       add(plane(48, 48, '#a9b0a5', 0, 0.07, 0));
       const [, mlz, mw, md, mh] = solids[0];

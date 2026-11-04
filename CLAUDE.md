@@ -55,3 +55,14 @@ Still open:
    the verification meta tag and `/ads.txt` automatically.
 5. A real Bachs sandbox test purchase (needs the owner's sandbox keys in Supabase secrets).
 6. Later: more cities (postponed), subscriptions if Bachs supports recurring billing, AppLixir at 5,000+ daily players.
+
+## Comments (permanent rule from the owner)
+Every line of code gets a short comment saying what it does, in plain words, not over-explained (a few words to one short sentence).
+- Applies to ALL new and changed code from now on, in every update. Use an end-of-line `// ...` (or `# ...` in Python, `-- ...` in SQL) for statements,
+  and a one-line comment above a block of CSS rules. In JSX, comment the logic around it; inside JSX children use `{/* ... */}` only where it is valid.
+- Never put a comment inside a template string, a regex or a multi-line string. Keep existing comments; improve them if they are wrong.
+- The older code base is being commented folder by folder (see "Comment progress" below); each update should also comment a few more files.
+- Every update also grows the map by FIVE places (see "Growing the map").
+
+### Comment progress
+Done: src/games, src/lib (see git log "Comment pass"). Not yet: everything else (engine, data, components, three, server, scripts, supabase).

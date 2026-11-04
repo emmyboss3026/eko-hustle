@@ -203,6 +203,17 @@ export const actions: Action[] = [
   { id: "bowling-league", label: "Join league night", emoji: "🏆", minutes: 90, cost: 4_500, category: "fun", where: "yaba", spot: "bowling", effect: { fun: 40, social: 25, energy: -8 }, mood: "goodGist" },
   { id: "carwash-hangout", label: "Hang out with the car-wash boys", emoji: "⚽", minutes: 45, cost: 0, category: "fun", where: "mushin", spot: "carwash", effect: { social: 25, fun: 10 } },
   { id: "carwash-detail", label: "Detail a car for tips", emoji: "🧽", minutes: 60, cost: 0, category: "fun", where: "mushin", spot: "carwash", effect: { energy: -14, hygiene: -6, fun: 4 }, skill: { hustle: 0.4 } },
+  // Zoo, rooftop lounge, police station, evening school and gallery (added by map growth 7)
+  { id: "zoo-visit", label: "Walk through the zoo", emoji: "🦁", minutes: 90, cost: 2_500, category: "fun", where: "yaba", spot: "zoo", effect: { fun: 28, energy: -6 } }, // a day out
+  { id: "zoo-feed", label: "Feed the giraffes", emoji: "🦒", minutes: 30, cost: 1_000, category: "fun", where: "yaba", spot: "zoo", effect: { fun: 22, social: 6 } }, // a small treat
+  { id: "lounge-drinks", label: "Sunset drinks on the roof", emoji: "🍹", minutes: 90, cost: 6_000, category: "fun", where: "yaba", spot: "lounge", effect: { fun: 30, social: 20 }, mood: "goodGist" }, // pricey but fun
+  { id: "lounge-dj", label: "Dance to the live DJ", emoji: "🎧", minutes: 120, cost: 5_000, category: "fun", where: "yaba", spot: "lounge", effect: { fun: 38, social: 25, energy: -10 }, mood: "bigNight" }, // late night
+  { id: "police-watch", label: "Join the community watch", emoji: "🔦", minutes: 60, cost: 0, category: "fun", where: "mushin", spot: "police", effect: { social: 15, energy: -8 }, skill: { charisma: 0.2 } }, // free and social
+  { id: "police-talk", label: "Attend a safety talk", emoji: "🛡️", minutes: 45, cost: 0, category: "fun", where: "mushin", spot: "police", effect: { fun: 4, energy: -3 }, skill: { study: 0.2 } }, // small study gain
+  { id: "school-class", label: "Take an evening class", emoji: "📚", minutes: 120, cost: 3_000, category: "fun", where: "yaba", spot: "school", effect: { energy: -12, hunger: -8 }, skill: { study: 0.6 } }, // the best study boost
+  { id: "school-club", label: "Join the language club", emoji: "🗣️", minutes: 60, cost: 1_500, category: "fun", where: "yaba", spot: "school", effect: { social: 10, energy: -5 }, skill: { study: 0.3, charisma: 0.2 } }, // study plus charisma
+  { id: "gallery-tour", label: "Tour the exhibition", emoji: "🖼️", minutes: 60, cost: 1_500, category: "fun", where: "mushin", spot: "gallery", effect: { fun: 15, energy: -3 }, skill: { study: 0.2 } }, // culture
+  { id: "gallery-sketch", label: "Sketch in the studio", emoji: "✏️", minutes: 60, cost: 800, category: "fun", where: "mushin", spot: "gallery", effect: { fun: 20 }, skill: { charisma: 0.2 } }, // creative
   { id: "fuel", label: "Buy generator fuel (5 litres)", emoji: "⛽", minutes: 15, cost: 5_000, category: "home", where: "any", spot: "phone", effect: {}, stock: { fuel: 5 } },
   { id: "puff-puff", label: "Buy puff-puff from a hawker", emoji: "🍩", minutes: 5, cost: 300, category: "food", where: "any", spot: "phone", effect: { hunger: 15 } },
   { id: "pure-water", label: "Buy pure water", emoji: "💧", minutes: 2, cost: 50, category: "food", where: "any", spot: "phone", effect: { hunger: 3, bladder: -5 } },

@@ -67,6 +67,17 @@ export const GROWTH = [
       carwash: { cx: 510, cz: -90, face: 'w', solids: [[0, 0, 14, 14, 5]] },
     },
   },
+  {
+    level: 7, // the seventh ring of land and roads
+    note: 'Seventh growth: a zoo and a rooftop lounge on the south edge, a police station and an evening school on the north, a gallery on the east.',
+    places: {
+      zoo: { cx: -150, cz: 570, face: 'n', solids: [[0, 6, 24, 10, 4]] }, // south edge, door faces the inner road
+      lounge: { cx: 90, cz: 570, face: 'n', solids: [[0, -2, 22, 14, 10]] }, // tall building with a roof terrace
+      police: { cx: -30, cz: -570, face: 's', solids: [[0, 4, 22, 14, 7]] }, // north edge
+      school: { cx: 210, cz: -570, face: 's', solids: [[0, 4, 26, 14, 7]] }, // north edge
+      gallery: { cx: 570, cz: 30, face: 'w', solids: [[0, 0, 20, 16, 7]] }, // east edge
+    },
+  },
 ];
 
 /** How many times the map has grown. */
