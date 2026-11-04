@@ -11,6 +11,7 @@ import { buildSim, daylight } from './pieces';
 import { buildVehicle, setLights } from './vehicles';
 import { Animator } from './animator';
 import { QualityGovernor } from './quality';
+import { addEnvironment, grain, setEnvironmentLevel } from './surface';
 import { PLOTS, carById, homeSolids, inRect, plotTier, plotWidth } from '../data/estate';
 import { PERSONAS } from '../data/chatter';
 import {
@@ -42,7 +43,7 @@ function mergedBoxes(list, { roughness = 0.85, metalness = 0, shadow = true } = 
     g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
     return g;
   });
-  const mesh = new THREE.Mesh(mergeGeometries(geos), new THREE.MeshStandardMaterial({ vertexColors: true, roughness, metalness }));
+  const mesh = new THREE.Mesh(mergeGeometries(geos), grain(new THREE.MeshStandardMaterial({ vertexColors: true, roughness, metalness }), { strength: 0.26 }));
   geos.forEach((g) => g.dispose());
   mesh.castShadow = shadow;
   mesh.receiveShadow = true;
@@ -52,7 +53,7 @@ function mergedBoxes(list, { roughness = 0.85, metalness = 0, shadow = true } = 
 const matCache = new Map();
 function mat(color, extra = {}) {
   const key = color + JSON.stringify(extra);
-  if (!matCache.has(key)) matCache.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...extra }));
+  if (!matCache.has(key)) matCache.set(key, grain(new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...extra }), { strength: extra.transparent ? 0 : 0.1 }));
   return matCache.get(key);
 }
 
@@ -491,6 +492,72 @@ export function buildPlace(id, labelFor, property) {
       height = wh + 6;
       break;
     }
+    case 'salon': {
+      add(plane(48, 48, '#b8a8b8', 0, 0.07, 0));
+      const [, alz, aw, ad, ah] = solids[0];
+      add(box(aw, ah, ad, '#f8e1ec', 0, ah / 2, alz));                              // the salon
+      add(box(aw + 1, 0.5, ad + 1, '#d81b60', 0, ah + 0.25, alz));
+      add(box(aw - 5, 3, 0.2, mat('#bfe3ff', { transparent: true, opacity: 0.55, roughness: 0.2 }), 0, 1.9, alz - ad / 2 - 0.1, false));
+      add(box(2.2, 3.2, 0.25, '#5d4037', 0, 1.6, alz - ad / 2 - 0.12, false));
+      add(cyl(0.45, 0.45, 2.4, '#fafafa', 6.5, 1.8, alz - ad / 2 - 0.8, 12));        // the barber pole
+      for (let i = 0; i < 4; i++) add(cyl(0.47, 0.47, 0.3, i % 2 ? '#e53935' : '#1e88e5', 6.5, 1.0 + i * 0.6, alz - ad / 2 - 0.8, 12));
+      sign('GLOW HAIR SALON', 13, 2.4, ah + 1.7, alz - ad / 2 - 0.3, { bg: '#d81b60' });
+      height = ah + 6;
+      break;
+    }
+    case 'suya': {
+      add(plane(48, 48, '#8a7e6e', 0, 0.07, 0));
+      const [, ulz, uw, ud, uh] = solids[0];
+      add(box(uw, uh, ud, '#6d4c41', 0, uh / 2, ulz));                              // the grill shed
+      add(box(uw + 2, 0.3, ud + 3, '#b0bec5', 0, uh + 0.15, ulz - 0.5));            // the zinc roof
+      add(box(5, 1, 1.6, '#212121', -3, 1, ulz - ud / 2 - 1.5));                      // the grill
+      add(box(5, 0.08, 1.4, '#ff7043', -3, 1.55, ulz - ud / 2 - 1.5, false));        // the embers
+      for (let i = 0; i < 4; i++) add(cyl(0.6, 0.6, 0.9, '#546e7a', 4 + (i % 2) * 2.4, 0.45, ulz - ud / 2 - 3 - Math.floor(i / 2) * 2.4, 10));   // stools
+      sign("MALLAM'S SUYA", 11, 2.2, uh + 1.4, ulz - ud / 2 - 0.3, { bg: '#bf360c' });
+      height = uh + 5;
+      break;
+    }
+    case 'cowork': {
+      add(plane(48, 48, '#a9b4bd', 0, 0.07, 0));
+      const [, clz, cw, cd, ch] = solids[0];
+      add(box(cw, ch, cd, '#cfd8dc', 0, ch / 2, clz));                              // the office block
+      add(box(cw + 1, 0.5, cd + 1, '#37474f', 0, ch + 0.25, clz));
+      for (let r = 0; r < 2; r++) for (let i = 0; i < 5; i++) add(box(2.6, 1.8, 0.15, mat('#90caf9', { transparent: true, opacity: 0.6, roughness: 0.2 }), -8 + i * 4, 3 + r * 3, clz - cd / 2 - 0.1, false));   // window rows
+      add(box(2.8, 3.4, 0.25, '#263238', 0, 1.7, clz - cd / 2 - 0.12, false));
+      sign('HUSTLE HUB', 13, 2.4, ch + 1.7, clz - cd / 2 - 0.3, { bg: '#00897b' });
+      height = ch + 6;
+      break;
+    }
+    case 'travel': {
+      add(plane(48, 48, '#b3b8c4', 0, 0.07, 0));
+      const [, tlz, tw, td, th] = solids[0];
+      add(box(tw, th, td, '#e3f2fd', 0, th / 2, tlz));                              // the agency
+      add(box(tw + 1, 0.5, td + 1, '#1565c0', 0, th + 0.25, tlz));
+      add(box(tw - 5, 3, 0.2, mat('#bfe3ff', { transparent: true, opacity: 0.55, roughness: 0.2 }), 0, 1.9, tlz - td / 2 - 0.1, false));
+      add(box(2.2, 3.2, 0.25, '#263238', 0, 1.6, tlz - td / 2 - 0.12, false));
+      const plane3 = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 5, 10), mat('#fafafa'));   // a little jet on the roof
+      plane3.rotation.z = Math.PI / 2;
+      plane3.position.set(0, th + 2, tlz);
+      add(plane3);
+      add(box(0.3, 0.2, 3.6, '#1565c0', 0.4, th + 2, tlz));
+      sign('JAPA TRAVEL AGENCY', 15, 2.4, th + 1.7, tlz - td / 2 - 0.3, { bg: '#1565c0' });
+      height = th + 6;
+      break;
+    }
+    case 'pitch': {
+      add(plane(48, 48, '#4d8f3d', 0, 0.07, 0));
+      const [, flz, fw, fd, fh] = solids[0];
+      add(box(fw, fh, fd, '#8d6e63', 0, fh / 2, flz));                              // the club hut
+      sign('ESTATE PITCH', 11, 2.2, fh + 1.4, flz - fd / 2 - 0.3, { bg: '#2e7d32' });
+      for (const x of [-9, 9]) {                                                       // the goals
+        add(box(0.2, 3, 0.2, '#fafafa', x, 1.5, -6));
+        add(box(0.2, 3, 0.2, '#fafafa', x, 1.5, 6));
+        add(box(0.2, 0.2, 12, '#fafafa', x, 3, 0));
+      }
+      add(box(20, 0.02, 0.2, '#fafafa', 0, 0.14, 0, false));                          // the halfway line
+      height = fh + 5;
+      break;
+    }
     case 'mart': {
       add(plane(48, 48, '#a9b0a5', 0, 0.07, 0));
       const [, mlz, mw, md, mh] = solids[0];
@@ -734,12 +801,13 @@ export class StreetView {
     this.hemi = new THREE.HemisphereLight('#dfefff', '#7a6a50', 1);
     this.sun = new THREE.DirectionalLight('#fff4e0', 1.6);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(1024, 1024);
+    this.sun.shadow.mapSize.set(matchMedia('(pointer: coarse)').matches ? 1024 : 2048, matchMedia('(pointer: coarse)').matches ? 1024 : 2048);   // sharper shadows on computers; phones stay light
     const sc = this.sun.shadow.camera;
     sc.left = sc.bottom = -45; sc.right = sc.top = 45; sc.near = 1; sc.far = 220;
     this.sun.shadow.bias = -0.0006;
     this.scene.add(this.hemi, this.sun, this.sun.target);
     this.scene.fog = new THREE.Fog('#bcd9f2', 120, 340);
+    addEnvironment(renderer, this.scene);
 
     this.buildTown();
     this.places = Object.keys(PLACE_LOTS).map((id) => buildPlace(id, hooks.labelFor));
@@ -1320,7 +1388,8 @@ export class StreetView {
     this.scene.fog.color.copy(sky);
     this.sun.intensity = 0.12 + 1.9 * day;
     this.sun.color.set(day < 0.5 ? '#ffb27a' : '#fff4e0');
-    this.hemi.intensity = 0.32 + 0.8 * day;
+    this.hemi.intensity = 0.3 + 0.55 * day;   // the soft environment light supplies the rest by day
+    setEnvironmentLevel(day);
     this.water.material.color.set(day < 0.3 ? '#14324a' : '#2f86b4');
     const night = day < 0.35;
     const lights = night && info.grid;

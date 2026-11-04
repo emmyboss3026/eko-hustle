@@ -2,6 +2,7 @@
 // Ported from Gidi Hustle v0.5 (all original shapes).
 /* eslint-disable */
 import * as THREE from "three";
+import { grain } from "./surface";
 import type { FurnitureType } from "../data/home";
 import type { Look } from "../data/characters";
 
@@ -17,7 +18,7 @@ export function daylight(h: number) {
 // ---------------------------------------------------------------- builders
 
 export function mat(color: string, extra: THREE.MeshStandardMaterialParameters = {}) {
-  return new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...extra });
+  return grain(new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...extra }), { strength: extra.transparent ? 0 : 0.07, env: 0 });
 }
 
 export function box(w: number, h: number, d: number, material: string | THREE.Material, x = 0, y = h / 2, z = 0) {

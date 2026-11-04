@@ -15,6 +15,7 @@ export type SpotId =
   | "mart" | "stadium"     // added by map growth 2
   | "chapel" | "library" | "plaza" | "arcade" | "clinic"   // added by map growth 3
   | "kart" | "dancehall" | "skate" | "bakery" | "waterpark"   // added by map growth 4
+  | "salon" | "suya" | "cowork" | "travel" | "pitch"   // added by map growth 5
   | "phone";
 
 export type Spot = {
@@ -71,6 +72,11 @@ export const spots: Record<SpotId, Spot> = {
   skate: { id: "skate", name: "Eko Skate Park", emoji: "🛹", district: "mushin", open: [7, 21], blurb: "Ramps, rails and a bowl. Free to enter, easy to fall.", lot: true },
   bakery: { id: "bakery", name: "Sweet Crumbs Bakery", emoji: "🥖", district: "mushin", open: [5, 20], blurb: "Hot bread, meat pies and puff-puff from before sunrise.", lot: true },
   waterpark: { id: "waterpark", name: "Lagoon Water Park", emoji: "🌊", district: "yaba", open: [9, 19], blurb: "Pools, a big slide and lifeguards with whistles. Perfect for a hot Lagos day.", lot: true },
+  salon: { id: "salon", name: "Glow Hair Salon", emoji: "💇🏾", district: "mushin", open: [8, 20], blurb: "Braids, cuts and gist. Walk in tired, walk out looking sharp.", lot: true },
+  suya: { id: "suya", name: "Mallam's Suya Grill", emoji: "🍢", district: "mushin", open: [17, 3], blurb: "Smoky suya on newspaper with onions, pepper and a cold zobo. Opens at dusk.", lot: true },
+  cowork: { id: "cowork", name: "Hustle Hub Co-working", emoji: "🏢", district: "yaba", open: [7, 22], blurb: "Desks, fast Wi-Fi, coffee and people building things. Good for your Hustle.", lot: true },
+  travel: { id: "travel", name: "Japa Travel Agency", emoji: "✈️", district: "yaba", open: [9, 18], blurb: "Posters of far-away cities, visa advice and IELTS practice. Where the japa dream starts.", lot: true },
+  pitch: { id: "pitch", name: "Estate Football Pitch", emoji: "⚽", district: "mushin", open: [6, 21], blurb: "A dusty pitch with goalposts made of pipe. Five-a-side starts whenever enough people show up.", lot: true },
   phone: { id: "phone", name: "Your phone", emoji: "📱", district: "any", blurb: "Works anywhere: call home, hustle on WhatsApp, order delivery." },
 };
 

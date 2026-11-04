@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLang } from "../../i18n/react";
 import {
-  blockPlayer, dmThread, dmUnread, findPlayers, inviteHome, myFriends, sendDm, type Dm, myHomeInvites, removeFriend, reportPlayer, requestFriend, respondFriend,
+  addByCode, blockPlayer, cleanCode, myFriendCode, resetFriendCode, showCode, dmThread, dmUnread, findPlayers, inviteHome, myFriends, sendDm, type Dm, myHomeInvites, removeFriend, reportPlayer, requestFriend, respondFriend,
   type Found, type Friend, type HomeInvite,
 } from "../../lib/friends";
 
@@ -19,6 +19,9 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
   const [msgs, setMsgs] = useState<Dm[]>([]);
   const [draft, setDraft] = useState("");
   const [unread, setUnread] = useState<Record<string, number>>({});
+  const [code, setCode] = useState<string | null>(null);
+  // a shared link (?code=ABCD-EFGH) pre-fills the box
+  const [typed, setTyped] = useState(() => cleanCode(new URLSearchParams(location.search).get("code") ?? ""));
 
   const load = useCallback(async () => {
     const [f, i] = await Promise.all([myFriends(), myHomeInvites()]);
@@ -26,7 +29,11 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
     if (i) setInvites(i);
   }, []);
   useEffect(() => {
-    if (userId) void load();
+    if (!userId) return;
+    void load();
+    void myFriendCode().then(c => setCode(c));
+    const id = setInterval(() => void load(), 15_000);   // a new invitation shows up while this app is open
+    return () => clearInterval(id);
   }, [userId, load]);
 
   // Unread counts, and the open conversation, refreshed every few seconds while this app is open
@@ -90,12 +97,48 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
     );
   }
 
+  const share = async () => {
+    if (!code) return;
+    const text = t("friends.shareText", { code: showCode(code), url: `${location.origin}/?code=${code}` });
+    try {
+      if (navigator.share) await navigator.share({ text });
+      else { await navigator.clipboard.writeText(text); setNote(t("friends.copied")); }
+    } catch {
+      // the share sheet was closed: nothing to do
+    }
+  };
+
   const incoming = friends.filter(f => f.status === "pending" && f.incoming);
   const sent = friends.filter(f => f.status === "pending" && !f.incoming);
   const mine = friends.filter(f => f.status === "accepted");
 
   return (
     <>
+      <div className="friend-code">
+        <small>{t("friends.myCode")}</small>
+        <b aria-label={code ?? ""}>{code ? showCode(code) : "…"}</b>
+        <div className="row">
+          <button className="chip-btn" disabled={!code} onClick={() => void share()}>📤 {t("friends.share")}</button>
+          <button className="chip-btn" disabled={busy || !code} onClick={() => { if (confirm(t("friends.newCodeAsk"))) void resetFriendCode().then(c => { if (c) { setCode(c); setNote(t("friends.newCodeDone")); } }); }}>🔄 {t("friends.newCode")}</button>
+        </div>
+        <p className="note">{t("friends.codeNote")}</p>
+      </div>
+      <form
+        className="row"
+        onSubmit={async e => {
+          e.preventDefault();
+          if (typed.length < 8) return;
+          setBusy(true);
+          const r = await addByCode(typed);
+          setNote(!r ? t("friends.error") : r.ok ? t("friends.codeOk", { name: r.name ?? "" }) : t(`friends.reason.${r.reason ?? "other"}`));
+          if (r?.ok) setTyped("");
+          await load();
+          setBusy(false);
+        }}
+      >
+        <input value={showCode(typed)} onChange={e => setTyped(cleanCode(e.target.value))} placeholder={t("friends.codePlaceholder")} aria-label={t("friends.codePlaceholder")} autoCapitalize="characters" autoComplete="off" />
+        <button className="btn" type="submit" disabled={busy || typed.length < 8}>{t("friends.useCode")}</button>
+      </form>
       <form
         className="row"
         onSubmit={async e => {

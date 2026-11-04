@@ -27,4 +27,12 @@ export type Dm = { id: number; mine: boolean; body: string; created_at: string }
 export const sendDm = (id: string, text: string) => call<Result>("send_dm", { p_to: id, p_text: text });
 export const dmThread = (id: string) => call<Dm[]>("dm_thread", { p_other: id });
 export const dmUnread = () => call<{ from: string; count: number }[]>("dm_unread");
+/** Your private friend code, and typing someone else's (see supabase/update-2026-11-friend-codes.sql). */
+export const myFriendCode = () => call<string>("my_friend_code");
+export const resetFriendCode = () => call<string>("reset_friend_code");
+export const addByCode = (code: string) => call<Result & { id?: string; name?: string }>("add_by_code", { p_code: code });
+/** A code as people type it: letters and digits only, upper case, 8 characters. */
+export const cleanCode = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+/** 8 characters shown as two groups of four, so it is easy to read out. */
+export const showCode = (c: string) => (c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}` : c);
 export const inviteHome = (id: string) => call<Result>("invite_home", { p_guest: id });

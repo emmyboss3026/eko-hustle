@@ -45,6 +45,17 @@ export const GROWTH = [
       waterpark: { cx: -390, cz: 210, face: 'e', solids: [[0, 6, 20, 12, 6]] },
     },
   },
+  {
+    level: 5,
+    note: 'Fifth growth: a salon and a suya grill on the south edge, a co-working hub and a travel agency on the north, a football pitch on the east.',
+    places: {
+      salon: { cx: 30, cz: 450, face: 'n', solids: [[0, -2, 18, 14, 6]] },
+      suya: { cx: -210, cz: 450, face: 'n', solids: [[0, -4, 16, 10, 4]] },
+      cowork: { cx: -90, cz: -450, face: 's', solids: [[0, 4, 24, 16, 9]] },
+      travel: { cx: 150, cz: -450, face: 's', solids: [[0, 4, 20, 14, 7]] },
+      pitch: { cx: 450, cz: 90, face: 'w', solids: [[0, 10, 16, 6, 4]] },
+    },
+  },
 ];
 
 /** How many times the map has grown. */
