@@ -4807,4 +4807,9 @@ export const pcm: Dict = {
   "spot.bowling.blurb": "Neon lane, rented shoe and league night wey dey loud.",
   "spot.carwash.name": "Sparkle Car Wash",
   "spot.carwash.blurb": "Foam, hose and boys wey go argue football as dem dey scrub.",
+  "designs.yes": "Yes, buy am",
+  "designs.no": "Cancel",
+  "designs.bought": "{name} don be your own! Go your room make you see am.",
+  "designs.short": "You need {money} more.",
+  "friends.newCodeYes": "Tap again to confirm",
 };

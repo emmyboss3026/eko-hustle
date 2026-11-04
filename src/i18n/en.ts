@@ -1640,4 +1640,9 @@ export const en: Dict = {
   "design.executive.desc": "Marble finishes, a master suite, a study, a guest room, air conditioning everywhere and a grandfather clock.",
   "design.mansion.name": "Grand Mansion",
   "design.mansion.desc": "The full showroom: two king suites, a generator, leather lounges, a trophy room and a globe. Money no object.",
+  "designs.yes": "Yes, buy it",
+  "designs.no": "Cancel",
+  "designs.bought": "{name} is yours! Go to your room to see it.",
+  "designs.short": "You need {money} more.",
+  "friends.newCodeYes": "Tap again to confirm",
 };

@@ -36,3 +36,29 @@ describe("furnished home designs", () => {
     }
   }
 });
+
+import { newGame, reduce, type GameState } from "./game";
+import { START_OBJECTS } from "../data/home";
+
+describe("buying a design", () => {
+  const sim = { name: "T", avatar: "🙂" } as never;
+  const start = (patch: Partial<GameState> = {}): GameState => ({ ...newGame(sim), ...patch });
+
+  it("replaces walls, floors and furniture, charges the price and pays back the old furniture", () => {
+    const s = start({ money: 5_000_000 });
+    const d = DESIGNS[0];
+    const lay = layoutFor(d, 0, false, s.home.objects.filter(o => CATALOG[o.type].fixed));
+    const refund = s.home.objects.filter(o => !CATALOG[o.type].fixed).reduce((n, o) => n + Math.round(CATALOG[o.type].price * 0.5), 0);
+    const after = reduce(s, { type: "design", id: d.id });
+    expect(after.money).toBe(5_000_000 + refund - lay.price);
+    expect(after.home.objects.length).toBe(s.home.objects.filter(o => CATALOG[o.type].fixed).length + lay.ground.length);
+    expect(after.home.walls).toEqual(designEdges(d, 0));
+    expect(new Set(after.home.objects.map(o => o.uid)).size).toBe(after.home.objects.length);
+    expect(START_OBJECTS.length).toBeGreaterThan(0);
+  });
+  it("refuses when you cannot afford it, or the home is too small", () => {
+    expect(reduce(start({ money: 100 }), { type: "design", id: DESIGNS[0].id }).money).toBe(100);
+    const big = reduce(start({ money: 99_000_000 }), { type: "design", id: "mansion" });
+    expect(big.home.objects).toEqual(start().home.objects);
+  });
+});

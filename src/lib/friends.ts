@@ -9,7 +9,12 @@ export type HomeInvite = { id: string; name: string; expires_at: string };
 
 type Result = { ok: boolean; status?: string; reason?: string };
 
+/** Development only: with nobody signed in, the Friends app talks to a pretend server (see friendsDemo.ts) so it can be tried locally. */
+let demo = false;
+export const setFriendsDemo = (on: boolean) => { demo = import.meta.env.DEV && on; };
+
 async function call<T>(fn: string, args?: Record<string, unknown>): Promise<T | null> {
+  if (demo) return (await import("./friendsDemo")).demoCall(fn, args) as T;
   if (!supabase) return null;
   const { data, error } = await supabase.rpc(fn, args);
   return error ? null : (data as T);

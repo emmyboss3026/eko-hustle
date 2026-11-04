@@ -4807,4 +4807,9 @@ export const de: Dict = {
   "spot.bowling.blurb": "Neonbahnen, Leihschuhe und eine Liga-Nacht, die laut wird.",
   "spot.carwash.name": "Sparkle-Autowäsche",
   "spot.carwash.blurb": "Schaum, Schläuche und Jungs, die beim Schrubben über Fußball streiten.",
+  "designs.yes": "Ja, kaufen",
+  "designs.no": "Abbrechen",
+  "designs.bought": "{name} gehört dir! Geh in dein Zimmer, um es zu sehen.",
+  "designs.short": "Dir fehlen noch {money}.",
+  "friends.newCodeYes": "Zum Bestätigen erneut tippen",
 };

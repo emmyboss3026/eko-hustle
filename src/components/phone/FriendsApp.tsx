@@ -3,7 +3,7 @@ import { useLang } from "../../i18n/react";
 import { spots, type SpotId } from "../../data/spots";
 import {
   addByCode, blockPlayer, cleanCode, dmAudio, dmThread, dmUnread, findPlayers, inviteHome, myFriendCode, myFriends, myHomeInvites, removeFriend, reportPlayer,
-  requestFriend, resetFriendCode, respondFriend, sendDm, sendVoice, showCode,
+  requestFriend, resetFriendCode, respondFriend, sendDm, sendVoice, setFriendsDemo, showCode,
   type Dm, type Found, type Friend, type HomeInvite,
 } from "../../lib/friends";
 
@@ -92,8 +92,12 @@ function VoiceBubble({ id, secs }: { id: number; secs: number }) {
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
 /** 👫 Friends: a messaging app. Your friends with where they are, requests, your private friend code, text and voice chat, and home visits. Needs an account. */
-export default function FriendsApp({ userId, onVisit }: { userId: string | null; onVisit: (owner: { id: string; name: string }) => void }) {
+export default function FriendsApp({ userId: signedIn, onVisit }: { userId: string | null; onVisit: (owner: { id: string; name: string }) => void }) {
   const { t, tx } = useLang();
+  // On a development build with nobody signed in, a pretend server stands in, so every part of the app can be tried
+  const demo = import.meta.env.DEV && !signedIn;
+  setFriendsDemo(demo);
+  const userId = signedIn ?? (demo ? "demo" : null);
   const [tab, setTab] = useState<Tab>("friends");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [invites, setInvites] = useState<HomeInvite[]>([]);
@@ -108,6 +112,7 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
   const [draft, setDraft] = useState("");
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [code, setCode] = useState<string | null>(null);
+  const [askNew, setAskNew] = useState(false);
   // a shared link (?code=ABCD-EFGH) pre-fills the box and opens the Add tab
   const [typed, setTyped] = useState(() => cleanCode(new URLSearchParams(location.search).get("code") ?? ""));
   const end = useRef<HTMLDivElement | null>(null);
@@ -325,7 +330,7 @@ export default function FriendsApp({ userId, onVisit }: { userId: string | null;
             <b aria-label={code ?? ""}>{code ? showCode(code) : "…"}</b>
             <div className="row">
               <button className="chip-btn" disabled={!code} onClick={() => void share()}>📤 {t("friends.share")}</button>
-              <button className="chip-btn" disabled={busy || !code} onClick={() => { if (confirm(t("friends.newCodeAsk"))) void resetFriendCode().then(c => { if (c) { setCode(c); setNote(t("friends.newCodeDone")); } }); }}>🔄 {t("friends.newCode")}</button>
+              <button className="chip-btn" disabled={busy || !code} onClick={() => { if (!askNew) { setAskNew(true); setNote(t("friends.newCodeAsk")); return; } setAskNew(false); void resetFriendCode().then(c => { if (c) { setCode(c); setNote(t("friends.newCodeDone")); } }); }}>🔄 {askNew ? t("friends.newCodeYes") : t("friends.newCode")}</button>
             </div>
             <p className="note">{t("friends.codeNote")}</p>
           </div>

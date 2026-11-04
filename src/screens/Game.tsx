@@ -162,6 +162,17 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
       : DISTRICT_VIEW[state.location];
   const showRoom = atHome && !walking;
   const showStreet = walking || (!atHome && focus !== null);
+  // Development builds start with everything unlocked and maxed, once per browser (the 🧪 button in the ⋯ menu does it again)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    try {
+      if (localStorage.getItem("eko-dev-unlocked-v1")) return;
+      localStorage.setItem("eko-dev-unlocked-v1", "1");
+    } catch {
+      return;
+    }
+    dispatch({ type: "devUnlock" });
+  }, [dispatch]);
   usePresence(userId, showRoom ? "home" : walking ? "street" : focus ?? "street");
 
   // The clock: game minutes per real second (slower with relaxed survival, see data/survival.ts). It waits while a panel, event, the guide or a ride is open,
@@ -515,6 +526,7 @@ export default function Game({ state, dispatch: send, onRestart, onLoad, synced,
           <div className="side-pop" role="menu">
             <button role="menuitem" onClick={() => { setSideMenu(false); openPanel(panel === "help" ? null : "help"); }}>❓ {t("side.help")}</button>
             <button role="menuitem" onClick={() => { setSideMenu(false); openPanel(panel === "feedback" ? null : "feedback"); }}>💬 {t("side.feedback")}</button>
+            {import.meta.env.DEV && <button role="menuitem" onClick={() => { setSideMenu(false); dispatch({ type: "devUnlock" }); }}>🧪 Unlock everything (dev)</button>}
             <button role="menuitem" aria-label={t("side.speedAria", { speed })} onClick={() => setSpeed(s => (s === 1 ? 2 : s === 2 ? 4 : 1))}>⏩ {t("side.speed")} {speed}×</button>
           </div>
         )}

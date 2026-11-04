@@ -3035,3 +3035,11 @@ a.row { color: inherit; text-decoration: none; }
 .voice-bubble.playing .voice-wave i { animation: wave 0.7s ease-in-out infinite alternate; }
 @keyframes wave { from { transform: scaleY(0.4); } to { transform: scaleY(1.25); } }
 .voice-secs { font-size: 12px; font-weight: 800; }
+.design-ask { display: grid; gap: 8px; padding: 10px; border-radius: 12px; background: #fff4d6; color: #4a3600; }
+.design-ask p { margin: 0; font-size: 14px; }
+.design-done { margin: 0; padding: 8px 10px; border-radius: 10px; background: #d4f5dd; color: #0d4a24; font-weight: 800; }
+.friend-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto auto; align-items: center; gap: 6px; }
+.friend-row .friend-main { min-width: 0; }
+.friend-row .presence { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend-row .pill { padding: 7px 10px; }
+.friend-row .friend-menu { grid-column: 1 / -1; padding-left: 0; }

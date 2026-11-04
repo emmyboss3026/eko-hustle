@@ -32,6 +32,7 @@ import type { OwnedBiz } from "../data/business";
 import type { ContactId } from "../data/contacts";
 import { REVIVE, type ReviveHow } from "../data/revive";
 import { storyFlag } from "./progress";
+import { STORY } from "../data/story";
 import { syncStory, storyStep, type StoryCommand, type StoryState } from "./story";
 import { estateStep, type EstateCommand } from "./estate";
 import { appsStep, type AppsCommand } from "./apps";
@@ -137,6 +138,7 @@ export type Command =
   | { type: "revive"; how: ReviveHow; ref?: string } // back from hospital (ref: the server's id for the gem used)
   | { type: "finalize" }  // the player chose to end this life instead of reviving
   | { type: "roadHit" }   // a car knocked you down in the streets
+  | { type: "devUnlock" }   // development builds only: max everything, for testing
   | { type: "partyDone"; place: number; players: number }   // you finished a party game with friends at home
   | StoryCommand
   | EstateCommand
@@ -687,6 +689,23 @@ function step(s: GameState, cmd: Command): GameState {
       if (next.ending) return next;
       if (place === 1) next = addRep(next, 1);
       return say(next, msg(s, place === 1 ? "log.partyWin" : "log.partyPlayed", { place, players }));
+    }
+
+    case "devUnlock": {
+      // Testing aid. Does nothing in the live game.
+      if (!import.meta.env.DEV) return s;
+      const done = Array.from(new Set([...(s.story?.done ?? []), ...STORY.filter(m => !m.side && m.ch <= 4).map(m => m.id)]));
+      const everything = Object.fromEntries(["driveway", "gate", "garden", "garage", "balcony", "floor2", "pool", "wing", "wing2", "wing3", "wing4", "wing5"].map(k => [k, true]));
+      return checkStory({
+        ...s,
+        money: Math.max(s.money, 1_000_000_000),
+        health: 100,
+        needs: { hunger: 100, energy: 100, fun: 100, social: 100, hygiene: 100, bladder: 100 },
+        skills: { hustle: 10, study: 10, charisma: 10, fitness: 10, cooking: 10 },
+        rep: 100, ielts: true, visa: true,
+        property: { ...s.property, ...everything, land: 4 },
+        story: { ...(s.story ?? { done: [], flags: [], picks: {} }), done, cur: undefined, xp: 1_500_000 },
+      });
     }
 
     case "roadHit": {

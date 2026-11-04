@@ -45,6 +45,8 @@ export default function DesignSheet({ state, dispatch }: { state: GameState; dis
   const level = wingLevel(state.property);
   const floor2 = !!state.property?.floor2;
   const [open, setOpen] = useState<string | null>(null);
+  const [ask, setAsk] = useState<string | null>(null);   // the design waiting for "yes, buy it" (browsers can block confirm(), so this is on screen)
+  const [done, setDone] = useState<string | null>(null);
   const keep = useMemo(() => state.home.objects.filter(o => CATALOG[o.type].fixed), [state.home.objects]);
   const refund = state.home.objects.filter(o => !CATALOG[o.type].fixed).reduce((s, o) => s + Math.round(CATALOG[o.type].price * 0.5), 0);
 
@@ -55,8 +57,12 @@ export default function DesignSheet({ state, dispatch }: { state: GameState; dis
     const pieces = lay ? lay.ground.length + lay.upper.length : 0;
     const shown = open === d.id;
     const buy = () => {
-      if (lay && confirm(t("designs.confirm", { name: names.name, price: naira(lay.price), refund: naira(refund) }))) dispatch({ type: "design", id: d.id });
+      if (!lay) return;
+      dispatch({ type: "design", id: d.id });
+      setAsk(null);
+      setDone(d.id);
     };
+    const short = lay ? lay.price - refund - state.money : 0;
     return (
       <div className={`design-card ${locked ? "locked" : ""}`} key={d.id}>
         <button className="design-head" onClick={() => setOpen(shown ? null : d.id)} aria-expanded={shown}>
@@ -82,7 +88,16 @@ export default function DesignSheet({ state, dispatch }: { state: GameState; dis
               <span><b>{t("designs.total")}</b></span><b>{naira(Math.max(0, lay.price - refund))}</b>
             </div>
             {!floor2 && d.upper && <p className="note">{t("designs.upNote")}</p>}
-            <button className="btn big block" disabled={state.money + refund < lay.price} onClick={buy}>{t("designs.buy", { price: naira(lay.price) })}</button>
+            {done === d.id && <p className="design-done" role="status">✅ {t("designs.bought", { name: names.name })}</p>}
+            {short > 0 && <p className="note bad">{t("designs.short", { money: naira(short) })}</p>}
+            {ask === d.id ? (
+              <div className="design-ask" role="alertdialog">
+                <p>{t("designs.confirm", { name: names.name, price: naira(lay.price), refund: naira(refund) })}</p>
+                <div className="btn-row"><button className="btn big" onClick={buy}>✓ {t("designs.yes")}</button><button className="btn plain" onClick={() => setAsk(null)}>{t("designs.no")}</button></div>
+              </div>
+            ) : (
+              <button className="btn big block" disabled={short > 0} onClick={() => { setDone(null); setAsk(d.id); }}>{t("designs.buy", { price: naira(lay.price) })}</button>
+            )}
           </div>
         )}
       </div>
