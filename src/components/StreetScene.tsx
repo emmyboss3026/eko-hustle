@@ -183,6 +183,7 @@ export default function StreetScene({ state, dispatch, walking, focus, onEnter, 
       cancelAnimationFrame(raf);
       removeEventListener("resize", fit);
       sv.setActive(false);
+      sv.removeListeners(); // take the keyboard listeners off the window
       sv.controls.dispose();
       sv.scene.traverse((o: THREE.Object3D) => {
         if (o instanceof THREE.Mesh || o instanceof THREE.Sprite) {
