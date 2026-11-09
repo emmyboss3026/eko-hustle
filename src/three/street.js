@@ -990,9 +990,19 @@ export class StreetView {
     this.raycaster = new THREE.Raycaster();
     this.ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
-    addEventListener('keydown', (e) => this.key(e, true));
-    addEventListener('keyup', (e) => this.key(e, false));
-    addEventListener('blur', () => this.keys.clear());
+    this.onKeyDown = (e) => this.key(e, true); // kept so removeListeners() can take it off again
+    this.onKeyUp = (e) => this.key(e, false); // same for key release
+    this.onBlur = () => this.keys.clear(); // let go of all keys when the window loses focus
+    addEventListener('keydown', this.onKeyDown); // listen for key presses
+    addEventListener('keyup', this.onKeyUp); // listen for key releases
+    addEventListener('blur', this.onBlur); // listen for the window losing focus
+  }
+
+  // Call when the street is closed, or every visit leaves another set of key listeners on the window
+  removeListeners() {
+    removeEventListener('keydown', this.onKeyDown); // stop key presses
+    removeEventListener('keyup', this.onKeyUp); // stop key releases
+    removeEventListener('blur', this.onBlur); // stop focus loss
   }
 
   key(e, down) {
