@@ -4,7 +4,6 @@ import { goalSteps, PROOF_OF_FUNDS, type GoalStepId } from "../data/goals";
 import { naira } from "../engine/economy";
 import { useLang } from "../i18n/react";
 import { duration, Progress } from "./ui";
-import Leaderboard from "./Leaderboard";
 import { HOME_GOALS } from "../data/homeGoals";
 import { homeGoalState, homeGoalsDone } from "../engine/estate";
 import { progressText, taskLabel } from "../lib/storyText";
@@ -125,8 +124,6 @@ export default function GoalsTab({ state, dispatch }: Props) {
 
       <HomeGoals state={state} dispatch={dispatch} />
 
-      <Leaderboard ending="japa" title={t("goals.boardJapa")} />
-      <Leaderboard ending="landlord" title={t("goals.boardHome")} />
     </>
   );
 }

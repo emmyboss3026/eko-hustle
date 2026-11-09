@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAccount } from "../lib/account";
 import { play } from "../lib/sound";
-import Leaderboard from "../components/Leaderboard";
 import LegalLinks from "../components/LegalLinks";
 import type { EndingKind, GameState } from "../engine/game";
 import { naira } from "../engine/economy";
@@ -127,10 +126,6 @@ export default function Ending({ state, onRestart }: Props) {
         <button className="btn plain" onClick={onRestart}>{t("me.newLife")}</button>
       </div>
 
-      {profile ? (
-        <p className="note">{t("ending.onBoard")}</p>
-      ) : null}
-      <Leaderboard ending={state.ending?.kind === "landlord" ? "landlord" : "japa"} title={t("ending.board")} />
       <LegalLinks />
     </main>
   );

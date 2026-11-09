@@ -5,6 +5,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { bachs, json, PRODUCTS, supabaseKey } from "../_shared/bachs.ts";
+import { checkPayment } from "../_shared/payment.ts";
 
 const TOLERANCE_SECONDS = 300;
 
@@ -61,34 +62,28 @@ Deno.serve(async req => {
   const checkoutId = String(event.data?.checkout_id ?? "");
   if (!checkoutId.startsWith("chk_")) return json({ ok: true, ignored: "no checkout" });
 
-  // The player id lives in the checkout's metadata, which only our server could set.
-  let metadata = event.data?.metadata as Record<string, string> | undefined;
-  if (!metadata?.user_id) {
-    const s = await bachs(`/v1/checkout-sessions/${encodeURIComponent(checkoutId)}`);
-    if (!s.ok) return json({ ok: false, error: "Couldn't read checkout" }, 502); // 5xx → Bachs retries
-    metadata = s.body?.metadata;
+  // Read the checkout back from Bachs (our own API call) so the player and product come from our record, not just the event.
+  const s = await bachs(`/v1/checkout-sessions/${encodeURIComponent(checkoutId)}`);
+  if (!s.ok) return json({ ok: false, error: "Couldn't read checkout" }, 502); // 5xx → Bachs retries
+  const metadata = (s.body?.metadata ?? event.data?.metadata) as Record<string, string> | undefined; // our record first
+  const check = checkPayment(event, metadata, PRODUCTS); // product, user, amount and currency must all be right
+  if (!check.ok) {
+    console.error("Payment rejected", checkoutId, check.reason); // log for a look, never the secrets
+    return json({ ok: true, ignored: check.reason }); // acknowledge so Bachs stops retrying
   }
-  const product = metadata?.product ? PRODUCTS[metadata.product] : undefined;
-  if (!product || !metadata?.user_id) return json({ ok: true, ignored: "other product" });
-
-  const amount = Number(event.data?.amount ?? product.naira);
-  // Paid less than the price? Don't deliver (and log it for a look).
-  if (Number.isFinite(amount) && amount + 0.01 < product.naira) {
-    console.error("Underpaid", checkoutId, amount, product.naira);
-    return json({ ok: true, ignored: "amount" });
-  }
+  const { product, userId, amount } = check;
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, supabaseKey("secret"));
 
   // Record once (checkout id is the primary key), then deliver. Both are safe to repeat.
   const { error: payErr } = await admin
     .from("payments")
     .upsert(
-      { reference: checkoutId, user_id: metadata.user_id, amount_kobo: Math.round(amount * 100), product: metadata.product },
+      { reference: checkoutId, user_id: userId, amount_kobo: Math.round(amount * 100), product: check.productId },
       { onConflict: "reference", ignoreDuplicates: true },
     );
   const { error: deliverErr } = product.gems
-    ? await admin.rpc("grant_gems", { p_user: metadata.user_id, p_amount: product.gems, p_reference: checkoutId })
-    : await admin.from("profiles").update({ supporter: true }).eq("id", metadata.user_id);
+    ? await admin.rpc("grant_gems", { p_user: userId, p_amount: product.gems, p_reference: checkoutId })
+    : await admin.from("profiles").update({ supporter: true }).eq("id", userId);
   if (payErr || deliverErr) {
     console.error("Delivery failed", payErr?.message, deliverErr?.message);
     return json({ ok: false }, 500); // Bachs retries

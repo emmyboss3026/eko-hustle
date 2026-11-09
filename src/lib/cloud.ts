@@ -5,7 +5,6 @@ import { upgrade, type GameState } from "../engine/game";
 import { supabase } from "./supabase";
 
 export type Profile = { id: string; email: string; supporter: boolean; guest?: boolean };
-export type Run = { sim_name: string; trait: string; ending: string; days: number; earned: number };
 
 export async function signInWithEmail(email: string): Promise<string | null> {
   if (!supabase) return "account.notSetUp";
@@ -67,31 +66,6 @@ export async function pushCloudSave(userId: string, state: GameState | null): Pr
     .from("saves")
     .upsert({ user_id: userId, state, updated_at: new Date().toISOString() });
   return !error;
-}
-
-export async function submitRun(userId: string, state: GameState): Promise<boolean> {
-  if (!supabase || !state.ending) return false;
-  const { error } = await supabase.from("runs").insert({
-    user_id: userId,
-    sim_name: state.sim.name.slice(0, 20),
-    trait: state.sim.trait,
-    ending: state.ending.kind,
-    days: state.ending.day,
-    earned: Math.round(state.stats.earned),
-  });
-  return !error;
-}
-
-// Fastest players to reach a good ending
-export async function fetchLeaderboard(ending: "japa" | "landlord", limit = 10): Promise<Run[]> {
-  if (!supabase) return [];
-  const { data } = await supabase
-    .from("runs")
-    .select("sim_name, trait, ending, days, earned")
-    .eq("ending", ending)
-    .order("days", { ascending: true })
-    .limit(limit);
-  return (data as Run[] | null) ?? [];
 }
 
 export type FeedbackCategory = "bug" | "idea" | "like" | "confusing";

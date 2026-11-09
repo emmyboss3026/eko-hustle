@@ -35,7 +35,8 @@ Deno.serve(async req => {
     return json({ ok: false, error: "Bad return address." }, 400);
   }
   const allowed = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map(s => s.trim()).filter(Boolean);
-  if (allowed.length > 0 && !allowed.includes(origin)) return json({ ok: false, error: "Return address not allowed." }, 400);
+  const local = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin); // dev machines only
+  if (!allowed.includes(origin) && !(allowed.length === 0 && local)) return json({ ok: false, error: "Return address not allowed." }, 400);
 
   // 3. Create the checkout. The price and the player are set HERE, on the server, so nobody can change them.
   const kind = product.gems ? "gems" : "supporter";

@@ -8,7 +8,7 @@ import { AccountProvider, useAccount } from "./lib/account";
 import { LangProvider, useLang } from "./i18n/react";
 import { recordLife } from "./lib/lives";
 import type { Lang } from "./i18n/core";
-import { loadCloudSave, pushCloudSave, submitRun } from "./lib/cloud";
+import { loadCloudSave, pushCloudSave } from "./lib/cloud";
 import { submitStats } from "./lib/board";
 import { getPrefs, onPrefs, setMusic, trackFor, unlockAudio } from "./lib/audio";
 
@@ -29,7 +29,6 @@ function root(state: GameState | null, msg: Msg): GameState | null {
   return state ? reduce(state, msg) : state;
 }
 
-const SUBMITTED_KEY = "eko-hustle-submitted-run";
 
 function Root() {
   const [state, dispatch] = useReducer(root, null, loadGame);
@@ -111,19 +110,6 @@ function Root() {
   useEffect(() => {
     if (state && over) recordLife(state);
   }, [state, over]);
-
-  // Post a finished life to the leaderboard once
-  useEffect(() => {
-    if (!userId || !state?.ending || !over) return;
-    const id = `${state.sim.name}|${state.ending.day}|${state.stats.earned}`;
-    try {
-      if (localStorage.getItem(SUBMITTED_KEY) === id) return;
-      localStorage.setItem(SUBMITTED_KEY, id);
-    } catch {
-      // ignore
-    }
-    void submitRun(userId, state);
-  }, [state, userId]);
 
   function restart() {
     clearSave();
