@@ -8,3 +8,4 @@
 - `server/limits.ts` (new) + `server/limits.test.ts`: message limiter and its test.
 - `server/index.ts`: connection cap, per-socket rate limit, try/catch around the message handler. Restart the multiplayer server after deploy.
 - `supabase/update-2026-11-hardening.sql` (new, NOT applied): caps `saves.state` at ~2 MB (`not valid`, old rows untouched).
+- Retired the forgeable `runs` board: removed `submitRun`/`fetchLeaderboard` (`src/lib/cloud.ts`), the submit effect (`src/App.tsx`), `src/components/Leaderboard.tsx`, its uses in `GoalsTab.tsx`/`Ending.tsx`; migration part 2 revokes `runs` access. Unused i18n keys left in place: `goals.boardJapa`, `goals.boardHome`, `ending.board`, `ending.onBoard`, `board.day`.

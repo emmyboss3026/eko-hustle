@@ -23,7 +23,7 @@ Unverified: Bachs response field names (`amount`, `currency`, `status`). The cod
 ## Database (supabase/*.sql), read in full for policies, grants and definer functions
 | # | Sev | Finding | Status |
 |---|---|---|---|
-| 12 | Medium | `runs` (old leaderboard, still used by `Leaderboard.tsx` via `fetchLeaderboard`) lets any signed-in player insert any row (e.g. days=1, ending=japa) straight through the API: the board can be forged. A real fix needs the server to verify runs; I did not guess at game-balance limits. Option: drop the runs board and use `player_stats`/`submit_stats`, which already checks plausibility and rate-limits (20 s). | Open, needs your decision |
+| 12 | Medium | `runs` leaderboard could be forged by any signed-in player (direct insert). | Fixed (owner chose retire): client code and UI removed; `update-2026-11-hardening.sql` drops the runs policies and revokes table grants (NOT applied). Old rows kept. |
 | 13 | Low | `saves.state` had no size limit. | Migration `update-2026-11-hardening.sql` (NOT applied) |
 | 14 | Low | `feedback` accepts anonymous inserts with no rate limit (spam). Use Supabase rate limits/captcha. | Open |
 | 15 | Info | OK: RLS on in all 23 tables; `profiles.supporter` not updatable by players; `payments`, `gem_ledger`, wallets, friends, DMs, reports have no player write access; every `security definer` function sets `search_path` and has execute revoked from public/anon (only `leaderboard` is anon, on purpose); `grant_gems`/`refund_gems` service-role only; `use_gem` locks the wallet and the ledger reference is unique, so no double spend; `delete_my_account` handles the nullable payments user. | OK |

@@ -8,3 +8,4 @@
 | `npm audit --omit=dev --audit-level=high` | 0 vulnerabilities |
 Not run: Deno function execution, Bachs sandbox, CI on GitHub (first run is this PR).
 Not tested: live WebSocket flood against a running server (only the limiter is unit-tested).
+After removing the runs board: tsc pass, vitest 281 pass, oxlint warnings only, vite build pass.
