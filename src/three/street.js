@@ -694,6 +694,68 @@ export function buildPlace(id, labelFor, property) {
       height = gh + 6; // camera framing
       break;
     }
+    case 'aquarium': {
+      add(plane(48, 48, '#b8d4e0', 0, 0.07, 0)); // pale blue paving
+      const [, aqz, aw, ad, ah] = solids[0]; // the hall: centre z, width, depth, height
+      add(box(aw, ah, ad, '#e3f2fd', 0, ah / 2, aqz)); // hall walls
+      add(box(aw + 1, 0.5, ad + 1, '#0277bd', 0, ah + 0.25, aqz)); // blue roof
+      add(box(2.6, 3.4, 0.25, '#01579b', 0, 1.7, aqz - ad / 2 - 0.12, false)); // door
+      for (let i = 0; i < 4; i++) add(box(3, 2.2, 0.15, mat('#4fc3f7', { transparent: true, opacity: 0.6 }), -8 + i * 5.4, 3.8, aqz - ad / 2 - 0.1, false)); // tank windows
+      add(cyl(1.8, 1.8, 0.8, '#26c6da', 10, 0.4, -9, 12)); // fountain basin
+      add(cyl(0.2, 0.2, 2.4, '#e1f5fe', 10, 1.6, -9, 6)); // fountain jet
+      sign('LAGOON AQUARIUM', 14, 2.4, ah + 1.7, aqz - ad / 2 - 0.3, { bg: '#0277bd' }); // name sign
+      height = ah + 6; // camera framing
+      break;
+    }
+    case 'theatre': {
+      add(plane(48, 48, '#6d4c5a', 0, 0.07, 0)); // dark red paving
+      const [, thz, tw, td, th] = solids[0]; // the theatre: centre z, width, depth, height
+      add(box(tw, th, td, '#8e2c48', 0, th / 2, thz)); // theatre walls
+      add(box(tw + 1, 0.5, td + 1, '#3e1f2b', 0, th + 0.25, thz)); // dark roof
+      add(box(2.8, 3.6, 0.25, '#ffd54f', 0, 1.8, thz - td / 2 - 0.12, false)); // golden door
+      for (let i = 0; i < 4; i++) add(box(0.6, 6, 0.6, '#f5e6c8', -8 + i * 5.4, 3, thz - td / 2 - 0.5)); // front columns
+      add(box(tw - 4, 1.2, 0.2, '#ffd54f', 0, th - 1.2, thz - td / 2 - 0.1, false)); // gold band over the entrance
+      sign('EKO PLAYHOUSE', 13, 2.4, th + 1.7, thz - td / 2 - 0.3, { bg: '#3e1f2b' }); // name sign
+      height = th + 6; // camera framing
+      break;
+    }
+    case 'observatory': {
+      add(plane(48, 48, '#4a4e69', 0, 0.07, 0)); // dark paving
+      const [, obz, ow, od, oh] = solids[0]; // the tower: centre z, width, depth, height
+      add(box(ow, oh, od, '#cfd8dc', 0, oh / 2, obz)); // tower walls
+      add(cyl(ow / 2 + 1, ow / 2 + 1, 1.2, '#455a64', 0, oh + 0.6, obz, 16)); // dome base
+      add(cyl(0.1, ow / 2, 4, '#eceff1', 0, oh + 3.2, obz, 16)); // dome
+      add(box(0.8, 0.8, 5, '#263238', 0, oh + 3.5, obz - 2)); // telescope barrel
+      add(box(2.6, 3.4, 0.25, '#263238', 0, 1.7, obz - od / 2 - 0.12, false)); // door
+      sign('SKY OBSERVATORY', 14, 2.4, oh + 1.7, obz - od / 2 - 0.3, { bg: '#263238' }); // name sign
+      height = oh + 8; // camera framing
+      break;
+    }
+    case 'farm': {
+      add(plane(48, 48, '#a5c27a', 0, 0.07, 0)); // green field
+      const [, frz, fw, fd, fh] = solids[0]; // the barn: centre z, width, depth, height
+      add(box(fw, fh, fd, '#b23a2e', 0, fh / 2, frz)); // red barn walls
+      add(box(fw + 1, 0.5, fd + 1, '#6d4c41', 0, fh + 0.25, frz)); // brown roof
+      add(box(3.4, 3.6, 0.25, '#f5f5f5', 0, 1.8, frz - fd / 2 - 0.12, false)); // barn door
+      for (let i = 0; i < 5; i++) add(box(2.4, 0.4, 5, '#6b8e3a', -9 + i * 4.5, 0.2, -12)); // crop rows
+      add(box(8, 0.2, 0.2, '#8d6e63', -2, 1.4, -6)); // fence rail
+      sign('CITY FARM', 10, 2.4, fh + 1.7, frz - fd / 2 - 0.3, { bg: '#6d4c41' }); // name sign
+      height = fh + 6; // camera framing
+      break;
+    }
+    case 'lighthouse': {
+      add(plane(48, 48, '#e6d8b0', 0, 0.07, 0)); // sandy ground
+      const [, lhz, lhw, lhd, lhh] = solids[0]; // the tower: centre z, width, depth, height
+      add(cyl(lhw / 2, lhw / 2 + 1.2, lhh, '#fafafa', 0, lhh / 2, lhz, 14)); // white tower
+      add(cyl(lhw / 2 + 0.2, lhw / 2 + 0.2, 1.6, '#d32f2f', 0, lhh * 0.6, lhz, 14)); // red band
+      add(cyl(lhw / 2 + 1, lhw / 2 + 1, 0.5, '#37474f', 0, lhh + 0.25, lhz, 14)); // gallery deck
+      add(cyl(1.2, 1.2, 1.8, '#fff59d', 0, lhh + 1.4, lhz, 10)); // lamp room
+      add(cyl(0.1, 1.4, 1.2, '#d32f2f', 0, lhh + 2.9, lhz, 10)); // red cap
+      add(box(2, 3, 0.25, '#4e342e', 0, 1.5, lhz - lhd / 2 - 0.9, false)); // door
+      sign('POINT ROAD LIGHT', 13, 2.4, 4.5, lhz - lhd / 2 - 1.2, { bg: '#37474f' }); // name sign
+      height = lhh + 6; // camera framing
+      break;
+    }
     case 'mart': {
       add(plane(48, 48, '#a9b0a5', 0, 0.07, 0));
       const [, mlz, mw, md, mh] = solids[0];
