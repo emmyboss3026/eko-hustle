@@ -78,6 +78,17 @@ export const GROWTH = [
       gallery: { cx: 570, cz: 30, face: 'w', solids: [[0, 0, 20, 16, 7]] }, // east edge
     },
   },
+  {
+    level: 8, // the eighth ring of land and roads
+    note: 'Eighth growth: an aquarium and a theatre on the south edge, an observatory and a city farm on the north, a lighthouse on the east.',
+    places: {
+      aquarium: { cx: -30, cz: 630, face: 'n', solids: [[0, -2, 26, 16, 8]] }, // south edge, door faces the inner road
+      theatre: { cx: 210, cz: 630, face: 'n', solids: [[0, -2, 24, 16, 9]] }, // south edge
+      observatory: { cx: -210, cz: -630, face: 's', solids: [[0, 4, 18, 18, 8]] }, // north edge
+      farm: { cx: 90, cz: -630, face: 's', solids: [[0, 4, 22, 12, 5]] }, // north edge
+      lighthouse: { cx: 630, cz: -90, face: 'w', solids: [[0, 0, 10, 10, 14]] }, // east edge, a tall tower
+    },
+  },
 ];
 
 /** How many times the map has grown. */

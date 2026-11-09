@@ -214,6 +214,17 @@ export const actions: Action[] = [
   { id: "school-club", label: "Join the language club", emoji: "🗣️", minutes: 60, cost: 1_500, category: "fun", where: "yaba", spot: "school", effect: { social: 10, energy: -5 }, skill: { study: 0.3, charisma: 0.2 } }, // study plus charisma
   { id: "gallery-tour", label: "Tour the exhibition", emoji: "🖼️", minutes: 60, cost: 1_500, category: "fun", where: "mushin", spot: "gallery", effect: { fun: 15, energy: -3 }, skill: { study: 0.2 } }, // culture
   { id: "gallery-sketch", label: "Sketch in the studio", emoji: "✏️", minutes: 60, cost: 800, category: "fun", where: "mushin", spot: "gallery", effect: { fun: 20 }, skill: { charisma: 0.2 } }, // creative
+  // Aquarium, theatre, observatory, city farm and lighthouse (added by map growth 8)
+  { id: "aquarium-visit", label: "Walk the glass tunnel", emoji: "🐠", minutes: 75, cost: 2_000, category: "fun", where: "yaba", spot: "aquarium", effect: { fun: 26, energy: -5 } }, // a calm day out
+  { id: "aquarium-touch", label: "Visit the touch pool", emoji: "🦀", minutes: 30, cost: 800, category: "fun", where: "yaba", spot: "aquarium", effect: { fun: 16, social: 6 } }, // a small treat
+  { id: "theatre-play", label: "Watch a live play", emoji: "🎭", minutes: 120, cost: 4_000, category: "fun", where: "yaba", spot: "theatre", effect: { fun: 34, social: 12, energy: -6 }, mood: "goodGist" }, // an evening out
+  { id: "theatre-standup", label: "Catch a stand-up night", emoji: "🎤", minutes: 90, cost: 2_500, category: "fun", where: "yaba", spot: "theatre", effect: { fun: 30, social: 15 }, skill: { charisma: 0.2 } }, // laughs and a lesson
+  { id: "observatory-stars", label: "Look through the telescope", emoji: "🔭", minutes: 60, cost: 1_000, category: "fun", where: "mushin", spot: "observatory", effect: { fun: 14, energy: -3 }, skill: { study: 0.3 } }, // learn something
+  { id: "observatory-talk", label: "Join the astronomy talk", emoji: "🌌", minutes: 90, cost: 500, category: "fun", where: "mushin", spot: "observatory", effect: { fun: 8, energy: -5 }, skill: { study: 0.5 } }, // the best study gain here
+  { id: "farm-harvest", label: "Help with the harvest", emoji: "🥬", minutes: 90, cost: 0, category: "fun", where: "mushin", spot: "farm", effect: { energy: -16, hygiene: -8, hunger: -6 }, skill: { fitness: 0.4 } }, // hard but free
+  { id: "farm-eggs", label: "Buy fresh eggs and veg", emoji: "🥚", minutes: 20, cost: 1_200, category: "fun", where: "mushin", spot: "farm", effect: { hunger: 18, fun: 3 } }, // a cheap healthy meal
+  { id: "lighthouse-climb", label: "Climb the lighthouse", emoji: "🗼", minutes: 45, cost: 500, category: "fun", where: "mushin", spot: "lighthouse", effect: { fun: 20, energy: -10 }, skill: { fitness: 0.4 } }, // a workout with a view
+  { id: "lighthouse-picnic", label: "Picnic at the foot of the tower", emoji: "🧺", minutes: 60, cost: 1_500, category: "fun", where: "mushin", spot: "lighthouse", effect: { fun: 18, social: 12, hunger: 10 } }, // relaxed and social
   { id: "fuel", label: "Buy generator fuel (5 litres)", emoji: "⛽", minutes: 15, cost: 5_000, category: "home", where: "any", spot: "phone", effect: {}, stock: { fuel: 5 } },
   { id: "puff-puff", label: "Buy puff-puff from a hawker", emoji: "🍩", minutes: 5, cost: 300, category: "food", where: "any", spot: "phone", effect: { hunger: 15 } },
   { id: "pure-water", label: "Buy pure water", emoji: "💧", minutes: 2, cost: 50, category: "food", where: "any", spot: "phone", effect: { hunger: 3, bladder: -5 } },

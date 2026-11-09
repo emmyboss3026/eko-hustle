@@ -18,6 +18,7 @@ export type SpotId =
   | "salon" | "suya" | "cowork" | "travel" | "pitch"   // added by map growth 5
   | "museum" | "nightmarket" | "ferry" | "bowling" | "carwash"   // added by map growth 6
   | "zoo" | "lounge" | "police" | "school" | "gallery"   // added by map growth 7
+  | "aquarium" | "theatre" | "observatory" | "farm" | "lighthouse"   // added by map growth 8
   | "phone";
 
 export type Spot = {
@@ -89,6 +90,11 @@ export const spots: Record<SpotId, Spot> = {
   police: { id: "police", name: "Community Police Station", emoji: "🚓", district: "mushin", open: [0, 24], blurb: "Always open. Report a problem, or join the community watch.", lot: true }, // open all day
   school: { id: "school", name: "Eko Evening School", emoji: "🏫", district: "yaba", open: [16, 22], blurb: "Evening classes and a language club for people who work by day.", lot: true }, // evening classes
   gallery: { id: "gallery", name: "Naija Art Gallery", emoji: "🎨", district: "mushin", open: [10, 19], blurb: "Bold paintings, bronze work and a studio where you can sketch.", lot: true }, // art space
+  aquarium: { id: "aquarium", name: "Lagoon Aquarium", emoji: "🐠", district: "yaba", open: [9, 18], blurb: "Glass tunnels, sharks overhead and a touch pool the kids never leave.", lot: true }, // opens 9 to 18
+  theatre: { id: "theatre", name: "Eko Playhouse Theatre", emoji: "🎭", district: "yaba", open: [14, 23], blurb: "Live plays, stand-up nights and a back row for gist.", lot: true }, // afternoon to night
+  observatory: { id: "observatory", name: "Lagos Sky Observatory", emoji: "🔭", district: "mushin", open: [18, 24], blurb: "Telescopes on the roof and a guide who knows every star by name.", lot: true }, // after dark
+  farm: { id: "farm", name: "Green Corner City Farm", emoji: "🌾", district: "mushin", open: [6, 17], blurb: "Vegetables, goats and fresh eggs, right in the middle of the city.", lot: true }, // early to afternoon
+  lighthouse: { id: "lighthouse", name: "Point Road Lighthouse", emoji: "🗼", district: "mushin", open: [8, 20], blurb: "Climb the spiral stairs for the best view of the lagoon and the ocean.", lot: true }, // daytime
   phone: { id: "phone", name: "Your phone", emoji: "📱", district: "any", blurb: "Works anywhere: call home, hustle on WhatsApp, order delivery." },
 };
 
