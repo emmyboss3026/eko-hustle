@@ -7,3 +7,4 @@
 **Deploy note:** set `ALLOWED_ORIGINS` in Supabase secrets to the live site origin BEFORE redeploying checkout, or real purchases will be refused. Webhook/checkout must be redeployed by the owner.
 - `server/limits.ts` (new) + `server/limits.test.ts`: message limiter and its test.
 - `server/index.ts`: connection cap, per-socket rate limit, try/catch around the message handler. Restart the multiplayer server after deploy.
+- `supabase/update-2026-11-hardening.sql` (new, NOT applied): caps `saves.state` at ~2 MB (`not valid`, old rows untouched).

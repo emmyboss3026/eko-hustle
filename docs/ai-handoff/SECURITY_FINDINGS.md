@@ -19,4 +19,12 @@ Unverified: Bachs response field names (`amount`, `currency`, `status`). The cod
 | 9 | Medium | No cap on open sockets. | Fixed: `MAX_CONNECTIONS` (default 500), close 1013. Per-IP cap NOT added (a proxy would make all players one IP). |
 | 10 | Medium | Async message handler had no try/catch: an exception on odd input is an unhandled rejection that can kill Node. | Fixed: caught, socket closed |
 | 11 | Info | Already good: 4 KB maxPayload, origin allowlist, token check via Supabase, 5 s hello timeout, home entry via `can_enter_home`, name/look/car/chat sanitising and speed/strike kick in city.ts. | OK |
-| 12 | Info | Shallow SQL scan only: every `security definer` function sets `search_path`; `grant_gems` is revoked from anon/authenticated. Full RLS and function-by-function review NOT done. | Open |
+
+## Database (supabase/*.sql), read in full for policies, grants and definer functions
+| # | Sev | Finding | Status |
+|---|---|---|---|
+| 12 | Medium | `runs` (old leaderboard, still used by `Leaderboard.tsx` via `fetchLeaderboard`) lets any signed-in player insert any row (e.g. days=1, ending=japa) straight through the API: the board can be forged. A real fix needs the server to verify runs; I did not guess at game-balance limits. Option: drop the runs board and use `player_stats`/`submit_stats`, which already checks plausibility and rate-limits (20 s). | Open, needs your decision |
+| 13 | Low | `saves.state` had no size limit. | Migration `update-2026-11-hardening.sql` (NOT applied) |
+| 14 | Low | `feedback` accepts anonymous inserts with no rate limit (spam). Use Supabase rate limits/captcha. | Open |
+| 15 | Info | OK: RLS on in all 23 tables; `profiles.supporter` not updatable by players; `payments`, `gem_ledger`, wallets, friends, DMs, reports have no player write access; every `security definer` function sets `search_path` and has execute revoked from public/anon (only `leaderboard` is anon, on purpose); `grant_gems`/`refund_gems` service-role only; `use_gem` locks the wallet and the ledger reference is unique, so no double spend; `delete_my_account` handles the nullable payments user. | OK |
+Limits of this review: read by eye, nothing executed against Postgres; the RPC bodies for friends/DMs/voice/home layouts were checked for auth guards and grants, not line by line for logic errors.
