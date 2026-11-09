@@ -65,4 +65,4 @@ Every line of code gets a short comment saying what it does, in plain words, not
 - Every update also grows the map by FIVE places (see "Growing the map").
 
 ### Comment progress
-Done: src/games (chess, checkers, ludo, puzzles). Not yet: everything else (about 25,000 lines: engine, data, components, three, lib, screens, server, scripts, supabase). Tool: scripts/annotate.py.
+Done: src/games (chess, checkers, ludo, puzzles); 9 Nov 2026 batch: engine/{economy,health,rng,needs,save,apps}, lib/{sound,presence,supabase,gems,lives,homes,friends,payments,privacy}. Not yet: everything else (about 24,500 lines). Tool: scripts/annotate.py (a batch can also be done with a small script of {line: comment} maps).
