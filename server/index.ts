@@ -7,6 +7,7 @@
 
 import { WebSocketServer, type WebSocket } from "ws";
 import { Cities } from "./city.ts";
+import { makeLimiter } from "./limits.ts";
 
 const PORT = Number(process.env.PORT ?? 2567);
 const SUPABASE_URL = (process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "").replace(/\/+$/, "");
@@ -14,6 +15,8 @@ const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_
 const ALLOW_GUESTS = process.env.ALLOW_GUESTS === "1" || process.argv.includes("--guests");
 const ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173,http://127.0.0.1:5173").split(",").map(s => s.trim());
 const HELLO_WITHIN_MS = 5_000;
+const MAX_CONNECTIONS = Number(process.env.MAX_CONNECTIONS ?? 500); // stops a flood of sockets from eating memory
+const MAX_MSGS_PER_SEC = 60; // a real client sends about 10 moves a second plus the odd chat; far above that is abuse
 
 const log = (...a: unknown[]) => console.log(new Date().toISOString(), ...a);
 
@@ -62,12 +65,16 @@ const wss = new WebSocketServer({
 });
 
 wss.on("connection", ws => {
+  if (wss.clients.size > MAX_CONNECTIONS) { ws.close(1013, "server full"); return; } // too many sockets: turn this one away
+  const allowed = makeLimiter(MAX_MSGS_PER_SEC, 1000); // this connection's message budget
   let id: string | null = null;
   const hello = setTimeout(() => ws.close(4001, "no hello"), HELLO_WITHIN_MS);
   const send = (msg: Record<string, unknown>) => ws.readyState === ws.OPEN && ws.send(JSON.stringify(msg));
   let signingIn = false;
 
   ws.on("message", async raw => {
+    if (!allowed()) { ws.close(4008, "too many messages"); return; } // flooding: drop the connection
+    try {
     let msg: Record<string, unknown>;
     try { msg = JSON.parse(String(raw)); } catch { return; }
     if (!msg || typeof msg !== "object") return;
@@ -104,6 +111,7 @@ wss.on("connection", ws => {
     else if (msg.t === "event") cities.startEvent(id, msg.kind);   // works only in your own home
     else if (msg.t === "tap") cities.tap(id);
     else if (msg.t === "remove" && typeof msg.id === "string") cities.removeVisitor(id, msg.id); // works only in your own home
+    } catch (e) { log("bad message", String(e)); ws.close(1011, "error"); } // never let one bad message crash the server
   });
 
   ws.on("close", () => {
